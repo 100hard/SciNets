@@ -63,7 +63,7 @@ def create_app() -> FastAPI:
         print("Postgres connection successful")
 
         print("Ensuring MinIO bucket exists...")
-        ensure_bucket_exists(settings.minio_bucket_papers)
+        await ensure_bucket_exists(settings.minio_bucket_papers)
         print("MinIO bucket check completed")
 
         print("Starting database migrations...")

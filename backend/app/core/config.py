@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     minio_secret_key: str = Field(default="minioadmin")
     minio_secure: bool = Field(default=False)
     minio_bucket_papers: str = Field(default="papers")
+    minio_connect_max_attempts: int = Field(default=20)
+    minio_connect_initial_delay_seconds: float = Field(default=1.0)
+    minio_connect_max_delay_seconds: float = Field(default=5.0)
 
     # Qdrant
     qdrant_url: str = Field(default="http://qdrant:6333")
