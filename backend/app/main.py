@@ -4,6 +4,9 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.db.database import test_postgres_connection
 from app.services.storage import ensure_bucket_exists
+from app.api.papers import router as papers_router
+from app.db.migrate import apply_migrations
+from app.db.pool import init_pool, close_pool
 
 
 def create_app() -> FastAPI:
@@ -23,7 +26,8 @@ def create_app() -> FastAPI:
             response = await call_next(request)
             return response
         except Exception as exc:  # Basic error handling for MVP
-            return JSONResponse(status_code=500, content={"detail": str(exc)})
+            print(f"Request error: {exc}")  # Log the actual error
+            return JSONResponse(status_code=500, content={"detail": str(exc) if exc else "Unknown error"})
 
     @app.get("/health")
     async def health():
@@ -41,6 +45,29 @@ def create_app() -> FastAPI:
             ensure_bucket_exists(settings.minio_bucket_papers)
         except Exception as exc:  # noqa: PERF203
             print(f"MinIO bucket ensure failed: {exc}")
+
+        # Apply DB migrations and init pool
+        try:
+            print("Starting database migrations...")
+            await apply_migrations()
+            print("Migrations completed successfully")
+            print("Initializing database pool...")
+            await init_pool()
+            print("Database pool initialized successfully")
+        except Exception as exc:  # noqa: PERF203
+            print(f"Startup DB init failed: {exc}")
+            import traceback
+            traceback.print_exc()
+
+    @app.on_event("shutdown")
+    async def on_shutdown():
+        try:
+            await close_pool()
+        except Exception as exc:  # noqa: PERF203
+            print(f"Shutdown DB pool close failed: {exc}")
+
+    # Routers
+    app.include_router(papers_router)
 
     return app
 
