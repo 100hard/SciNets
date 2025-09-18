@@ -53,8 +53,9 @@ async def ensure_bucket_exists(bucket_name: str) -> None:
     for attempt in range(1, max_attempts + 1):
         client = get_minio_client()
         try:
-            if not client.bucket_exists(bucket_name):
-                client.make_bucket(bucket_name)
+            exists = await asyncio.to_thread(client.bucket_exists, bucket_name)
+            if not exists:
+                await asyncio.to_thread(client.make_bucket, bucket_name)
             return
         except S3Error as exc:  # pragma: no cover - external dependency behaviour
             raise RuntimeError(
@@ -96,17 +97,21 @@ async def upload_pdf_to_storage(file: UploadFile) -> StorageUploadResult:
 
     content_type = _resolve_content_type(file)
 
+    data_stream = io.BytesIO(data)
+
     try:
-        client.put_object(
+        await asyncio.to_thread(
+            client.put_object,
             bucket_name=bucket,
             object_name=object_name,
-            data=io.BytesIO(data),
+            data=data_stream,
             length=size,
             content_type=content_type,
         )
     except S3Error as exc:  # pragma: no cover - external dependency behaviour
         raise RuntimeError(f"Failed to store file in MinIO: {exc}") from exc
     finally:
+        data_stream.close()
         await file.close()
 
     return StorageUploadResult(
