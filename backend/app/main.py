@@ -4,7 +4,11 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.db.database import test_postgres_connection
 from app.services.storage import ensure_bucket_exists
+from app.api.concepts import router as concepts_router
+from app.api.evidence import router as evidence_router
 from app.api.papers import router as papers_router
+from app.api.relations import router as relations_router
+from app.api.sections import router as sections_router
 from app.db.migrate import apply_migrations
 from app.db.pool import init_pool, close_pool, get_pool
 
@@ -79,6 +83,10 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(papers_router, prefix=settings.api_prefix)
+    app.include_router(sections_router, prefix=settings.api_prefix)
+    app.include_router(concepts_router, prefix=settings.api_prefix)
+    app.include_router(relations_router, prefix=settings.api_prefix)
+    app.include_router(evidence_router, prefix=settings.api_prefix)
 
     return app
 
