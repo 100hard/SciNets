@@ -6,7 +6,7 @@ from app.db.database import test_postgres_connection
 from app.services.storage import ensure_bucket_exists
 from app.api.papers import router as papers_router
 from app.db.migrate import apply_migrations
-from app.db.pool import init_pool, close_pool
+from app.db.pool import init_pool, close_pool, get_pool
 
 
 def create_app() -> FastAPI:
@@ -31,33 +31,44 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health():
+        try:
+            pool = get_pool()
+        except RuntimeError as exc:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unavailable", "detail": str(exc)},
+            )
+
+        try:
+            await pool.fetchval("SELECT 1;")
+        except Exception as exc:  # noqa: PERF203
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "unavailable",
+                    "detail": f"Database health check failed: {exc}",
+                },
+            )
+
         return {"status": "ok"}
 
     @app.on_event("startup")
     async def on_startup():
-        try:
-            await test_postgres_connection()
-        except Exception as exc:  # noqa: PERF203
-            # Keep app up but log the error; for MVP we return 500 only on request
-            print(f"Postgres connection check failed: {exc}")
+        print("Checking Postgres connection...")
+        await test_postgres_connection()
+        print("Postgres connection successful")
 
-        try:
-            ensure_bucket_exists(settings.minio_bucket_papers)
-        except Exception as exc:  # noqa: PERF203
-            print(f"MinIO bucket ensure failed: {exc}")
+        print("Ensuring MinIO bucket exists...")
+        ensure_bucket_exists(settings.minio_bucket_papers)
+        print("MinIO bucket check completed")
 
-        # Apply DB migrations and init pool
-        try:
-            print("Starting database migrations...")
-            await apply_migrations()
-            print("Migrations completed successfully")
-            print("Initializing database pool...")
-            await init_pool()
-            print("Database pool initialized successfully")
-        except Exception as exc:  # noqa: PERF203
-            print(f"Startup DB init failed: {exc}")
-            import traceback
-            traceback.print_exc()
+        print("Starting database migrations...")
+        await apply_migrations()
+        print("Migrations completed successfully")
+
+        print("Initializing database pool...")
+        await init_pool()
+        print("Database pool initialized successfully")
 
     @app.on_event("shutdown")
     async def on_shutdown():
