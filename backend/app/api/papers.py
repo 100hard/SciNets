@@ -9,7 +9,7 @@ from app.models.paper import Paper, PaperCreate
 from app.services.papers import create_paper, get_paper, list_papers
 
 
-router = APIRouter(prefix="/api/papers", tags=["papers"])
+router = APIRouter(prefix="/papers", tags=["papers"])
 
 
 @router.get("", response_model=List[Paper])
