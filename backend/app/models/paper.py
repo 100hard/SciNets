@@ -12,6 +12,10 @@ class PaperBase(BaseModel):
     authors: Optional[str] = None
     venue: Optional[str] = None
     year: Optional[int] = Field(default=None, ge=1800, le=2100)
+    file_path: Optional[str] = None
+    file_name: Optional[str] = None
+    file_size: Optional[int] = Field(default=None, ge=0)
+    file_content_type: Optional[str] = None
 
 
 class PaperCreate(PaperBase):
