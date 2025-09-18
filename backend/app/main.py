@@ -67,7 +67,7 @@ def create_app() -> FastAPI:
             print(f"Shutdown DB pool close failed: {exc}")
 
     # Routers
-    app.include_router(papers_router)
+    app.include_router(papers_router, prefix=settings.api_prefix)
 
     return app
 
