@@ -15,6 +15,8 @@ from minio.error import S3Error
 from urllib3.exceptions import HTTPError as Urllib3HTTPError
 
 from app.core.config import settings
+
+
 PDF_CONTENT_TYPES: Final[set[str]] = {"application/pdf"}
 MAX_FILE_SIZE_BYTES: Final[int] = 50 * 1024 * 1024  # 50 MB limit for MVP
 
@@ -29,6 +31,12 @@ class StorageUploadResult:
 
 
 def get_minio_client() -> Minio:
+    endpoint = settings.minio_endpoint
+    # Minio SDK expects host:port without scheme
+    if endpoint.startswith("http://"):
+        endpoint = endpoint.replace("http://", "")
+    if endpoint.startswith("https://"):
+        endpoint = endpoint.replace("https://", "")
     endpoint, secure = _normalize_minio_endpoint(
         settings.minio_endpoint, settings.minio_secure
     )
@@ -36,20 +44,26 @@ def get_minio_client() -> Minio:
         endpoint=endpoint,
         access_key=settings.minio_access_key,
         secret_key=settings.minio_secret_key,
+        secure=settings.minio_secure,
         secure=secure,
     )
 
 
-async def ensure_bucket_exists(
-    bucket_name: str, max_attempts: int = 5, initial_delay_seconds: float = 1.0
-) -> None:
+def ensure_bucket_exists(bucket_name: str) -> None:
+async def ensure_bucket_exists(bucket_name: str) -> None:
+    max_attempts = max(1, settings.minio_connect_max_attempts)
+    initial_delay = max(settings.minio_connect_initial_delay_seconds, 0.1)
+    max_delay = max(settings.minio_connect_max_delay_seconds, initial_delay)
+
     last_connection_error: Exception | None = None
+    delay = initial_delay
 
     for attempt in range(1, max_attempts + 1):
         client = get_minio_client()
         try:
-            if not client.bucket_exists(bucket_name):
-                client.make_bucket(bucket_name)
+            exists = await asyncio.to_thread(client.bucket_exists, bucket_name)
+            if not exists:
+                await asyncio.to_thread(client.make_bucket, bucket_name)
             return
         except S3Error as exc:  # pragma: no cover - external dependency behaviour
             raise RuntimeError(
@@ -57,10 +71,11 @@ async def ensure_bucket_exists(
             ) from exc
         except (Urllib3HTTPError, OSError) as exc:
             last_connection_error = exc
-            if attempt < max_attempts:
-                await asyncio.sleep(initial_delay_seconds * attempt)
-            else:
+            if attempt == max_attempts:
                 break
+
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, max_delay)
 
     if last_connection_error is not None:
         raise RuntimeError(
@@ -84,23 +99,30 @@ async def upload_pdf_to_storage(file: UploadFile) -> StorageUploadResult:
         raise ValueError("Uploaded file exceeds maximum allowed size")
 
     client = get_minio_client()
+    exists = client.bucket_exists(bucket_name)
+    if not exists:
+        client.make_bucket(bucket_name)
     bucket = settings.minio_bucket_papers
     object_name = _build_object_name(file.filename)
     file_name = Path(file.filename).name
 
     content_type = _resolve_content_type(file)
 
+    data_stream = io.BytesIO(data)
+
     try:
-        client.put_object(
+        await asyncio.to_thread(
+            client.put_object,
             bucket_name=bucket,
             object_name=object_name,
-            data=io.BytesIO(data),
+            data=data_stream,
             length=size,
             content_type=content_type,
         )
     except S3Error as exc:  # pragma: no cover - external dependency behaviour
         raise RuntimeError(f"Failed to store file in MinIO: {exc}") from exc
     finally:
+        data_stream.close()
         await file.close()
 
     return StorageUploadResult(
@@ -166,83 +188,3 @@ def _normalize_minio_endpoint(endpoint: str, secure: bool) -> tuple[str, bool]:
         raise ValueError("MinIO endpoint cannot be empty")
 
     return cleaned, updated_secure
-
-
-async def upload_pdf_to_storage(file: UploadFile) -> StorageUploadResult:
-    if not file.filename:
-        raise ValueError("Uploaded file must include a filename")
-
-    if not _is_pdf(file):
-        raise ValueError("Only PDF uploads are supported")
-
-    data = await file.read()
-    size = len(data)
-    if size == 0:
-        raise ValueError("Uploaded file is empty")
-    if size > MAX_FILE_SIZE_BYTES:
-        raise ValueError("Uploaded file exceeds maximum allowed size")
-
-    client = get_minio_client()
-    bucket = settings.minio_bucket_papers
-    object_name = _build_object_name(file.filename)
-    file_name = Path(file.filename).name
-
-    content_type = _resolve_content_type(file)
-
-    try:
-        client.put_object(
-            bucket_name=bucket,
-            object_name=object_name,
-            data=io.BytesIO(data),
-            length=size,
-            content_type=content_type,
-        )
-    except S3Error as exc:  # pragma: no cover - external dependency behaviour
-        raise RuntimeError(f"Failed to store file in MinIO: {exc}") from exc
-    finally:
-        await file.close()
-
-    return StorageUploadResult(
-        bucket=bucket,
-        object_name=object_name,
-        file_name=file_name,
-        size=size,
-        content_type=content_type,
-    )
-
-
-def create_presigned_download_url(object_name: str, expires_in: int = 3600) -> str:
-    if expires_in <= 0:
-        raise ValueError("expires_in must be a positive integer")
-
-    client = get_minio_client()
-    try:
-        return client.presigned_get_object(
-            bucket_name=settings.minio_bucket_papers,
-            object_name=object_name,
-            expires=timedelta(seconds=expires_in),
-        )
-    except S3Error as exc:  # pragma: no cover - external dependency behaviour
-        raise RuntimeError(f"Failed to generate download URL: {exc}") from exc
-
-
-def _is_pdf(file: UploadFile) -> bool:
-    content_type = (file.content_type or "").lower()
-    if content_type in PDF_CONTENT_TYPES:
-        return True
-    filename = (file.filename or "").lower()
-    return filename.endswith(".pdf")
-
-
-def _build_object_name(filename: str) -> str:
-    clean_name = Path(filename).name.replace(" ", "_")
-    unique_prefix = uuid4().hex
-    return f"{unique_prefix}/{clean_name}"
-
-
-def _resolve_content_type(file: UploadFile) -> str:
-    content_type = (file.content_type or "application/pdf").lower()
-    if content_type not in PDF_CONTENT_TYPES:
-        return "application/pdf"
-    return content_type
-

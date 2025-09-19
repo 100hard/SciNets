@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/pyright-schemas/config.schema.json",
+  "include": ["backend/app"],
+  "stubPath": "typings",
+  "reportMissingTypeStubs": "none",
+  "executionEnvironments": [
+    {
+      "root": "backend/app",
+      "extraPaths": ["backend"]
+    }
+  ]
+}
