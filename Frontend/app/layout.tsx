@@ -4,6 +4,7 @@ import "./globals.css";
 
 import Header from "../components/header";
 import Sidebar from "../components/sidebar";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
           </div>
         </div>
+        <Toaster richColors position="top-right" closeButton />
       </body>
     </html>
   );
