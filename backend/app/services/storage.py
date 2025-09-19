@@ -31,6 +31,12 @@ class StorageUploadResult:
 
 
 def get_minio_client() -> Minio:
+    endpoint = settings.minio_endpoint
+    # Minio SDK expects host:port without scheme
+    if endpoint.startswith("http://"):
+        endpoint = endpoint.replace("http://", "")
+    if endpoint.startswith("https://"):
+        endpoint = endpoint.replace("https://", "")
     endpoint, secure = _normalize_minio_endpoint(
         settings.minio_endpoint, settings.minio_secure
     )
@@ -38,10 +44,12 @@ def get_minio_client() -> Minio:
         endpoint=endpoint,
         access_key=settings.minio_access_key,
         secret_key=settings.minio_secret_key,
+        secure=settings.minio_secure,
         secure=secure,
     )
 
 
+def ensure_bucket_exists(bucket_name: str) -> None:
 async def ensure_bucket_exists(bucket_name: str) -> None:
     max_attempts = max(1, settings.minio_connect_max_attempts)
     initial_delay = max(settings.minio_connect_initial_delay_seconds, 0.1)
@@ -91,6 +99,9 @@ async def upload_pdf_to_storage(file: UploadFile) -> StorageUploadResult:
         raise ValueError("Uploaded file exceeds maximum allowed size")
 
     client = get_minio_client()
+    exists = client.bucket_exists(bucket_name)
+    if not exists:
+        client.make_bucket(bucket_name)
     bucket = settings.minio_bucket_papers
     object_name = _build_object_name(file.filename)
     file_name = Path(file.filename).name
@@ -177,4 +188,3 @@ def _normalize_minio_endpoint(endpoint: str, secure: bool) -> tuple[str, bool]:
         raise ValueError("MinIO endpoint cannot be empty")
 
     return cleaned, updated_secure
-
