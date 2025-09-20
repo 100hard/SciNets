@@ -6,7 +6,7 @@ import math
 import struct
 import threading
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Mapping, Optional, Sequence
 from uuid import UUID, uuid4
 
 from app.core.config import settings
@@ -267,14 +267,28 @@ _service_lock = threading.Lock()
 
 
 class EmbeddingService:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        backend: EmbeddingBackend | None = None,
+        cache: EmbeddingCacheRepository | None = None,
+        vector_store: VectorStore | None = None,
+        sections_fetcher: Callable[..., Awaitable[List[Section]]] | None = None,
+        create_evidence_fn: Callable[[EvidenceCreate], Awaitable[Any]] | None = None,
+        delete_evidence_fn: Callable[[UUID], Awaitable[None]] | None = None,
+    ) -> None:
         self._model_name = settings.embedding_model_name
         self._dimension = max(1, settings.embedding_dimension)
         self._batch_size = max(1, settings.embedding_batch_size)
         self._upsert_batch_size = max(1, settings.qdrant_upsert_batch_size)
-        self._backend = self._build_backend()
-        self._cache = EmbeddingCacheRepository()
-        self._vector_store = VectorStore(settings.qdrant_collection_name, self._dimension)
+        self._backend = backend or self._build_backend()
+        self._cache = cache or EmbeddingCacheRepository()
+        self._vector_store = vector_store or VectorStore(
+            settings.qdrant_collection_name, self._dimension
+        )
+        self._list_sections = sections_fetcher or list_sections
+        self._create_evidence = create_evidence_fn or create_evidence
+        self._delete_evidence = delete_evidence_fn or delete_evidence_for_paper
 
     def _build_backend(self) -> EmbeddingBackend:
         if SentenceTransformer is not None:
@@ -293,7 +307,7 @@ class EmbeddingService:
                 await self._vector_store.delete_for_paper(paper_id)
             except VectorStoreNotAvailableError as exc:
                 print(f"[EmbeddingService] Vector store unavailable: {exc}")
-            await delete_evidence_for_paper(paper_id)
+            await self._delete_evidence(paper_id)
             return
         try:
             embeddings = await self._embed_prepared_sections(prepared)
@@ -346,7 +360,7 @@ class EmbeddingService:
             except VectorStoreNotAvailableError as exc:
                 print(f"[EmbeddingService] Vector store unavailable: {exc}")
                 return
-            await delete_evidence_for_paper(paper_id)
+            await self._delete_evidence(paper_id)
             return
 
         try:
@@ -358,10 +372,10 @@ class EmbeddingService:
             print(f"[EmbeddingService] Failed to upsert vectors for paper {paper_id}: {exc}")
             return
 
-        await delete_evidence_for_paper(paper_id)
+        await self._delete_evidence(paper_id)
         for record in evidence_records:
             try:
-                await create_evidence(record)
+                await self._create_evidence(record)
             except Exception as exc:
                 print(f"[EmbeddingService] Failed to persist evidence: {exc}")
                 break
@@ -371,7 +385,9 @@ class EmbeddingService:
         offset = 0
         page_size = 200
         while True:
-            batch = await list_sections(paper_id=paper_id, limit=page_size, offset=offset)
+            batch = await self._list_sections(
+                paper_id=paper_id, limit=page_size, offset=offset
+            )
             if not batch:
                 break
             sections.extend(batch)
