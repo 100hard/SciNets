@@ -7,10 +7,10 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   CheckCircle2,
-  CloudUpload,
   FileText,
   Info,
   Loader2,
+  UploadCloud,
 } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -217,7 +217,7 @@ export default function IngestionPage() {
           >
             <input {...getInputProps()} />
             <div className="flex flex-col items-center text-center">
-              <CloudUpload className="h-12 w-12 text-primary" />
+              <UploadCloud className="h-12 w-12 text-primary" />
               <p className="mt-4 text-sm font-medium text-foreground">
                 {isDragActive ? "Drop the PDF to upload" : "Drag & drop your PDF here"}
               </p>
@@ -309,7 +309,7 @@ export default function IngestionPage() {
                 </>
               ) : (
                 <>
-                  <CloudUpload className="h-4 w-4" /> Queue upload
+                  <UploadCloud className="h-4 w-4" /> Queue upload
                 </>
               )}
             </button>
@@ -385,4 +385,3 @@ export default function IngestionPage() {
     </div>
   );
 }
-
