@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import io
 from dataclasses import dataclass
@@ -82,8 +83,8 @@ async def upload_pdf_to_storage(file: UploadFile) -> StorageUploadResult:
     if not _is_pdf(file):
         raise ValueError("Only PDF uploads are supported")
 
-    data = await file.read()
-    size = len(data)
+    file.file.seek(0, io.SEEK_END)
+    size = int(file.file.tell())
     if size == 0:
         raise ValueError("Uploaded file is empty")
     if size > MAX_FILE_SIZE_BYTES:
@@ -95,22 +96,20 @@ async def upload_pdf_to_storage(file: UploadFile) -> StorageUploadResult:
     file_name = Path(file.filename).name
 
     content_type = _resolve_content_type(file)
-
-    data_stream = io.BytesIO(data)
+    file.file.seek(0)
 
     try:
         await asyncio.to_thread(
             client.put_object,
             bucket_name=bucket,
             object_name=object_name,
-            data=data_stream,
+            data=file.file,
             length=size,
             content_type=content_type,
         )
     except S3Error as exc:  # pragma: no cover - external dependency behaviour
         raise RuntimeError(f"Failed to store file in MinIO: {exc}") from exc
     finally:
-        data_stream.close()
         await file.close()
 
     return StorageUploadResult(

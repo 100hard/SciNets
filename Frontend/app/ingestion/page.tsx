@@ -211,7 +211,7 @@ export default function IngestionPage() {
 
       <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
         <form onSubmit={handleSubmit} className="space-y-6 rounded-lg border bg-card p-6 shadow-sm">
-          <div {...getRootProps()} className={`rounded-lg border-2 border-dashed p-8 transition ${
+          <div {...getRootProps()} className={`fade-in-up rounded-lg border-2 border-dashed p-8 transition-all duration-300 ${
             isDragActive ? "border-primary bg-primary/5" : "border-border bg-muted/40"
           }`}
           >
@@ -276,7 +276,7 @@ export default function IngestionPage() {
           </div>
 
           {isUploading && (
-            <div className="space-y-2">
+            <div className="fade-in space-y-2">
               <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
                 <span className="inline-flex items-center gap-2 text-foreground">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" /> Uploading
@@ -325,7 +325,7 @@ export default function IngestionPage() {
         </form>
 
         <div className="space-y-6">
-          <div className="rounded-lg border bg-card p-6 shadow-sm">
+          <div className="fade-in-up rounded-lg border bg-card p-6 shadow-sm">
             <div className="flex items-start gap-3">
               <Info className="mt-1 h-5 w-5 text-primary" />
               <div className="space-y-2 text-sm text-muted-foreground">
@@ -340,7 +340,7 @@ export default function IngestionPage() {
           </div>
 
           {lastUploadedPaper ? (
-            <div className="rounded-lg border bg-card p-6 shadow-sm">
+            <div className="fade-in-up rounded-lg border bg-card p-6 shadow-sm transition-all duration-300">
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="mt-1 h-5 w-5 text-emerald-500" />
                 <div className="space-y-2 text-sm text-muted-foreground">
@@ -370,7 +370,7 @@ export default function IngestionPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-lg border bg-card p-6 shadow-sm text-sm text-muted-foreground">
+            <div className="fade-in-up rounded-lg border bg-card p-6 shadow-sm text-sm text-muted-foreground">
               <div className="flex items-start gap-3">
                 <AlertCircle className="mt-1 h-5 w-5 text-muted-foreground" />
                 <div>

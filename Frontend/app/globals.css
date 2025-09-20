@@ -56,3 +56,44 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+@layer utilities {
+  .fade-in {
+    animation: fade-in 220ms ease-in-out both;
+  }
+
+  .fade-in-up {
+    animation: fade-in-up 260ms ease-out both;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .fade-in-up {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-name: none !important;
+  }
+}
