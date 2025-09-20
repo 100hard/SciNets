@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover - optional dependency
     TesseractNotFoundError = Exception  # type: ignore[assignment]
 
 from app.models.section import SectionCreate
+from app.services.embeddings import embed_paper_sections
 from app.services.papers import get_paper, update_paper_status
 from app.services.sections import replace_sections
 from app.services.storage import download_pdf_from_storage
@@ -122,6 +123,12 @@ async def parse_pdf_task(paper_id: UUID) -> None:
         ]
 
         await replace_sections(paper_id, section_models)
+        try:
+            await embed_paper_sections(paper_id)
+        except Exception as exc:  # pragma: no cover - background task logging
+            print(
+                f"[parse_pdf_task] Failed to generate embeddings for paper {paper_id}: {exc}"
+            )
         await update_paper_status(paper_id, "parsed")
         print(
             f"[parse_pdf_task] Completed parsing for paper {paper_id} with "

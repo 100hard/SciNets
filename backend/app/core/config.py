@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     qdrant_url: str = Field(default="http://qdrant:6333")
     qdrant_api_key: str | None = None
 
+    # Embeddings
+    embedding_model_name: str = Field(default="all-MiniLM-L6-v2")
+    embedding_dimension: int = Field(default=384)
+    embedding_batch_size: int = Field(default=32)
+    qdrant_collection_name: str = Field(default="paper_sections")
+    qdrant_upsert_batch_size: int = Field(default=256)
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
