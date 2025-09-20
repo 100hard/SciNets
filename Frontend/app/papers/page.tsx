@@ -190,7 +190,7 @@ export default function PapersPage() {
         {summary.map((item) => (
           <div
             key={item.label}
-            className="rounded-lg border bg-card p-5 shadow-sm transition hover:shadow-md"
+            className="fade-in-up rounded-lg border bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
           >
             <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
             <p className="mt-3 text-2xl font-semibold text-foreground">
@@ -261,7 +261,7 @@ export default function PapersPage() {
         </div>
 
         {error ? (
-          <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="fade-in flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <AlertCircle className="h-4 w-4" />
             <div>
               <p className="font-medium">Unable to load papers</p>
@@ -315,7 +315,7 @@ export default function PapersPage() {
                   ))
                 : filteredPapers.length > 0
                 ? filteredPapers.map((paper) => (
-                    <tr key={paper.id} className="transition hover:bg-muted/40">
+                    <tr key={paper.id} className="fade-in transition-colors duration-200 hover:bg-muted/40">
                       <td className="px-4 py-4">
                         <div className="font-medium text-foreground">{paper.title}</div>
                         <div className="mt-1 text-xs text-muted-foreground">
@@ -339,7 +339,7 @@ export default function PapersPage() {
                     </tr>
                   ))
                 : (
-                    <tr>
+                    <tr className="fade-in-up">
                       <td colSpan={5} className="px-6 py-12">
                         <div className="flex flex-col items-center gap-3 text-center text-sm text-muted-foreground">
                           <FileText className="h-8 w-8 text-muted-foreground" />

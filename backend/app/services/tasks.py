@@ -151,7 +151,14 @@ def _parse_pdf_bytes(pdf_bytes: bytes) -> List[ParsedSection]:
 
 
 def _extract_document(pdf_bytes: bytes) -> DocumentExtraction:
-    with fitz.open(stream=pdf_bytes, filetype="pdf") as document:
+    try:
+        document = fitz.open(stream=pdf_bytes, filetype="pdf")
+    except (fitz.FileDataError, ValueError, RuntimeError) as exc:
+        raise RuntimeError(
+            "Unable to open PDF document. The file may be corrupted or unsupported."
+        ) from exc
+
+    try:
         extraction = _extract_using_pymupdf(document)
         if (
             len(extraction.full_text.strip()) < MIN_TEXT_LENGTH_FOR_OCR
@@ -166,6 +173,8 @@ def _extract_document(pdf_bytes: bytes) -> DocumentExtraction:
             ):
                 extraction = ocr_extraction
         return extraction
+    finally:
+        document.close()
 
 
 def _extract_using_pymupdf(document: fitz.Document) -> DocumentExtraction:
