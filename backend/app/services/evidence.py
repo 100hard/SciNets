@@ -74,6 +74,12 @@ async def create_evidence(data: EvidenceCreate) -> Evidence:
     return Evidence(**dict(row))
 
 
+async def delete_evidence_for_paper(paper_id: UUID) -> None:
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM evidence WHERE paper_id = $1", paper_id)
+
+
 async def get_evidence(evidence_id: UUID) -> Optional[Evidence]:
     pool = get_pool()
     query = """
