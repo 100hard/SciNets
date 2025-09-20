@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import asyncio
 import io
 from dataclasses import dataclass
@@ -121,6 +120,34 @@ async def upload_pdf_to_storage(file: UploadFile) -> StorageUploadResult:
         size=size,
         content_type=content_type,
     )
+
+
+async def download_pdf_from_storage(object_name: str) -> bytes:
+    if not object_name:
+        raise ValueError("object_name must be provided to download a PDF")
+
+    client = get_minio_client()
+    try:
+        response = await asyncio.to_thread(
+            client.get_object,
+            bucket_name=settings.minio_bucket_papers,
+            object_name=object_name,
+        )
+    except S3Error as exc:  # pragma: no cover - external dependency behaviour
+        raise RuntimeError(f"Failed to download file from MinIO: {exc}") from exc
+
+    try:
+        data = await asyncio.to_thread(response.read)
+    except (S3Error, Urllib3HTTPError, OSError) as exc:  # pragma: no cover - external dependency behaviour
+        raise RuntimeError(f"Failed to read file from MinIO: {exc}") from exc
+    finally:
+        response.close()
+        response.release_conn()
+
+    if not data:
+        raise RuntimeError("Downloaded file from MinIO is empty")
+
+    return data
 
 
 def create_presigned_download_url(object_name: str, expires_in: int = 3600) -> str:

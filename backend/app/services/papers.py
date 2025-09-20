@@ -92,3 +92,20 @@ async def get_paper(paper_id: UUID) -> Optional[Paper]:
         )
     return Paper(**dict(row)) if row else None
 
+
+async def update_paper_status(paper_id: UUID, status: str) -> Optional[Paper]:
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            f"""
+            UPDATE papers
+            SET status = $2,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING {PAPER_COLUMNS}
+            """,
+            paper_id,
+            status,
+        )
+    return Paper(**dict(row)) if row else None
+

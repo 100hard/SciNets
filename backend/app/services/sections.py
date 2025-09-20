@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Sequence
 from uuid import UUID
 
 from app.db.pool import get_pool
@@ -57,4 +57,39 @@ async def get_section(section_id: UUID) -> Optional[Section]:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, section_id)
     return Section(**dict(row)) if row else None
+
+
+async def replace_sections(paper_id: UUID, sections: Sequence[SectionCreate]) -> None:
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("DELETE FROM sections WHERE paper_id = $1", paper_id)
+            if sections:
+                values = [
+                    (
+                        section.paper_id,
+                        section.title,
+                        section.content,
+                        section.char_start,
+                        section.char_end,
+                        section.page_number,
+                        section.snippet,
+                    )
+                    for section in sections
+                ]
+                await conn.executemany(
+                    """
+                    INSERT INTO sections (
+                        paper_id,
+                        title,
+                        content,
+                        char_start,
+                        char_end,
+                        page_number,
+                        snippet
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """,
+                    values,
+                )
 
