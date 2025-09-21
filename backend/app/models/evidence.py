@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
 class EvidenceBase(BaseModel):
@@ -21,12 +22,27 @@ class EvidenceBase(BaseModel):
 class EvidenceCreate(EvidenceBase):
     paper_id: UUID
 
+    # This serializer automatically converts the dictionary to a JSON string before validation
+    @field_serializer("metadata")
+    def serialize_metadata(self, v: Optional[dict[str, Any]]) -> Optional[str]:
+        if v is None:
+            return None
+        return json.dumps(v)
+
 
 class Evidence(EvidenceBase):
     id: UUID
     paper_id: UUID
     created_at: datetime
     updated_at: datetime
+
+    # This validator automatically converts the JSON string from the DB back to a dictionary
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def deserialize_metadata(cls, v: Any) -> Optional[dict[str, Any]]:
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
     class Config:
         from_attributes = True
