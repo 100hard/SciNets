@@ -5,7 +5,7 @@ import io
 import re
 import statistics
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 from uuid import UUID
 
 import fitz  # type: ignore[import]
@@ -26,6 +26,9 @@ except ImportError:  # pragma: no cover - optional dependency
 from app.models.section import SectionCreate
 from app.services.concept_extraction import extract_and_store_concepts
 from app.services.embeddings import embed_paper_sections
+from app.services.extraction_tier1 import run_tier1_extraction
+from app.services.extraction_tier2 import Tier2ValidationError, run_tier2_structurer
+from app.services.extraction_tier3 import run_tier3_verifier
 from app.services.papers import get_paper, update_paper_status
 from app.services.sections import replace_sections
 from app.services.storage import download_pdf_from_storage
@@ -136,6 +139,50 @@ async def parse_pdf_task(paper_id: UUID) -> None:
             print(
                 f"[parse_pdf_task] Failed to generate embeddings for paper {paper_id}: {exc}"
             )
+
+        extraction_summary: dict[str, Any] | None = None
+        try:
+            extraction_summary = await run_tier1_extraction(paper_id)
+        except Exception as exc:
+            print(
+                f"[parse_pdf_task] Failed to run Tier-1 extraction for paper {paper_id}: {exc}"
+            )
+            raise
+
+        try:
+            extraction_summary = await run_tier2_structurer(
+                paper_id,
+                base_summary=extraction_summary,
+            )
+        except Tier2ValidationError as exc:
+            print(
+                "[parse_pdf_task] Tier-2 structurer returned invalid payload for "
+                f"paper {paper_id}: {exc}"
+            )
+        except RuntimeError as exc:
+            print(
+                f"[parse_pdf_task] Tier-2 structurer unavailable for paper {paper_id}: {exc}"
+            )
+        except Exception as exc:  # pragma: no cover - defensive logging
+            print(
+                f"[parse_pdf_task] Unexpected Tier-2 error for paper {paper_id}: {exc}"
+            )
+
+        if extraction_summary is not None:
+            try:
+                extraction_summary = await run_tier3_verifier(
+                    paper_id,
+                    base_summary=extraction_summary,
+                )
+            except ValueError as exc:
+                print(
+                    "[parse_pdf_task] Tier-3 verifier skipped for paper "
+                    f"{paper_id}: {exc}"
+                )
+            except Exception as exc:  # pragma: no cover - defensive logging
+                print(
+                    f"[parse_pdf_task] Tier-3 verifier failed for paper {paper_id}: {exc}"
+                )
         await update_paper_status(paper_id, "parsed")
         print(
             f"[parse_pdf_task] Completed parsing for paper {paper_id} with "

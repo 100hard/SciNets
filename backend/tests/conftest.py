@@ -18,6 +18,7 @@ class InMemoryDataStore:
         self._papers: Dict[UUID, Dict[str, Any]] = {}
         self._sections: Dict[UUID, List[Dict[str, Any]]] = {}
         self._objects: Dict[str, bytes] = {}
+        self.extraction_log: List[tuple[str, UUID]] = []
 
     async def upload_pdf_to_storage(self, file: UploadFile) -> StorageUploadResult:
         data = await file.read()
@@ -138,6 +139,38 @@ def datastore(monkeypatch: pytest.MonkeyPatch) -> InMemoryDataStore:
     async def async_noop(*_: Any, **__: Any) -> None:
         return None
 
+    async def run_tier1_extraction(paper_id: UUID, **_: Any) -> dict[str, Any]:
+        store.extraction_log.append(("tier1", paper_id))
+        return {"paper_id": str(paper_id), "tiers": [1]}
+
+    async def run_tier2_structurer(
+        paper_id: UUID,
+        *,
+        base_summary: dict[str, Any] | None = None,
+        **_: Any,
+    ) -> dict[str, Any]:
+        store.extraction_log.append(("tier2", paper_id))
+        summary = dict(base_summary or {"paper_id": str(paper_id), "tiers": []})
+        tiers = list(summary.get("tiers", []))
+        if 2 not in tiers:
+            tiers.append(2)
+        summary["tiers"] = tiers
+        return summary
+
+    async def run_tier3_verifier(
+        paper_id: UUID,
+        *,
+        base_summary: dict[str, Any] | None = None,
+        **_: Any,
+    ) -> dict[str, Any]:
+        store.extraction_log.append(("tier3", paper_id))
+        summary = dict(base_summary or {"paper_id": str(paper_id), "tiers": []})
+        tiers = list(summary.get("tiers", []))
+        if 3 not in tiers:
+            tiers.append(3)
+        summary["tiers"] = tiers
+        return summary
+
     monkeypatch.setattr("app.db.database.test_postgres_connection", async_noop)
     monkeypatch.setattr("app.services.storage.ensure_bucket_exists", async_noop)
     monkeypatch.setattr("app.db.migrate.apply_migrations", async_noop)
@@ -174,5 +207,17 @@ def datastore(monkeypatch: pytest.MonkeyPatch) -> InMemoryDataStore:
     monkeypatch.setattr("app.services.tasks.download_pdf_from_storage", store.download_pdf_from_storage)
     monkeypatch.setattr("app.services.tasks.embed_paper_sections", async_noop)
     monkeypatch.setattr("app.services.tasks.extract_and_store_concepts", async_noop)
+    monkeypatch.setattr(
+        "app.services.tasks.run_tier1_extraction",
+        run_tier1_extraction,
+    )
+    monkeypatch.setattr(
+        "app.services.tasks.run_tier2_structurer",
+        run_tier2_structurer,
+    )
+    monkeypatch.setattr(
+        "app.services.tasks.run_tier3_verifier",
+        run_tier3_verifier,
+    )
 
     return store
