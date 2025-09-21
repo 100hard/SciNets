@@ -7,11 +7,13 @@ import {
   FileText,
   LayoutDashboard,
   Settings,
+  Share2,
   UploadCloud,
 } from "lucide-react";
 
 const navigation = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
+  { name: "Graph", href: "/graph", icon: Share2 },
   { name: "Datasets", href: "/datasets", icon: Database },
   { name: "Papers", href: "/papers", icon: FileText },
   { name: "Ingestion", href: "/ingestion", icon: UploadCloud },
