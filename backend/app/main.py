@@ -6,6 +6,7 @@ from app.db.database import test_postgres_connection
 from app.services.storage import ensure_bucket_exists
 from app.api.concepts import router as concepts_router
 from app.api.evidence import router as evidence_router
+from app.api.graph import router as graph_router
 from app.api.papers import router as papers_router
 from app.api.relations import router as relations_router
 from app.api.search import router as search_router
@@ -89,6 +90,7 @@ def create_app() -> FastAPI:
     app.include_router(relations_router, prefix=settings.api_prefix)
     app.include_router(evidence_router, prefix=settings.api_prefix)
     app.include_router(search_router, prefix=settings.api_prefix)
+    app.include_router(graph_router, prefix=settings.api_prefix)
 
     return app
 
