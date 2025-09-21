@@ -253,172 +253,539 @@ Interactive graph works smoothly.
 
 Expand/focus on nodes without lag.
 
-Day 13: Graph Filters & Search
+Revised MVP Plan (Post–Day 12 to Launch)
+New Core Goals (what changes from here)
 
-Filters: by type (dataset, method, metric), by year, by authors.
+Move from generic “Concept” nodes to a small research ontology: Method/Model, Task, Dataset, Metric, Result, Claim, Paper, Section.
 
-Graph search: highlight nodes by label.
+All edges are typed and carry evidence (paper id, section id, char offsets, page, snippet, confidence).
 
-Sidebar with related papers/concepts.
+Add a 3-tier extraction pipeline (rules/lexicons → LLM structurer → verifier).
+
+Add canonicalization (merge duplicates) and cross-paper linking.
+
+Deliver Compare Papers, SOTA lookup, and Grounded Q&A (+ citation highlighting).
+
+Keep UI responsive and simple; prefer fewer, high-quality nodes.
+
+Pre-Day-13 (Safe Cleanup Plan)
+
+Goal: stop generating noisy, untyped graph data; keep everything that already works (upload, parse, search, the current graph UI), and lay rails for typed entities.
+
+Create a migration branch
+
+Branch name: feature/typed-graph-prep
+
+Keep main deployable. All changes below are in PRs to this branch.
+
+Backend (FastAPI) — what to freeze, remove, or gate
+
+Freeze untyped co-occurrence edges
+
+Stop writing concept↔concept edges created purely by co-occurrence.
+
+Keep read APIs working, but change the write path to no-op.
+
+Add feature flag: ENABLE_UNTYPED_GRAPH=false (env var). If true, legacy writes still work.
+
+Keep Concepts table, but mark as transitional
+
+Do not delete the concept table or paper↔concept edges yet.
+
+Add a new nullable type column if it doesn’t exist: enum ('unknown','method','dataset','metric','task'). Default unknown.
+
+This lets you backfill types for existing rows later and keeps graph rendering alive.
+
+Deprecate “auto-label” concept extraction
+
+If you have a job that promotes arbitrary noun-phrases to concepts, guard it behind ENABLE_NOISY_CONCEPTS=false.
+
+Leave the code path in place to avoid breakage; simply return an empty list when the flag is false.
+
+Keep embeddings & search as-is
+
+Do not touch Qdrant/pgvector indices or similarity search endpoints. They’ll be reused by the typed pipeline and QA.
+
+Stabilize Evidence storage
+
+If you currently store evidence in a separate evidence table, keep it.
+
+Add a provenance jsonb field (if missing): { "tier": "rule|llm|verifier", "model": "…", "rules": ["…"] }.
+
+Add a confidence float column if missing.
+
+Add compatibility adapters
+
+New internal module adapters/typed_to_legacy.py: maps typed nodes/edges to the old Concept/Relation shape so the existing Cytoscape view doesn’t break while you migrate.
+
+Frontend (Next.js) — what to freeze or gate
+
+Keep the current Cytoscape.js view
+
+Do not remove it. Add a URL query flag ?typed=1 to switch to the new typed data once available.
+
+Hide “Graph search by label” if it promotes noise
+
+If the label search currently surfaces random phrases, hide it behind NEXT_PUBLIC_ENABLE_LEGACY_GRAPH_SEARCH=false.
+
+Do not delete any UI routes
+
+Upload, Papers list, and Graph page stay. You’ll reuse them.
+
+APIs — deprecations without breaking
+
+Keep:
+
+GET /api/graph/overview
+
+GET /api/graph/neighborhood/{id}
+
+Internally route these through the adapter:
+
+If ?typed=1 or server flag PREFER_TYPED_GRAPH=true, the controller pulls from the new typed graph and adapts to the legacy JSON shape; else, it returns the legacy graph.
+
+“Do NOT remove” checklist
+
+Do not remove parsing, sections, offsets, Qdrant code, upload flows, or current Evidence table.
+
+Do not drop any DB columns/tables yet; we’ll migrate/dual-write first.
+
+Do not hard-delete concept data; we’ll mine it to bootstrap typed entities.
+
+
+Day 13: Ontology & DB Migration (Typed Nodes + Evidence)
+
+Backend
+
+Add tables:
+
+method(id, name, aliases jsonb, created_at)
+
+task(id, name, aliases jsonb)
+
+dataset(id, name, aliases jsonb)
+
+metric(id, name, unit, aliases jsonb)
+
+result(id, paper_id, method_id, dataset_id, metric_id, split, value_numeric decimal(8,3), value_text, is_sota boolean default false, confidence float, evidence jsonb, created_at)
+
+claim(id, paper_id, category enum('contribution','limitation','ablation','future_work','other'), text, confidence float, evidence jsonb)
+
+paper_relation(id, src_paper_id, dst_paper_id, type enum('cites','extends','compares'), evidence jsonb, confidence float)
+
+concept_resolution(id, type enum('method','dataset','metric','task'), canonical_id, alias_text, score float)
+
+Modify/keep existing:
+
+paper(id, title, year, ...)
+
+section(id, paper_id, title, page_start, page_end, char_start, char_end, text)
+
+evidence can be embedded as jsonb on each typed row (keep existing Evidence table if you prefer; just ensure you can store [{"section_id":..,"range":[s,e],"page":..,"snippet":"..."}]).
+
+Indexes
+
+Btree/GIN on (name) for each concept table, and GIN on aliases.
+
+Btree on (paper_id, dataset_id, metric_id, method_id) in result.
 
 Deliverables
 
-Graph UI with filters/search.
+Migrations apply cleanly.
 
-Sidebar details implemented.
+Old “Concept/Relation” left intact for now; new tables ready.
 
-Day 14: Graph Optimization
+Day 14: Tier-1 Extractors (Patterns + Lexicons) with Evidence
 
-Implement clustering (group by type or degree).
+Backend
 
-Lazy-load subgraphs for large sets.
+Create lightweight lexicons (YAML/JSON) for the first domain (pick one: MT or CV):
 
-UI polish: hover tooltips, transitions, legend.
+datasets: e.g., WMT14 En-De, ImageNet, COCO.
 
-Deliverables
+metrics: e.g., BLEU, ROUGE-L, Accuracy, Top-1.
 
-Graph performs with >100 nodes.
+tasks: e.g., machine translation, image classification.
 
-Professional visuals.
+method keywords: e.g., Transformer, ResNet, BERT.
 
-📅 WEEK 3: Q&A + Final Polish
-Day 15: Q&A Backend (Tiered Strategy)
+Regex patterns:
 
-Retrieval-only baseline: always return top-K snippets.
+Results: (?P<metric>BLEU|ROUGE(?:-L)?|F1|Accuracy|Top-1)\s*(=|:)\s*(?P<val>\d+(\.\d+)?)\s*(%|pts)?
 
-Optional LLM generation: synthesize concise answer with inline citations.
+Evaluate/use: (evaluate(d)? on|tested on|trained on)\s+(?P<dataset>[A-Za-z0-9\-\+\/ ]{2,})
 
-Structured JSON output {answer, citations[]}.
+Proposes: we\s+(propose|introduce|present)\s+(?P<method>[A-Z0-9\-\+ ]{3,})
 
-Citations link to offsets.
+PDF table extractor (pdfplumber or camelot) and run result patterns on table cells.
 
-Deliverables
-
-/api/qa/ask works with retrieval baseline.
-
-LLM answers available when enabled.
-
-Day 16: Q&A Frontend
-
-Q&A interface with input, results, history.
-
-Answer shows inline citations (clickable).
-
-Hover previews for citations.
-
-Option to “ask follow-up.”
+Emit typed nodes/edges with confidence (e.g., 0.6 by default), and evidence offsets (section + char ranges + snippet).
 
 Deliverables
 
-Q&A UI clean + functional.
+Endpoint POST /api/extract/{paper_id}?tiers=1 populates method/dataset/metric/result/task/claim (claims can be empty).
 
-Citations clickable.
+Unit tests on 3–5 papers; inspect evidence and values.
 
-Day 17: PDF Viewer with Citation Highlighting
+Day 15: Tier-2 LLM Structurer (Strict JSON) + Pydantic Validation
 
-React-pdf/pdf.js viewer.
+Backend
 
-Highlight cited offsets.
+For sections with poor/no Tier-1 signals, call LLM with a strict schema:
 
-Scroll-to-citation on click.
+{
+  "paper_title": "...",
+  "methods":[{"name":"...","is_new":true,"aliases":["..."]}],
+  "tasks":["..."],
+  "datasets":["..."],
+  "metrics":["..."],
+  "results":[
+    {"method":"...","dataset":"...","metric":"...","value":41.8,"split":"test",
+     "evidence_span":{"section_id":123,"start":100,"end":180}}
+  ],
+  "claims":[{"category":"limitation","text":"...","evidence_span":{"section_id":123,"start":..., "end":...}}]
+}
 
-Deliverables
 
-Citations link to exact PDF snippet.
+Validate with Pydantic; annotate each extraction with tier="llm_structurer", confidence baseline 0.7.
 
-Viewer responsive.
-
-Day 18: Dashboard
-
-Show stats: papers uploaded, concepts, Q&A asked.
-
-Recent activity timeline.
-
-Quick action buttons (upload, search, ask).
-
-Deliverables
-
-Dashboard gives meaningful overview.
-
-Navigation integrated.
-
-Day 19: UX Polish & Error Handling
-
-Skeleton loaders + spinners.
-
-Global error boundary + retry options.
-
-Responsive design + accessibility basics (ARIA, keyboard nav).
+Store exact evidence spans provided by the model.
 
 Deliverables
 
-MVP feels professional.
+POST /api/extract/{paper_id}?tiers=1,2 augments Tier-1 output; JSON validation errors handled.
 
-Errors handled gracefully.
+Measurable coverage increase vs Tier-1 alone.
 
-Day 20: Performance Optimization
+Day 16: Tier-3 Verifier (Cross-checks & Sanity)
 
-Backend: caching, DB indexes, optimized queries.
+Backend
 
-Frontend: memoization, lazy load, virtual scrolling.
+Cross-check LLM results with raw text:
 
-Graph: viewport culling, cluster rendering.
+If metric value appears verbatim near the span, +0.1 confidence; else −0.2.
 
-Deliverables
+Normalize metrics: convert % to numeric [0–100], F1 strings like 0.87 → 87 if unit is %.
 
-Fast API (<2s avg).
+Outlier checks (e.g., BLEU > 100) are discarded or flagged.
 
-Graph renders 200+ nodes smoothly.
-
-Day 21: Deployment & Demo
-
-Deploy backend (Render/Fly.io), frontend (Vercel).
-
-Run migrations + seed with demo papers.
-
-Prepare demo script with curated Q&A queries.
-
-Documentation: user guide, API docs, deployment steps.
+Mark result.verified=true/false; store verifier_notes.
 
 Deliverables
 
-Live production demo ready.
+POST /api/extract/{paper_id}?tiers=1,2,3 produces verified results; audit log shows adjustments.
 
-Stable sample data.
+Day 17: Canonicalization & Resolver (Dedup Merge)
 
-Documentation complete.
+Backend
 
-🎯 Final MVP Checklist (with improvements)
+Implement resolver:
+
+Similarity = 0.6 * cosine(embedding(name)) + 0.4 * JaroWinkler(name).
+
+Thresholds by type: Dataset ≥ 0.82, Metric ≥ 0.90, Method ≥ 0.85, Task ≥ 0.80.
+
+Union-find to map aliases → canonical IDs; persist in concept_resolution.
+
+Backfill aliases into each table’s aliases.
+
+Deliverables
+
+POST /api/admin/canonicalize?types=method,dataset,metric,task merges and updates foreign keys in result/claim.
+
+Before/after report: counts of merges, examples.
+
+Day 18: Typed Graph API (Progressive) + Confidence Filters
+
+Backend
+
+New endpoints (JSON for Cytoscape):
+
+/api/graph/neighborhood/{id}?types=Method,Dataset,Metric,Task&relations=proposes,evaluates_on,reports,compares&min_conf=0.6
+
+/api/graph/overview?limit=150&min_conf=0.6
+
+Edge rules:
+
+Only draw typed edges; no raw co-occurrence.
+
+Weight = number of distinct papers × avg confidence.
+
+Frontend
+
+Graph filters: type toggles + confidence slider.
+
+Node panel shows: type, aliases, used-by N papers, top linked nodes, “Why?” button listing evidence snippets.
+
+Deliverables
+
+Cleaner, denser graph with far fewer junk nodes; interactions stay smooth.
+
+Day 19: Compare Papers (Overlap/Diff + Results Table)
+
+Backend
+
+/api/compare?papers=p1,p2[,p3...] returns:
+
+Shared: tasks/datasets/metrics.
+
+Unique: methods/claims per paper.
+
+Results matrix: (dataset × metric) per method, with best value per row highlighted.
+
+Frontend
+
+Compare view:
+
+“What’s new” bullets (from claims category contribution or method.is_new).
+
+Results table with column sorting (metric/dataset).
+
+Quick links to evidence (hover to preview snippet, click to open PDF at span).
+
+Deliverables
+
+Two-paper comparison demo works on seed papers; shows useful differences.
+
+Day 20: SOTA Calculator & API
+
+Backend
+
+/api/sota?task=...&dataset=...&metric=...:
+
+Returns best result with is_sota=true, method, paper, value, date, evidence.
+
+Optionally scope by year range.
+
+Frontend
+
+Inline SOTA badge in concept panels and compare table.
+
+“Show SOTA over time” sparkline (optional later).
+
+Deliverables
+
+SOTA lookup gives sensible answers on seed set.
+
+Day 21: Grounded QA (Answers from the Graph + Citations)
+
+Backend
+
+/api/qa/ask pipeline:
+
+Intent/type detection (simple rules + embedding match) → which tables to query.
+
+Query graph / results tables first; fall back to vector search only if needed.
+
+Collect top-k evidence snippets (Evidence jsonb).
+
+LLM synthesizes an answer only from provided snippets; return:
+
+{
+  "answer":"...",
+  "citations":[{"paper_id":"...", "section_id":..., "page":..., "range":[s,e]}],
+  "structured":{"sota":{...}}
+}
+
+
+Add a “no-fabrication” guard: if no evidence, return a ranked list of snippets instead of a generated answer.
+
+Frontend
+
+QA panel with inline citations; click jumps the PDF viewer to span.
+
+Deliverables
+
+Grounded QA works for “What datasets are used for machine translation?”, “State of the art BLEU on WMT14 En-De?”, “How does Paper A differ from Paper B?”
+
+Day 22: PDF Viewer – Evidence Highlighting & Jump
+
+Frontend
+
+Extend your Day-17 viewer:
+
+Accept citations[] or evidence[] and highlight spans.
+
+“Open in context” button on any node/edge to jump to first evidence.
+
+Deliverables
+
+End-to-end: Ask → click citation → PDF scrolls and highlights exact text.
+
+Day 23: Admin Tools – Quick Fixes & Audit
+
+Frontend
+
+Tiny admin panel:
+
+Merge concepts (pick canonical, absorb alias).
+
+Edit a wrong metric value/unit; re-run verifier.
+
+Re-extract a paper with tiers flags.
+
+Show extraction audit (which tier produced which node/edge, model version, confidence).
+
+Deliverables
+
+10-minute curator pass meaningfully improves quality.
+
+Day 24: UX Polish & Robustness
+
+Frontend
+
+Skeleton loaders, error toasts with “retry” on extract/compare.
+
+Confidence slider default 0.65; “Show low-confidence” toggle.
+
+Keyboard nav basics; accessible labels on graph filters.
+
+Backend
+
+Rate-limit LLM calls per minute; batch extraction tasks.
+
+Deliverables
+
+Smooth feel; graceful failure modes.
+
+Day 25: Performance & Indexing
+
+Backend
+
+Add DB indexes for hot queries (results by dataset/metric/method).
+
+Cache SOTA responses (keyed by task+dataset+metric).
+
+Pre-compute degree/weights for graph overview.
+
+Frontend
+
+Virtualize long tables (react-virtualized) in Compare view.
+
+Deliverables
+
+<2s for typical graph/compare/QA queries on seed set.
+
+Day 26: Seed, Evaluate, and Tune Thresholds
+
+Ops
+
+Seed 15–20 papers in a single domain (e.g., MT).
+
+Evaluate:
+
+Precision@k for dataset/method detection on 5 papers (manual spot check).
+
+Resolver thresholds: adjust until duplicates are rare and merges safe.
+
+Deliverables
+
+Short evaluation report; thresholds updated in config.
+
+Day 27: Dashboard & Onboarding
+
+Frontend
+
+Dashboard:
+
+Totals: papers uploaded, methods, datasets, metrics, results, claims.
+
+Activity timeline (uploads/extracts).
+
+Quick actions (Upload, Extract, Compare, Ask).
+
+“Start here” tour highlighting Upload → Extract → Compare → Ask.
+
+Deliverables
+
+Researchers can discover features quickly.
+
+Day 28: Deployment & Demo Script
+
+Ops
+
+Backend on Render/Fly.io; Frontend on Vercel; MinIO/Qdrant hosted where you already run them.
+
+Env var templates and health checks.
+
+Demo script:
+
+Upload 2 papers → Extract (tiers 1–3),
+
+Compare → differences + results table,
+
+Ask QA → click citations → PDF highlight,
+
+Show SOTA query.
+
+Deliverables
+
+Live demo instance seeded with the domain set.
+
+Updated API Surface (post-Day 12)
+
+POST /api/extract/{paper_id}?tiers=1,2,3
+
+POST /api/admin/canonicalize?types=...
+
+GET /api/compare?papers=p1,p2[,p3]
+
+GET /api/sota?task=...&dataset=...&metric=...
+
+GET /api/graph/overview?limit=&min_conf=
+
+GET /api/graph/neighborhood/{id}?types=&relations=&min_conf=
+
+GET /api/search/concepts?q=&type=Dataset|Method|Metric|Task
+
+POST /api/qa/ask (returns {answer, citations[], structured})
+
+Acceptance Criteria (what “useful for researchers” means)
+
+Typed graph only (no untyped co-occurrence edges).
+
+Every edge/node has evidence you can open and highlight.
+
+Compare Papers clearly surfaces “what’s new” and tabulates results.
+
+SOTA queries return sensible results with provenance.
+
+QA answers are grounded—if no evidence, you return snippets instead of fabricating.
+
+Final MVP Checklist (revised)
+
 Core
 
- Robust PDF parsing (fast + heuristic + fallback).
+Robust parsing with offsets (+ table extraction).
 
- Embedding with batching + caching.
+Tiered extraction with evidence, verifier, and confidence.
 
- Semantic search.
+Canonicalized, typed research graph.
 
- Progressive graph visualization.
+Compare Papers view.
 
- Q&A with retrieval baseline + optional LLM.
+SOTA endpoint + UI.
 
- PDF viewer with citation highlighting.
+Grounded QA with clickable citations.
 
- Dashboard.
+PDF viewer with span highlighting.
+
+Dashboard and simple onboarding.
 
 Technical
 
- Dockerized infra.
+Dockerized infra, migrations, indexes.
 
- Indexed DB.
+Qdrant for embeddings; DB for graph/results.
 
- Efficient Qdrant usage.
+Caching + rate limiting; audit logs.
 
- Error handling + metrics.
+Thresholds configurable.
 
 UX
 
- Always return something useful (even if LLM off).
+Clean graph with type filters + confidence slider.
 
- Responsive design.
+“Why?” evidence everywhere.
 
- Polished navigation + search.
+Responsive, accessible, error-tolerant.
