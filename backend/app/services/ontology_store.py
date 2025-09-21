@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Sequence
 from uuid import UUID
 
@@ -46,11 +47,11 @@ async def ensure_method(
         row = await conn.fetchrow(
             """
             INSERT INTO methods (name, aliases, description)
-            VALUES ($1, $2, $3)
+            VALUES ($1, $2::jsonb, $3)
             RETURNING id, name, aliases, description, created_at, updated_at
             """,
             cleaned,
-            alias_list,
+            json.dumps(alias_list),
             description,
         )
     return Method(**dict(row))
@@ -80,11 +81,11 @@ async def ensure_dataset(
         row = await conn.fetchrow(
             """
             INSERT INTO datasets (name, aliases, description)
-            VALUES ($1, $2, $3)
+            VALUES ($1, $2::jsonb, $3)
             RETURNING id, name, aliases, description, created_at, updated_at
             """,
             cleaned,
-            alias_list,
+            json.dumps(alias_list),
             description,
         )
     return Dataset(**dict(row))
@@ -115,12 +116,12 @@ async def ensure_metric(
         row = await conn.fetchrow(
             """
             INSERT INTO metrics (name, unit, aliases, description)
-            VALUES ($1, $2, $3, $4)
+            VALUES ($1, $2, $3::jsonb, $4)
             RETURNING id, name, unit, aliases, description, created_at, updated_at
             """,
             cleaned,
             unit,
-            alias_list,
+            json.dumps(alias_list),
             description,
         )
     return Metric(**dict(row))
@@ -150,11 +151,11 @@ async def ensure_task(
         row = await conn.fetchrow(
             """
             INSERT INTO tasks (name, aliases, description)
-            VALUES ($1, $2, $3)
+            VALUES ($1, $2::jsonb, $3)
             RETURNING id, name, aliases, description, created_at, updated_at
             """,
             cleaned,
-            alias_list,
+            json.dumps(alias_list),
             description,
         )
     return Task(**dict(row))
@@ -190,7 +191,7 @@ async def replace_results(
                         verified,
                         verifier_notes
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13)
                     RETURNING id, paper_id, method_id, dataset_id, metric_id, task_id,
                               split, value_numeric, value_text, is_sota, confidence,
                               evidence, verified, verifier_notes, created_at, updated_at
@@ -205,7 +206,7 @@ async def replace_results(
                     result.value_text,
                     result.is_sota,
                     result.confidence,
-                    result.evidence,
+                    json.dumps(result.evidence),
                     result.verified,
                     result.verifier_notes,
                 )
@@ -229,14 +230,14 @@ async def replace_claims(
                 row = await conn.fetchrow(
                     """
                     INSERT INTO claims (paper_id, category, text, confidence, evidence)
-                    VALUES ($1, $2, $3, $4, $5)
+                    VALUES ($1, $2, $3, $4, $5::jsonb)
                     RETURNING id, paper_id, category, text, confidence, evidence, created_at, updated_at
                     """,
                     claim.paper_id,
                     claim.category,
                     claim.text,
                     claim.confidence,
-                    claim.evidence,
+                    json.dumps(claim.evidence),
                 )
                 inserted.append(Claim(**dict(row)))
     return inserted
