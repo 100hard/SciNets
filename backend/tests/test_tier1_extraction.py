@@ -78,6 +78,21 @@ def test_extract_signals_identifies_entities() -> None:
     assert result.evidence and result.evidence[0]["source"] == "section"
 
 
+def test_extract_signals_detects_dataset_with_intervening_words() -> None:
+    lexicon = load_mt_lexicon()
+    section = _build_section(
+        "We evaluate our new FooNet model on the CIFAR-10 dataset and report Accuracy = 92.3%."
+    )
+
+    artifacts = extract_signals([section], lexicon=lexicon)
+
+    dataset_names = {entity.name for entity in artifacts.datasets.values()}
+    assert any("CIFAR-10" in name for name in dataset_names)
+    assert any(
+        result.dataset_name and "CIFAR-10" in result.dataset_name for result in artifacts.results
+    )
+
+
 @pytest.mark.anyio("asyncio")
 async def test_run_tier1_extraction_persists_results(monkeypatch: pytest.MonkeyPatch) -> None:
     paper_id = uuid4()
