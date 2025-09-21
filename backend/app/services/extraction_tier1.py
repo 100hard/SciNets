@@ -1,0 +1,999 @@
+from __future__ import annotations
+
+import io
+import json
+import re
+from dataclasses import dataclass, field
+from decimal import Decimal
+from pathlib import Path
+from typing import Any, Iterable, Sequence
+from uuid import UUID
+
+from app.models.ontology import (
+    Claim,
+    Dataset,
+    Method,
+    Metric,
+    Result,
+    ResultCreate,
+    Task,
+)
+from app.models.section import Section
+from app.services.ontology_store import (
+    ensure_dataset,
+    ensure_method,
+    ensure_metric,
+    ensure_task,
+    replace_claims,
+    replace_results,
+)
+from app.services.papers import get_paper
+from app.services.sections import list_sections
+from app.services.storage import download_pdf_from_storage
+
+try:  # pragma: no cover - optional dependency
+    import pdfplumber  # type: ignore[import]
+except ImportError:  # pragma: no cover - optional dependency
+    pdfplumber = None  # type: ignore[assignment]
+
+
+SNIPPET_WINDOW = 80
+DEFAULT_CONFIDENCE = 0.6
+
+RESULT_PATTERN = re.compile(
+    r"(?P<metric>BLEU|ROUGE(?:-L)?|METEOR|ChrF\+\+?|F1|Accuracy|Top-1)\s*(=|:)?\s*(?P<val>\d+(?:\.\d+)?)\s*(?P<suffix>%|pts|\s*points)?",
+    re.IGNORECASE,
+)
+EVALUATE_PATTERN = re.compile(
+    r"(?:evaluate(?:d)? on|tested on|trained on|measured on)\s+(?P<dataset>[A-Za-z0-9\-\+\/ ]{2,})",
+    re.IGNORECASE,
+)
+PROPOSE_PATTERN = re.compile(
+    r"we\s+(?:propose|introduce|present)\s+(?P<method>[A-Z0-9][A-Z0-9\-\+ ]{2,})",
+    re.IGNORECASE,
+)
+STATE_OF_THE_ART_PATTERN = re.compile(
+    r"state[- ]of[- ]the[- ]art|\bsota\b",
+    re.IGNORECASE,
+)
+_NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
+
+
+@dataclass
+class LexiconEntry:
+    name: str
+    aliases: tuple[str, ...] = ()
+    description: str | None = None
+    unit: str | None = None
+    patterns: tuple[re.Pattern[str], ...] = field(default_factory=tuple)
+
+    @property
+    def phrases(self) -> tuple[str, ...]:
+        return (self.name, *self.aliases)
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any]) -> LexiconEntry:
+        name = payload.get("name", "").strip()
+        if not name:
+            raise ValueError("Lexicon entry must include a name")
+        aliases = tuple(
+            alias.strip()
+            for alias in payload.get("aliases", [])
+            if isinstance(alias, str) and alias.strip()
+        )
+        description = payload.get("description")
+        unit = payload.get("unit")
+        patterns = _compile_patterns((name, *aliases))
+        return cls(
+            name=name,
+            aliases=aliases,
+            description=description,
+            unit=unit,
+            patterns=patterns,
+        )
+
+
+@dataclass
+class DetectedEntity:
+    name: str
+    aliases: list[str] = field(default_factory=list)
+    unit: str | None = None
+    description: str | None = None
+    evidence: list[dict[str, Any]] = field(default_factory=list)
+
+    def add_evidence(self, evidence: dict[str, Any]) -> None:
+        self.evidence.append(evidence)
+
+
+@dataclass
+class DetectedResult:
+    metric_name: str
+    metric_aliases: list[str] = field(default_factory=list)
+    metric_unit: str | None = None
+    dataset_name: str | None = None
+    dataset_aliases: list[str] = field(default_factory=list)
+    method_name: str | None = None
+    method_aliases: list[str] = field(default_factory=list)
+    task_name: str | None = None
+    value_text: str = ""
+    value_numeric: float | None = None
+    split: str | None = None
+    is_sota: bool = False
+    confidence: float = DEFAULT_CONFIDENCE
+    evidence: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class Tier1Artifacts:
+    methods: dict[str, DetectedEntity] = field(default_factory=dict)
+    datasets: dict[str, DetectedEntity] = field(default_factory=dict)
+    metrics: dict[str, DetectedEntity] = field(default_factory=dict)
+    tasks: dict[str, DetectedEntity] = field(default_factory=dict)
+    results: list[DetectedResult] = field(default_factory=list)
+
+
+class Tier1Lexicon:
+    def __init__(
+        self,
+        *,
+        methods: Sequence[LexiconEntry],
+        datasets: Sequence[LexiconEntry],
+        metrics: Sequence[LexiconEntry],
+        tasks: Sequence[LexiconEntry],
+        domain: str | None = None,
+    ) -> None:
+        self.domain = domain
+        self.methods = tuple(methods)
+        self.datasets = tuple(datasets)
+        self.metrics = tuple(metrics)
+        self.tasks = tuple(tasks)
+
+        self._method_lookup = _build_lookup(self.methods)
+        self._dataset_lookup = _build_lookup(self.datasets)
+        self._metric_lookup = _build_lookup(self.metrics)
+        self._task_lookup = _build_lookup(self.tasks)
+
+    @classmethod
+    def from_json(cls, payload: dict[str, Any]) -> Tier1Lexicon:
+        methods = [LexiconEntry.from_payload(item) for item in payload.get("methods", [])]
+        datasets = [LexiconEntry.from_payload(item) for item in payload.get("datasets", [])]
+        metrics = [LexiconEntry.from_payload(item) for item in payload.get("metrics", [])]
+        tasks = [LexiconEntry.from_payload(item) for item in payload.get("tasks", [])]
+        return cls(
+            methods=methods,
+            datasets=datasets,
+            metrics=metrics,
+            tasks=tasks,
+            domain=payload.get("domain"),
+        )
+
+    def lookup_method(self, phrase: str) -> LexiconEntry | None:
+        return self._method_lookup.get(_normalize_text(phrase))
+
+    def lookup_dataset(self, phrase: str) -> LexiconEntry | None:
+        return self._dataset_lookup.get(_normalize_text(phrase))
+
+    def lookup_metric(self, phrase: str) -> LexiconEntry | None:
+        return self._metric_lookup.get(_normalize_text(phrase))
+
+    def lookup_task(self, phrase: str) -> LexiconEntry | None:
+        return self._task_lookup.get(_normalize_text(phrase))
+
+    def find_method_in_text(self, text: str) -> LexiconEntry | None:
+        return _find_best_match(self._method_lookup, text)
+
+    def find_dataset_in_text(self, text: str) -> LexiconEntry | None:
+        return _find_best_match(self._dataset_lookup, text)
+
+    def find_metric_in_text(self, text: str) -> LexiconEntry | None:
+        return _find_best_match(self._metric_lookup, text)
+
+    def find_task_in_text(self, text: str) -> LexiconEntry | None:
+        return _find_best_match(self._task_lookup, text)
+
+
+_MT_LEXICON: Tier1Lexicon | None = None
+
+
+def load_mt_lexicon() -> Tier1Lexicon:
+    global _MT_LEXICON
+    if _MT_LEXICON is None:
+        path = Path(__file__).resolve().parents[1] / "data" / "mt_lexicon.json"
+        with path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        _MT_LEXICON = Tier1Lexicon.from_json(payload)
+    return _MT_LEXICON
+
+
+def extract_signals(
+    sections: Sequence[Section],
+    *,
+    lexicon: Tier1Lexicon | None = None,
+    table_texts: Sequence[str] | None = None,
+) -> Tier1Artifacts:
+    lexicon = lexicon or load_mt_lexicon()
+    artifacts = Tier1Artifacts()
+
+    text_sources: list[tuple[Section | None, str, str]] = [
+        (section, section.content, "section") for section in sections if section.content
+    ]
+    for text in table_texts or []:
+        cleaned = text.strip()
+        if cleaned:
+            text_sources.append((None, cleaned, "table"))
+
+    for section, text, source in text_sources:
+        _collect_lexicon_mentions(artifacts.methods, lexicon.methods, section, text, source)
+        _collect_lexicon_mentions(artifacts.datasets, lexicon.datasets, section, text, source)
+        _collect_lexicon_mentions(artifacts.metrics, lexicon.metrics, section, text, source)
+        _collect_lexicon_mentions(artifacts.tasks, lexicon.tasks, section, text, source)
+
+        _collect_dataset_patterns(artifacts.datasets, lexicon, section, text, source)
+        _collect_method_patterns(artifacts.methods, lexicon, section, text, source)
+
+    for section, text, source in text_sources:
+        artifacts.results.extend(
+            _extract_results_from_text(
+                text,
+                lexicon=lexicon,
+                section=section,
+                source=source,
+                artifacts=artifacts,
+            )
+        )
+
+    return artifacts
+
+
+async def run_tier1_extraction(
+    paper_id: UUID,
+    *,
+    lexicon: Tier1Lexicon | None = None,
+    table_texts: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    lexicon = lexicon or load_mt_lexicon()
+
+    paper = await get_paper(paper_id)
+    if paper is None:
+        raise ValueError(f"Paper {paper_id} does not exist")
+
+    sections = await list_sections(paper_id=paper_id, limit=500, offset=0)
+
+    table_payloads = list(table_texts or [])
+    if not table_payloads and getattr(paper, "file_path", None):
+        try:
+            pdf_bytes = await download_pdf_from_storage(paper.file_path)  # type: ignore[arg-type]
+        except Exception:  # pragma: no cover - storage failures should not break extraction
+            pdf_bytes = b""
+        if pdf_bytes:
+            table_payloads.extend(extract_text_from_pdf_tables(pdf_bytes))
+
+    artifacts = extract_signals(sections, lexicon=lexicon, table_texts=table_payloads)
+    summary = await _persist_artifacts(paper_id, artifacts)
+    return summary
+
+
+def extract_text_from_pdf_tables(pdf_bytes: bytes) -> list[str]:
+    if not pdf_bytes or pdfplumber is None:
+        return []
+
+    try:  # pragma: no cover - pdfplumber is optional
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as document:  # type: ignore[arg-type]
+            texts: list[str] = []
+            for page in document.pages:
+                try:
+                    tables = page.extract_tables() or []
+                except Exception:
+                    continue
+                for table in tables:
+                    if not table:
+                        continue
+                    for row in table:
+                        cells = [cell.strip() for cell in row if isinstance(cell, str) and cell and cell.strip()]
+                        if cells:
+                            texts.append(" ".join(cells))
+            return texts
+    except Exception:
+        return []
+
+
+async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[str, Any]:
+    method_cache: dict[str, Method] = {}
+    dataset_cache: dict[str, Dataset] = {}
+    metric_cache: dict[str, Metric] = {}
+    task_cache: dict[str, Task] = {}
+
+    for key, entity in artifacts.methods.items():
+        method_cache[key] = await ensure_method(
+            entity.name,
+            aliases=entity.aliases,
+            description=entity.description,
+        )
+
+    for key, entity in artifacts.datasets.items():
+        dataset_cache[key] = await ensure_dataset(
+            entity.name,
+            aliases=entity.aliases,
+            description=entity.description,
+        )
+
+    for key, entity in artifacts.metrics.items():
+        metric_cache[key] = await ensure_metric(
+            entity.name,
+            unit=entity.unit,
+            aliases=entity.aliases,
+            description=entity.description,
+        )
+
+    for key, entity in artifacts.tasks.items():
+        task_cache[key] = await ensure_task(
+            entity.name,
+            aliases=entity.aliases,
+            description=entity.description,
+        )
+
+    result_models: list[ResultCreate] = []
+    for detected in artifacts.results:
+        method_id = None
+        dataset_id = None
+        metric_id = None
+        task_id = None
+
+        if detected.method_name:
+            method_key = _normalize_text(detected.method_name)
+            method_entity = artifacts.methods.get(method_key)
+            if method_entity is None:
+                method_entity = DetectedEntity(
+                    detected.method_name,
+                    aliases=list(dict.fromkeys(detected.method_aliases)),
+                )
+                artifacts.methods[method_key] = method_entity
+            method_model = method_cache.get(method_key)
+            if method_model is None:
+                method_model = await ensure_method(
+                    method_entity.name,
+                    aliases=method_entity.aliases,
+                    description=method_entity.description,
+                )
+                method_cache[method_key] = method_model
+            method_id = method_model.id
+
+        if detected.dataset_name:
+            dataset_key = _normalize_text(detected.dataset_name)
+            dataset_entity = artifacts.datasets.get(dataset_key)
+            if dataset_entity is None:
+                dataset_entity = DetectedEntity(
+                    detected.dataset_name,
+                    aliases=list(dict.fromkeys(detected.dataset_aliases)),
+                )
+                artifacts.datasets[dataset_key] = dataset_entity
+            dataset_model = dataset_cache.get(dataset_key)
+            if dataset_model is None:
+                dataset_model = await ensure_dataset(
+                    dataset_entity.name,
+                    aliases=dataset_entity.aliases,
+                    description=dataset_entity.description,
+                )
+                dataset_cache[dataset_key] = dataset_model
+            dataset_id = dataset_model.id
+
+        if detected.metric_name:
+            metric_key = _normalize_text(detected.metric_name)
+            metric_entity = artifacts.metrics.get(metric_key)
+            if metric_entity is None:
+                metric_entity = DetectedEntity(
+                    detected.metric_name,
+                    aliases=list(dict.fromkeys(detected.metric_aliases)),
+                    unit=detected.metric_unit,
+                )
+                artifacts.metrics[metric_key] = metric_entity
+            metric_model = metric_cache.get(metric_key)
+            if metric_model is None:
+                metric_model = await ensure_metric(
+                    metric_entity.name,
+                    unit=metric_entity.unit,
+                    aliases=metric_entity.aliases,
+                    description=metric_entity.description,
+                )
+                metric_cache[metric_key] = metric_model
+            metric_id = metric_model.id
+
+        task_name = detected.task_name
+        if not task_name and artifacts.tasks:
+            # Default to first detected task if none was explicitly linked.
+            task_name = next(iter(artifacts.tasks.values())).name
+
+        if task_name:
+            task_key = _normalize_text(task_name)
+            task_entity = artifacts.tasks.get(task_key)
+            if task_entity is None:
+                task_entity = DetectedEntity(task_name)
+                artifacts.tasks[task_key] = task_entity
+            task_model = task_cache.get(task_key)
+            if task_model is None:
+                task_model = await ensure_task(
+                    task_entity.name,
+                    aliases=task_entity.aliases,
+                    description=task_entity.description,
+                )
+                task_cache[task_key] = task_model
+            task_id = task_model.id
+
+        value_numeric = (
+            Decimal(str(detected.value_numeric)) if detected.value_numeric is not None else None
+        )
+
+        result_models.append(
+            ResultCreate(
+                paper_id=paper_id,
+                method_id=method_id,
+                dataset_id=dataset_id,
+                metric_id=metric_id,
+                task_id=task_id,
+                split=detected.split,
+                value_numeric=value_numeric,
+                value_text=detected.value_text or None,
+                is_sota=detected.is_sota,
+                confidence=detected.confidence,
+                evidence=detected.evidence,
+            )
+        )
+
+    stored_results = await replace_results(paper_id, result_models)
+    stored_claims = await replace_claims(paper_id, [])
+
+    method_by_id = {model.id: model for model in method_cache.values()}
+    dataset_by_id = {model.id: model for model in dataset_cache.values()}
+    metric_by_id = {model.id: model for model in metric_cache.values()}
+    task_by_id = {model.id: model for model in task_cache.values()}
+
+    return {
+        "paper_id": str(paper_id),
+        "tiers": [1],
+        "methods": [_serialize_method(model) for model in method_cache.values()],
+        "datasets": [_serialize_dataset(model) for model in dataset_cache.values()],
+        "metrics": [_serialize_metric(model) for model in metric_cache.values()],
+        "tasks": [_serialize_task(model) for model in task_cache.values()],
+        "results": [
+            _serialize_result(
+                result,
+                method_by_id=method_by_id,
+                dataset_by_id=dataset_by_id,
+                metric_by_id=metric_by_id,
+                task_by_id=task_by_id,
+            )
+            for result in stored_results
+        ],
+        "claims": [_serialize_claim(claim) for claim in stored_claims],
+    }
+
+
+def _collect_lexicon_mentions(
+    target: dict[str, DetectedEntity],
+    entries: Sequence[LexiconEntry],
+    section: Section | None,
+    text: str,
+    source: str,
+) -> None:
+    for entry in entries:
+        for pattern in entry.patterns:
+            for match in pattern.finditer(text):
+                _record_entity(
+                    target,
+                    name=entry.name,
+                    aliases=entry.aliases,
+                    unit=entry.unit,
+                    description=entry.description,
+                    section=section,
+                    text=text,
+                    start=match.start(),
+                    end=match.end(),
+                    source=source,
+                )
+
+
+def _collect_dataset_patterns(
+    target: dict[str, DetectedEntity],
+    lexicon: Tier1Lexicon,
+    section: Section | None,
+    text: str,
+    source: str,
+) -> None:
+    for match in EVALUATE_PATTERN.finditer(text):
+        raw = match.group("dataset")
+        cleaned = _clean_dataset_name(raw)
+        if not cleaned:
+            continue
+        entry = lexicon.lookup_dataset(cleaned) or lexicon.find_dataset_in_text(cleaned)
+        aliases: Iterable[str] = entry.aliases if entry else []
+        description = entry.description if entry else None
+        name = entry.name if entry else cleaned
+        _record_entity(
+            target,
+            name=name,
+            aliases=aliases,
+            unit=None,
+            description=description,
+            section=section,
+            text=text,
+            start=match.start("dataset"),
+            end=match.end("dataset"),
+            source=source,
+        )
+
+
+def _collect_method_patterns(
+    target: dict[str, DetectedEntity],
+    lexicon: Tier1Lexicon,
+    section: Section | None,
+    text: str,
+    source: str,
+) -> None:
+    for match in PROPOSE_PATTERN.finditer(text):
+        raw = match.group("method")
+        cleaned = raw.strip(" .,;:")
+        if not cleaned:
+            continue
+        entry = lexicon.lookup_method(cleaned) or lexicon.find_method_in_text(cleaned)
+        aliases: Iterable[str] = entry.aliases if entry else []
+        description = entry.description if entry else None
+        name = entry.name if entry else cleaned
+        _record_entity(
+            target,
+            name=name,
+            aliases=aliases,
+            unit=None,
+            description=description,
+            section=section,
+            text=text,
+            start=match.start("method"),
+            end=match.end("method"),
+            source=source,
+        )
+
+
+def _extract_results_from_text(
+    text: str,
+    *,
+    lexicon: Tier1Lexicon,
+    section: Section | None,
+    source: str,
+    artifacts: Tier1Artifacts,
+) -> list[DetectedResult]:
+    results: list[DetectedResult] = []
+    context_start = 0
+    context_end = len(text)
+    for match in RESULT_PATTERN.finditer(text):
+        metric_phrase = match.group("metric")
+        metric_entry = lexicon.lookup_metric(metric_phrase) or lexicon.find_metric_in_text(metric_phrase)
+        if metric_entry:
+            metric_name = metric_entry.name
+            metric_aliases = list(metric_entry.aliases)
+            metric_unit = metric_entry.unit
+        else:
+            metric_name = metric_phrase.strip()
+            metric_aliases = []
+            metric_unit = None
+
+        _record_entity(
+            artifacts.metrics,
+            name=metric_name,
+            aliases=metric_aliases,
+            unit=metric_unit,
+            description=metric_entry.description if metric_entry else None,
+            section=section,
+            text=text,
+            start=match.start("metric"),
+            end=match.end("metric"),
+            source=source,
+        )
+
+        value_raw = match.group("val")
+        suffix = (match.group("suffix") or "").strip()
+        value_text = f"{value_raw}{suffix}".strip()
+        try:
+            value_numeric = float(value_raw)
+        except ValueError:
+            value_numeric = None
+
+        window_start = max(context_start, match.start() - SNIPPET_WINDOW)
+        window_end = min(context_end, match.end() + SNIPPET_WINDOW)
+        snippet = text[window_start:window_end]
+        evidence = [
+            _build_evidence(
+                section=section,
+                text=text,
+                start=match.start(),
+                end=match.end(),
+                source=source,
+            )
+        ]
+
+        dataset_entry = lexicon.find_dataset_in_text(snippet)
+        dataset_name = None
+        dataset_aliases: list[str] = []
+        if dataset_entry:
+            dataset_name = dataset_entry.name
+            dataset_aliases = list(dataset_entry.aliases)
+            dataset_span = _locate_pattern(dataset_entry.patterns, text, window_start, window_end)
+            if dataset_span:
+                _record_entity(
+                    artifacts.datasets,
+                    name=dataset_entry.name,
+                    aliases=dataset_entry.aliases,
+                    unit=None,
+                    description=dataset_entry.description,
+                    section=section,
+                    text=text,
+                    start=dataset_span[0],
+                    end=dataset_span[1],
+                    source=source,
+                )
+        elif source == "table":
+            dataset_entity = _find_entity_with_source(artifacts.datasets, source)
+            if dataset_entity:
+                dataset_name = dataset_entity.name
+                dataset_aliases = dataset_entity.aliases
+        elif not dataset_name:
+            table_dataset = _find_entity_with_source(artifacts.datasets, "table")
+            if table_dataset:
+                dataset_name = table_dataset.name
+                dataset_aliases = table_dataset.aliases
+        elif len(artifacts.datasets) == 1:
+            only_dataset = next(iter(artifacts.datasets.values()))
+            dataset_name = only_dataset.name
+            dataset_aliases = only_dataset.aliases
+        if dataset_name is None:
+            nearby_dataset = _find_entity_near_span(
+                artifacts.datasets,
+                section,
+                match.start(),
+            )
+            if nearby_dataset:
+                dataset_name = nearby_dataset.name
+                dataset_aliases = nearby_dataset.aliases
+
+        method_entry = lexicon.find_method_in_text(snippet)
+        method_name = None
+        method_aliases: list[str] = []
+        if method_entry:
+            method_name = method_entry.name
+            method_aliases = list(method_entry.aliases)
+            method_span = _locate_pattern(method_entry.patterns, text, window_start, window_end)
+            if method_span:
+                _record_entity(
+                    artifacts.methods,
+                    name=method_entry.name,
+                    aliases=method_entry.aliases,
+                    unit=None,
+                    description=method_entry.description,
+                    section=section,
+                    text=text,
+                    start=method_span[0],
+                    end=method_span[1],
+                    source=source,
+                )
+        elif source == "table":
+            method_entity = _find_entity_with_source(artifacts.methods, source)
+            if method_entity:
+                method_name = method_entity.name
+                method_aliases = method_entity.aliases
+        elif len(artifacts.methods) == 1:
+            only_method = next(iter(artifacts.methods.values()))
+            method_name = only_method.name
+            method_aliases = only_method.aliases
+        if method_name is None:
+            nearby_method = _find_entity_near_span(
+                artifacts.methods,
+                section,
+                match.start(),
+            )
+            if nearby_method:
+                method_name = nearby_method.name
+                method_aliases = nearby_method.aliases
+
+        task_entry = lexicon.find_task_in_text(snippet)
+        task_name = task_entry.name if task_entry else None
+        if task_entry:
+            task_span = _locate_pattern(task_entry.patterns, text, window_start, window_end)
+            if task_span:
+                _record_entity(
+                    artifacts.tasks,
+                    name=task_entry.name,
+                    aliases=task_entry.aliases,
+                    unit=None,
+                    description=task_entry.description,
+                    section=section,
+                    text=text,
+                    start=task_span[0],
+                    end=task_span[1],
+                    source=source,
+                )
+        if task_name is None:
+            nearby_task = _find_entity_near_span(
+                artifacts.tasks,
+                section,
+                match.start(),
+            )
+            if nearby_task:
+                task_name = nearby_task.name
+
+        split = _infer_split(snippet)
+        is_sota = bool(STATE_OF_THE_ART_PATTERN.search(snippet))
+
+        results.append(
+            DetectedResult(
+                metric_name=metric_name,
+                metric_aliases=metric_aliases,
+                metric_unit=metric_unit,
+                dataset_name=dataset_name,
+                dataset_aliases=dataset_aliases,
+                method_name=method_name,
+                method_aliases=method_aliases,
+                task_name=task_name,
+                value_text=value_text,
+                value_numeric=value_numeric,
+                split=split,
+                is_sota=is_sota,
+                evidence=evidence,
+            )
+        )
+
+    return results
+
+
+def _record_entity(
+    target: dict[str, DetectedEntity],
+    *,
+    name: str,
+    aliases: Iterable[str],
+    unit: str | None,
+    description: str | None,
+    section: Section | None,
+    text: str,
+    start: int,
+    end: int,
+    source: str,
+) -> None:
+    key = _normalize_text(name)
+    if not key:
+        return
+    alias_list = list(dict.fromkeys(alias.strip() for alias in aliases if alias.strip()))
+    entity = target.get(key)
+    if entity is None:
+        entity = DetectedEntity(
+            name=name,
+            aliases=alias_list,
+            unit=unit,
+            description=description,
+        )
+        target[key] = entity
+    elif alias_list:
+        merged = list(dict.fromkeys([*entity.aliases, *alias_list]))
+        entity.aliases = merged
+    evidence = _build_evidence(section=section, text=text, start=start, end=end, source=source)
+    entity.add_evidence(evidence)
+
+
+def _build_evidence(
+    *,
+    section: Section | None,
+    text: str,
+    start: int,
+    end: int,
+    source: str,
+) -> dict[str, Any]:
+    snippet_start = max(0, start - SNIPPET_WINDOW)
+    snippet_end = min(len(text), end + SNIPPET_WINDOW)
+    snippet = text[snippet_start:snippet_end].strip()
+    return {
+        "section_id": str(section.id) if section else None,
+        "char_range": [start, end],
+        "snippet": snippet,
+        "page": section.page_number if section else None,
+        "section_title": section.title if section else None,
+        "source": source,
+    }
+
+
+def _clean_dataset_name(name: str) -> str:
+    cleaned = name.strip(" .,;:\n\t")
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    cleaned = re.sub(r"^(?:the|a|an)\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(dataset|corpus|benchmark|task)\b", "", cleaned, flags=re.IGNORECASE)
+    parts = re.split(
+        r"\b(?:and|with|for|using|achiev(?:es|ing)?|reports?|showing|compared|where)\b",
+        cleaned,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )
+    cleaned = parts[0]
+    cleaned = re.sub(r"[(),]", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
+
+
+def _normalize_text(value: str) -> str:
+    normalized = _NON_ALNUM_RE.sub(" ", value.lower())
+    return " ".join(normalized.split())
+
+
+def _compile_patterns(phrases: Iterable[str]) -> tuple[re.Pattern[str], ...]:
+    patterns: list[re.Pattern[str]] = []
+    for phrase in dict.fromkeys(phrases):
+        cleaned = phrase.strip()
+        if not cleaned:
+            continue
+        escaped = re.escape(cleaned)
+        pattern = re.compile(rf"(?<![A-Za-z0-9]){escaped}(?![A-Za-z0-9])", re.IGNORECASE)
+        patterns.append(pattern)
+    return tuple(patterns)
+
+
+def _build_lookup(entries: Sequence[LexiconEntry]) -> dict[str, LexiconEntry]:
+    lookup: dict[str, LexiconEntry] = {}
+    for entry in entries:
+        for phrase in entry.phrases:
+            key = _normalize_text(phrase)
+            if key:
+                lookup[key] = entry
+    return lookup
+
+
+def _find_best_match(lookup: dict[str, LexiconEntry], text: str) -> LexiconEntry | None:
+    normalized = _normalize_text(text)
+    best: LexiconEntry | None = None
+    best_length = 0
+    for key, entry in lookup.items():
+        if len(key) < 3:
+            continue
+        if key in normalized and len(key) > best_length:
+            best = entry
+            best_length = len(key)
+    return best
+
+
+def _infer_split(snippet: str) -> str | None:
+    lowered = snippet.lower()
+    if "test" in lowered:
+        return "test"
+    if "dev" in lowered or "validation" in lowered:
+        return "dev"
+    if "train" in lowered:
+        return "train"
+    return None
+
+
+def _locate_pattern(
+    patterns: Sequence[re.Pattern[str]],
+    text: str,
+    start: int,
+    end: int,
+) -> tuple[int, int] | None:
+    for pattern in patterns:
+        match = pattern.search(text, start, end)
+        if match:
+            return match.span()
+    return None
+
+
+def _find_entity_with_source(
+    entities: dict[str, DetectedEntity],
+    source: str,
+) -> DetectedEntity | None:
+    for entity in entities.values():
+        for ev in entity.evidence:
+            if ev.get("source") == source:
+                return entity
+    return None
+
+
+def _find_entity_near_span(
+    entities: dict[str, DetectedEntity],
+    section: Section | None,
+    position: int,
+    *,
+    window: int = 160,
+) -> DetectedEntity | None:
+    if section is None:
+        return None
+    section_id = str(section.id)
+    for entity in entities.values():
+        for evidence in entity.evidence:
+            if evidence.get("section_id") != section_id:
+                continue
+            char_range = evidence.get("char_range")
+            if (
+                isinstance(char_range, list)
+                and len(char_range) == 2
+                and all(isinstance(value, int) for value in char_range)
+            ):
+                start, end = char_range
+                if abs(start - position) <= window or abs(end - position) <= window:
+                    return entity
+    return None
+
+
+def _serialize_method(method: Method) -> dict[str, Any]:
+    return {
+        "id": str(method.id),
+        "name": method.name,
+        "aliases": list(method.aliases),
+        "description": method.description,
+        "created_at": method.created_at.isoformat(),
+        "updated_at": method.updated_at.isoformat(),
+    }
+
+
+def _serialize_dataset(dataset: Dataset) -> dict[str, Any]:
+    return {
+        "id": str(dataset.id),
+        "name": dataset.name,
+        "aliases": list(dataset.aliases),
+        "description": dataset.description,
+        "created_at": dataset.created_at.isoformat(),
+        "updated_at": dataset.updated_at.isoformat(),
+    }
+
+
+def _serialize_metric(metric: Metric) -> dict[str, Any]:
+    return {
+        "id": str(metric.id),
+        "name": metric.name,
+        "unit": metric.unit,
+        "aliases": list(metric.aliases),
+        "description": metric.description,
+        "created_at": metric.created_at.isoformat(),
+        "updated_at": metric.updated_at.isoformat(),
+    }
+
+
+def _serialize_task(task: Task) -> dict[str, Any]:
+    return {
+        "id": str(task.id),
+        "name": task.name,
+        "aliases": list(task.aliases),
+        "description": task.description,
+        "created_at": task.created_at.isoformat(),
+        "updated_at": task.updated_at.isoformat(),
+    }
+
+
+def _serialize_result(
+    result: Result,
+    *,
+    method_by_id: dict[UUID, Method],
+    dataset_by_id: dict[UUID, Dataset],
+    metric_by_id: dict[UUID, Metric],
+    task_by_id: dict[UUID, Task],
+) -> dict[str, Any]:
+    return {
+        "id": str(result.id),
+        "paper_id": str(result.paper_id),
+        "method": _serialize_method(method_by_id[result.method_id]) if result.method_id else None,
+        "dataset": _serialize_dataset(dataset_by_id[result.dataset_id]) if result.dataset_id else None,
+        "metric": _serialize_metric(metric_by_id[result.metric_id]) if result.metric_id else None,
+        "task": _serialize_task(task_by_id[result.task_id]) if result.task_id else None,
+        "split": result.split,
+        "value_numeric": float(result.value_numeric) if result.value_numeric is not None else None,
+        "value_text": result.value_text,
+        "is_sota": result.is_sota,
+        "confidence": result.confidence,
+        "evidence": result.evidence,
+        "created_at": result.created_at.isoformat(),
+        "updated_at": result.updated_at.isoformat(),
+    }
+
+
+def _serialize_claim(claim: Claim) -> dict[str, Any]:
+    return {
+        "id": str(claim.id),
+        "paper_id": str(claim.paper_id),
+        "category": claim.category.value,
+        "text": claim.text,
+        "confidence": claim.confidence,
+        "evidence": claim.evidence,
+        "created_at": claim.created_at.isoformat(),
+        "updated_at": claim.updated_at.isoformat(),
+    }
+

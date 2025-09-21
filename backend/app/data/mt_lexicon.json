@@ -1,0 +1,140 @@
+{
+  "domain": "machine_translation",
+  "methods": [
+    {
+      "name": "Transformer",
+      "aliases": ["Transformer model", "Transformer-based", "Transformer architecture"],
+      "description": "Sequence-to-sequence architecture based on self-attention"
+    },
+    {
+      "name": "Recurrent Neural Network",
+      "aliases": ["RNN", "RNNs", "recurrent network"],
+      "description": "Neural network with recurrent connections"
+    },
+    {
+      "name": "Long Short-Term Memory",
+      "aliases": ["LSTM", "LSTM network", "LSTMs"],
+      "description": "A gated recurrent neural network architecture"
+    },
+    {
+      "name": "Convolutional Sequence to Sequence",
+      "aliases": ["ConvS2S", "Convolutional Seq2Seq"],
+      "description": "Convolutional encoder-decoder for translation"
+    },
+    {
+      "name": "Neural Machine Translation Transformer",
+      "aliases": ["NMT-Transformer", "Transformer NMT"],
+      "description": "Transformer tailored for neural machine translation"
+    },
+    {
+      "name": "Bidirectional RNN",
+      "aliases": ["BiRNN", "bidirectional recurrent network"],
+      "description": "RNN processing sequences in both directions"
+    },
+    {
+      "name": "Transformer Big",
+      "aliases": ["Transformer-Big", "Transformer big model"],
+      "description": "Large capacity transformer configuration"
+    },
+    {
+      "name": "Transformer Base",
+      "aliases": ["Transformer-Base", "Transformer base model"],
+      "description": "Base transformer configuration for MT"
+    }
+  ],
+  "datasets": [
+    {
+      "name": "WMT14 English-German",
+      "aliases": [
+        "WMT14 En-De",
+        "WMT 2014 English-German",
+        "WMT14 German-English",
+        "WMT14 En De",
+        "WMT14 En→De"
+      ]
+    },
+    {
+      "name": "WMT16 English-German",
+      "aliases": ["WMT16 En-De", "WMT 2016 English-German"]
+    },
+    {
+      "name": "WMT17 English-German",
+      "aliases": ["WMT17 En-De", "WMT 2017 English-German"]
+    },
+    {
+      "name": "IWSLT14 German-English",
+      "aliases": ["IWSLT14 De-En", "IWSLT 2014 De-En"]
+    },
+    {
+      "name": "IWSLT14 English-German",
+      "aliases": ["IWSLT14 En-De", "IWSLT 2014 En-De"]
+    },
+    {
+      "name": "Multi30K",
+      "aliases": ["Multi30k dataset"]
+    },
+    {
+      "name": "WMT19 English-German",
+      "aliases": ["WMT19 En-De", "WMT 2019 English-German"]
+    },
+    {
+      "name": "WMT15 English-German",
+      "aliases": ["WMT15 En-De", "WMT 2015 English-German"]
+    }
+  ],
+  "metrics": [
+    {
+      "name": "BLEU",
+      "aliases": ["BLEU score", "sacreBLEU", "BLEU-4"],
+      "unit": "score"
+    },
+    {
+      "name": "ROUGE-L",
+      "aliases": ["ROUGE L"],
+      "unit": "score"
+    },
+    {
+      "name": "METEOR",
+      "aliases": ["METEOR score"],
+      "unit": "score"
+    },
+    {
+      "name": "ChrF",
+      "aliases": ["ChrF++", "CHRF"],
+      "unit": "score"
+    },
+    {
+      "name": "Accuracy",
+      "aliases": ["accuracy"],
+      "unit": "percentage"
+    },
+    {
+      "name": "Top-1 Accuracy",
+      "aliases": ["Top-1", "Top1 accuracy"],
+      "unit": "percentage"
+    },
+    {
+      "name": "F1",
+      "aliases": ["F1 score"],
+      "unit": "score"
+    }
+  ],
+  "tasks": [
+    {
+      "name": "Machine Translation",
+      "aliases": ["translation", "neural machine translation", "document translation"]
+    },
+    {
+      "name": "Language Modeling",
+      "aliases": ["language modelling"]
+    },
+    {
+      "name": "Domain Adaptation",
+      "aliases": ["domain-adaptation"]
+    },
+    {
+      "name": "Multilingual Translation",
+      "aliases": ["multilingual machine translation", "multilingual MT"]
+    }
+  ]
+}
