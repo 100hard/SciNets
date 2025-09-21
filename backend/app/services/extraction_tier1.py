@@ -980,6 +980,8 @@ def _serialize_result(
         "is_sota": result.is_sota,
         "confidence": result.confidence,
         "evidence": result.evidence,
+        "verified": result.verified,
+        "verifier_notes": result.verifier_notes,
         "created_at": result.created_at.isoformat(),
         "updated_at": result.updated_at.isoformat(),
     }

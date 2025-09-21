@@ -210,6 +210,8 @@ async def test_run_tier1_extraction_persists_results(monkeypatch: pytest.MonkeyP
                     is_sota=item.is_sota,
                     confidence=item.confidence,
                     evidence=item.evidence,
+                    verified=item.verified,
+                    verifier_notes=item.verifier_notes,
                     created_at=now,
                     updated_at=now,
                 )

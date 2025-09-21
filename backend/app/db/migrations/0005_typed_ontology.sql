@@ -87,6 +87,8 @@ CREATE TABLE IF NOT EXISTS results (
     is_sota BOOLEAN NOT NULL DEFAULT FALSE,
     confidence DOUBLE PRECISION,
     evidence JSONB NOT NULL DEFAULT '[]'::jsonb,
+    verified BOOLEAN,
+    verifier_notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
