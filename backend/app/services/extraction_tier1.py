@@ -813,6 +813,24 @@ def _clean_dataset_name(name: str) -> str:
     cleaned = parts[0]
     cleaned = re.sub(r"[(),]", " ", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if cleaned:
+        lowered = cleaned.lower()
+        if not any(ch.isdigit() for ch in cleaned):
+            disqualifiers = {
+                "model",
+                "method",
+                "approach",
+                "architecture",
+                "network",
+                "framework",
+                "system",
+                "technique",
+                "baseline",
+                "algorithm",
+            }
+            tokens = set(lowered.split())
+            if tokens.intersection(disqualifiers):
+                return ""
     return cleaned
 
 

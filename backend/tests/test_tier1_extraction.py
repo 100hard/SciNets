@@ -93,6 +93,16 @@ def test_extract_signals_detects_dataset_with_intervening_words() -> None:
     )
 
 
+def test_extract_signals_ignores_method_like_spans_for_datasets() -> None:
+    lexicon = load_mt_lexicon()
+    section = _build_section(
+        "We evaluate our Transformer model on the Transformer-based baseline before reporting results."
+    )
+
+    artifacts = extract_signals([section], lexicon=lexicon)
+
+    assert not artifacts.datasets
+    assert not artifacts.results
 @pytest.mark.anyio("asyncio")
 async def test_run_tier1_extraction_persists_results(monkeypatch: pytest.MonkeyPatch) -> None:
     paper_id = uuid4()
