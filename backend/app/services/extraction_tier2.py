@@ -295,6 +295,8 @@ async def _summary_result_to_model(
         is_sota=bool(payload.get("is_sota")),
         confidence=payload.get("confidence"),
         evidence=list(payload.get("evidence") or []),
+        verified=payload.get("verified"),
+        verifier_notes=payload.get("verifier_notes"),
     )
 
 
@@ -621,6 +623,8 @@ def _serialize_result(
         "is_sota": result.is_sota,
         "confidence": result.confidence,
         "evidence": result.evidence,
+        "verified": result.verified,
+        "verifier_notes": result.verifier_notes,
         "created_at": result.created_at.isoformat(),
         "updated_at": result.updated_at.isoformat(),
     }

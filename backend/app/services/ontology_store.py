@@ -186,12 +186,14 @@ async def replace_results(
                         value_text,
                         is_sota,
                         confidence,
-                        evidence
+                        evidence,
+                        verified,
+                        verifier_notes
                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                     RETURNING id, paper_id, method_id, dataset_id, metric_id, task_id,
                               split, value_numeric, value_text, is_sota, confidence,
-                              evidence, created_at, updated_at
+                              evidence, verified, verifier_notes, created_at, updated_at
                     """,
                     result.paper_id,
                     result.method_id,
@@ -204,6 +206,8 @@ async def replace_results(
                     result.is_sota,
                     result.confidence,
                     result.evidence,
+                    result.verified,
+                    result.verifier_notes,
                 )
                 inserted.append(Result(**dict(row)))
     return inserted

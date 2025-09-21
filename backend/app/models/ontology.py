@@ -118,6 +118,8 @@ class ResultBase(BaseModel):
     is_sota: bool = False
     confidence: Optional[float] = None
     evidence: EvidencePayload = Field(default_factory=list)
+    verified: Optional[bool] = None
+    verifier_notes: Optional[str] = None
 
 
 class ResultCreate(ResultBase):
