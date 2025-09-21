@@ -197,3 +197,27 @@ class ConceptResolution(ConceptResolutionBase):
     class Config:
         from_attributes = True
 
+
+class CanonicalizationMergedItem(BaseModel):
+    id: UUID
+    name: str
+    score: float
+
+
+class CanonicalizationExample(BaseModel):
+    canonical_id: UUID
+    canonical_name: str
+    merged: list[CanonicalizationMergedItem] = Field(default_factory=list)
+
+
+class CanonicalizationTypeReport(BaseModel):
+    resolution_type: ConceptResolutionType
+    before: int
+    after: int
+    merges: int
+    examples: list[CanonicalizationExample] = Field(default_factory=list)
+
+
+class CanonicalizationReport(BaseModel):
+    summary: list[CanonicalizationTypeReport] = Field(default_factory=list)
+

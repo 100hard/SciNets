@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.db.database import test_postgres_connection
 from app.services.storage import ensure_bucket_exists
+from app.api.admin import router as admin_router
 from app.api.concepts import router as concepts_router
 from app.api.evidence import router as evidence_router
 from app.api.extraction import router as extraction_router
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(search_router, prefix=settings.api_prefix)
     app.include_router(graph_router, prefix=settings.api_prefix)
     app.include_router(extraction_router, prefix=settings.api_prefix)
+    app.include_router(admin_router, prefix=settings.api_prefix)
 
     return app
 
