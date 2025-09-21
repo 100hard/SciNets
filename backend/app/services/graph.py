@@ -1,36 +1,65 @@
 from __future__ import annotations
 
-from collections import OrderedDict
-from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Dict, Optional, Set
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
 from uuid import UUID
 
 from app.db.pool import get_pool
 from app.models.graph import (
     GraphEdge,
     GraphEdgeData,
+    GraphEvidenceItem,
     GraphMeta,
     GraphNode,
     GraphNodeData,
+    GraphNodeLink,
     GraphResponse,
+    NodeType,
+    RelationType,
 )
 
 
 MAX_GRAPH_LIMIT = 500
-_RELATION_LIMIT_MULTIPLIER = 3
+_DEFAULT_TYPES: tuple[NodeType, ...] = ("method", "dataset", "metric", "task")
+_ALLOWED_TYPES = set(_DEFAULT_TYPES)
+_ALLOWED_RELATIONS: set[RelationType] = {"proposes", "evaluates_on", "reports", "compares"}
+_DEFAULT_MIN_CONFIDENCE = 0.6
+_MAX_NODE_EVIDENCE = 8
+_MAX_EDGE_EVIDENCE = 12
+_MAX_TOP_LINKS = 6
+_ORDERED_RELATIONS: tuple[RelationType, ...] = ("proposes", "evaluates_on", "reports", "compares")
 
-_CONCEPT_SELECT_BASE = """
-    SELECT c.id AS concept_id,
-           c.name AS concept_name,
-           c.type AS concept_type,
-           c.description AS concept_description,
-           c.paper_id AS paper_id,
-           p.title AS paper_title,
-           p.authors AS paper_authors,
-           p.venue AS paper_venue,
-           p.year AS paper_year
-    FROM concepts c
-    JOIN papers p ON p.id = c.paper_id
+_RESULT_SELECT = """
+    SELECT
+        r.id AS result_id,
+        r.paper_id,
+        r.method_id,
+        r.dataset_id,
+        r.metric_id,
+        r.task_id,
+        r.confidence,
+        r.evidence,
+        p.title AS paper_title,
+        m.name AS method_name,
+        m.aliases AS method_aliases,
+        m.description AS method_description,
+        d.name AS dataset_name,
+        d.aliases AS dataset_aliases,
+        d.description AS dataset_description,
+        mt.name AS metric_name,
+        mt.aliases AS metric_aliases,
+        mt.description AS metric_description,
+        mt.unit AS metric_unit,
+        t.name AS task_name,
+        t.aliases AS task_aliases,
+        t.description AS task_description
+    FROM results r
+    JOIN papers p ON p.id = r.paper_id
+    LEFT JOIN methods m ON r.method_id = m.id
+    LEFT JOIN datasets d ON r.dataset_id = d.id
+    LEFT JOIN metrics mt ON r.metric_id = mt.id
+    LEFT JOIN tasks t ON r.task_id = t.id
 """
 
 
@@ -38,7 +67,63 @@ class GraphEntityNotFoundError(RuntimeError):
     """Raised when the requested graph node cannot be located."""
 
 
-def _normalize_limit(limit: int, minimum: int = 1, maximum: int = MAX_GRAPH_LIMIT) -> int:
+@dataclass(slots=True)
+class NodeDetail:
+    id: UUID
+    type: NodeType
+    label: str
+    aliases: tuple[str, ...]
+    description: str | None
+    metadata: Dict[str, Any]
+
+
+@dataclass(slots=True)
+class EdgeInstance:
+    paper_id: UUID
+    paper_title: str | None
+    confidence: float
+    evidence: list[dict[str, Any]]
+    dataset_id: UUID | None
+    dataset_label: str | None
+    metric_id: UUID | None
+    metric_label: str | None
+    task_id: UUID | None
+    task_label: str | None
+
+
+@dataclass(slots=True)
+class MethodContext:
+    method_id: UUID
+    method_label: str
+    confidence: float
+    evidence: list[dict[str, Any]]
+    paper_id: UUID
+    paper_title: str | None
+    dataset_id: UUID | None
+    dataset_label: str | None
+    metric_id: UUID | None
+    metric_label: str | None
+    task_id: UUID | None
+    task_label: str | None
+
+
+@dataclass(slots=True)
+class AggregatedEdge:
+    relation: RelationType
+    source_key: tuple[NodeType, UUID]
+    target_key: tuple[NodeType, UUID]
+    paper_details: list[dict[str, Any]]
+    average_confidence: float
+    weight: float
+    evidence: list[dict[str, Any]]
+    metadata: Dict[str, Any]
+
+    @property
+    def paper_count(self) -> int:
+        return len(self.paper_details)
+
+
+def _normalize_limit(limit: int, *, minimum: int = 1, maximum: int = MAX_GRAPH_LIMIT) -> int:
     if limit < minimum:
         return minimum
     if limit > maximum:
@@ -46,415 +131,685 @@ def _normalize_limit(limit: int, minimum: int = 1, maximum: int = MAX_GRAPH_LIMI
     return limit
 
 
-def _concept_node_id(concept_id: UUID) -> str:
-    return f"concept:{concept_id}"
+def _node_key(node_type: NodeType, entity_id: UUID) -> tuple[NodeType, UUID]:
+    return node_type, entity_id
 
 
-def _paper_node_id(paper_id: UUID) -> str:
-    return f"paper:{paper_id}"
+def _node_id_str(node_type: NodeType, entity_id: UUID) -> str:
+    return f"{node_type}:{entity_id}"
 
 
-def _paper_concept_edge_id(paper_node_id: str, concept_node_id: str) -> str:
-    return f"edge:{paper_node_id}->{concept_node_id}"
+def _parse_selection(
+    values: Optional[Sequence[str]],
+    allowed: Iterable[str],
+    default: Iterable[str],
+) -> set[str]:
+    allowed_set = {item.lower() for item in allowed}
+    if not values:
+        return {item.lower() for item in default}
+
+    selection: set[str] = set()
+    for raw in values:
+        if raw is None:
+            continue
+        for token in str(raw).split(","):
+            normalized = token.strip().lower()
+            if not normalized:
+                continue
+            if normalized not in allowed_set:
+                raise ValueError(f"Unsupported selection value '{token}'")
+            selection.add(normalized)
+    return selection or {item.lower() for item in default}
 
 
-def _clean_metadata(metadata: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    cleaned = {key: value for key, value in metadata.items() if value is not None}
-    return cleaned or None
+def _confidence_value(value: Any) -> float:
+    try:
+        if value is None:
+            return float(_DEFAULT_MIN_CONFIDENCE)
+        numeric = float(value)
+        if numeric < 0:
+            return 0.0
+        if numeric > 1:
+            return 1.0
+        return numeric
+    except (TypeError, ValueError):  # pragma: no cover - defensive fallback
+        return float(_DEFAULT_MIN_CONFIDENCE)
 
 
-def _build_graph_elements(
-    concept_rows: Sequence[Mapping[str, Any]],
-    relation_rows: Sequence[Mapping[str, Any]],
+def _coerce_aliases(value: Any) -> tuple[str, ...]:
+    if not value:
+        return ()
+    if isinstance(value, (list, tuple)):
+        cleaned = [str(item).strip() for item in value if str(item).strip()]
+        return tuple(dict.fromkeys(cleaned))
+    if isinstance(value, str):
+        return tuple(dict.fromkeys(part.strip() for part in value.split(",") if part.strip()))
+    return ()
+
+
+def _safe_label(name: Any, fallback_prefix: str, entity_id: UUID) -> str:
+    cleaned = str(name).strip() if name is not None else ""
+    if cleaned:
+        return cleaned
+    return f"{fallback_prefix} {entity_id}"
+
+
+def _clean_metadata(payload: Mapping[str, Any]) -> Dict[str, Any]:
+    return {key: value for key, value in payload.items() if value not in (None, "")}
+
+
+async def _fetch_results(
+    conn: Any,
     *,
-    nodes: MutableMapping[str, GraphNode] | None = None,
-    edges: MutableMapping[str, GraphEdge] | None = None,
-    include_paper_concept_edges: bool = True,
-) -> tuple[MutableMapping[str, GraphNode], MutableMapping[str, GraphEdge]]:
-    node_map: MutableMapping[str, GraphNode] = nodes if nodes is not None else OrderedDict()
-    edge_map: MutableMapping[str, GraphEdge] = edges if edges is not None else OrderedDict()
+    paper_ids: Sequence[UUID] | None = None,
+) -> Sequence[Mapping[str, Any]]:
+    if paper_ids:
+        return await conn.fetch(
+            f"{_RESULT_SELECT} WHERE r.paper_id = ANY($1::uuid[])",
+            list(paper_ids),
+        )
+    return await conn.fetch(_RESULT_SELECT)
 
-    for row in concept_rows:
-        concept_id: UUID = row["concept_id"]
+
+async def _resolve_entity(conn: Any, entity_id: UUID) -> NodeDetail | None:
+    row = await conn.fetchrow(
+        "SELECT id, name, aliases, description FROM methods WHERE id = $1",
+        entity_id,
+    )
+    if row:
+        return NodeDetail(
+            id=row["id"],
+            type="method",
+            label=_safe_label(row.get("name"), "Method", row["id"]),
+            aliases=_coerce_aliases(row.get("aliases")),
+            description=row.get("description"),
+            metadata={},
+        )
+
+    row = await conn.fetchrow(
+        "SELECT id, name, aliases, description FROM datasets WHERE id = $1",
+        entity_id,
+    )
+    if row:
+        return NodeDetail(
+            id=row["id"],
+            type="dataset",
+            label=_safe_label(row.get("name"), "Dataset", row["id"]),
+            aliases=_coerce_aliases(row.get("aliases")),
+            description=row.get("description"),
+            metadata={},
+        )
+
+    row = await conn.fetchrow(
+        "SELECT id, name, aliases, description, unit FROM metrics WHERE id = $1",
+        entity_id,
+    )
+    if row:
+        metadata = _clean_metadata({"unit": row.get("unit")})
+        return NodeDetail(
+            id=row["id"],
+            type="metric",
+            label=_safe_label(row.get("name"), "Metric", row["id"]),
+            aliases=_coerce_aliases(row.get("aliases")),
+            description=row.get("description"),
+            metadata=metadata,
+        )
+
+    row = await conn.fetchrow(
+        "SELECT id, name, aliases, description FROM tasks WHERE id = $1",
+        entity_id,
+    )
+    if row:
+        return NodeDetail(
+            id=row["id"],
+            type="task",
+            label=_safe_label(row.get("name"), "Task", row["id"]),
+            aliases=_coerce_aliases(row.get("aliases")),
+            description=row.get("description"),
+            metadata={},
+        )
+
+    return None
+
+
+async def _fetch_related_papers(conn: Any, center: NodeDetail) -> list[UUID]:
+    column = {
+        "method": "method_id",
+        "dataset": "dataset_id",
+        "metric": "metric_id",
+        "task": "task_id",
+    }[center.type]
+    rows = await conn.fetch(
+        f"SELECT DISTINCT paper_id FROM results WHERE {column} = $1",
+        center.id,
+    )
+    return [row["paper_id"] for row in rows]
+
+
+def _build_node_detail(
+    node_details: dict[tuple[NodeType, UUID], NodeDetail],
+    *,
+    node_type: NodeType,
+    entity_id: UUID,
+    name: Any,
+    aliases: Any,
+    description: Any,
+    metadata: Mapping[str, Any] | None = None,
+) -> None:
+    key = _node_key(node_type, entity_id)
+    if key in node_details:
+        return
+    detail = NodeDetail(
+        id=entity_id,
+        type=node_type,
+        label=_safe_label(name, node_type.title(), entity_id),
+        aliases=_coerce_aliases(aliases),
+        description=str(description).strip() if description else None,
+        metadata=_clean_metadata(dict(metadata or {})),
+    )
+    node_details[key] = detail
+
+
+def _aggregate_edges(
+    rows: Sequence[Mapping[str, Any]],
+    allowed_types: set[str],
+    allowed_relations: set[str],
+    min_conf: float,
+    node_details: dict[tuple[NodeType, UUID], NodeDetail],
+) -> list[AggregatedEdge]:
+    edges: dict[
+        tuple[RelationType, tuple[NodeType, UUID], tuple[NodeType, UUID]],
+        list[EdgeInstance],
+    ] = defaultdict(list)
+    compare_contexts: dict[
+        tuple[UUID, UUID, UUID],
+        list[MethodContext],
+    ] = defaultdict(list)
+
+    for row in rows:
         paper_id: UUID = row["paper_id"]
-        concept_node_key = _concept_node_id(concept_id)
-        if concept_node_key not in node_map:
-            concept_metadata = _clean_metadata(
-                {
-                    "type": row.get("concept_type"),
-                    "description": row.get("concept_description"),
+        paper_title = row.get("paper_title")
+        confidence = _confidence_value(row.get("confidence"))
+        evidence = list(row.get("evidence") or [])
+
+        method_id: UUID | None = row.get("method_id")
+        dataset_id: UUID | None = row.get("dataset_id")
+        metric_id: UUID | None = row.get("metric_id")
+        task_id: UUID | None = row.get("task_id")
+
+        if method_id:
+            _build_node_detail(
+                node_details,
+                node_type="method",
+                entity_id=method_id,
+                name=row.get("method_name"),
+                aliases=row.get("method_aliases"),
+                description=row.get("method_description"),
+            )
+        if dataset_id:
+            _build_node_detail(
+                node_details,
+                node_type="dataset",
+                entity_id=dataset_id,
+                name=row.get("dataset_name"),
+                aliases=row.get("dataset_aliases"),
+                description=row.get("dataset_description"),
+            )
+        if metric_id:
+            _build_node_detail(
+                node_details,
+                node_type="metric",
+                entity_id=metric_id,
+                name=row.get("metric_name"),
+                aliases=row.get("metric_aliases"),
+                description=row.get("metric_description"),
+                metadata={"unit": row.get("metric_unit")},
+            )
+        if task_id:
+            _build_node_detail(
+                node_details,
+                node_type="task",
+                entity_id=task_id,
+                name=row.get("task_name"),
+                aliases=row.get("task_aliases"),
+                description=row.get("task_description"),
+            )
+
+        dataset_label = node_details.get(("dataset", dataset_id)).label if dataset_id and ("dataset", dataset_id) in node_details else None
+        metric_label = node_details.get(("metric", metric_id)).label if metric_id and ("metric", metric_id) in node_details else None
+        task_label = node_details.get(("task", task_id)).label if task_id and ("task", task_id) in node_details else None
+
+        if method_id and dataset_id:
+            key = ("evaluates_on", _node_key("method", method_id), _node_key("dataset", dataset_id))
+            edges[key].append(
+                EdgeInstance(
+                    paper_id=paper_id,
+                    paper_title=paper_title,
+                    confidence=confidence,
+                    evidence=evidence,
+                    dataset_id=dataset_id,
+                    dataset_label=dataset_label,
+                    metric_id=metric_id,
+                    metric_label=metric_label,
+                    task_id=task_id,
+                    task_label=task_label,
+                )
+            )
+
+        if method_id and metric_id:
+            key = ("reports", _node_key("method", method_id), _node_key("metric", metric_id))
+            edges[key].append(
+                EdgeInstance(
+                    paper_id=paper_id,
+                    paper_title=paper_title,
+                    confidence=confidence,
+                    evidence=evidence,
+                    dataset_id=dataset_id,
+                    dataset_label=dataset_label,
+                    metric_id=metric_id,
+                    metric_label=metric_label,
+                    task_id=task_id,
+                    task_label=task_label,
+                )
+            )
+
+        if method_id and task_id:
+            key = ("proposes", _node_key("method", method_id), _node_key("task", task_id))
+            edges[key].append(
+                EdgeInstance(
+                    paper_id=paper_id,
+                    paper_title=paper_title,
+                    confidence=confidence,
+                    evidence=evidence,
+                    dataset_id=dataset_id,
+                    dataset_label=dataset_label,
+                    metric_id=metric_id,
+                    metric_label=metric_label,
+                    task_id=task_id,
+                    task_label=task_label,
+                )
+            )
+
+        if method_id and dataset_id and metric_id:
+            compare_contexts[(paper_id, dataset_id, metric_id)].append(
+                MethodContext(
+                    method_id=method_id,
+                    method_label=node_details[("method", method_id)].label,
+                    confidence=confidence,
+                    evidence=evidence,
+                    paper_id=paper_id,
+                    paper_title=paper_title,
+                    dataset_id=dataset_id,
+                    dataset_label=dataset_label,
+                    metric_id=metric_id,
+                    metric_label=metric_label,
+                    task_id=task_id,
+                    task_label=task_label,
+                )
+            )
+
+    for contexts in compare_contexts.values():
+        if len(contexts) < 2:
+            continue
+        contexts = sorted(contexts, key=lambda ctx: ctx.method_id)
+        for index, primary in enumerate(contexts):
+            for secondary in contexts[index + 1 :]:
+                if primary.method_id == secondary.method_id:
+                    continue
+                source_key = _node_key("method", primary.method_id)
+                target_key = _node_key("method", secondary.method_id)
+                key = ("compares", source_key, target_key)
+                combined_confidence = (primary.confidence + secondary.confidence) / 2
+                combined_evidence = list(primary.evidence) + list(secondary.evidence)
+                edges[key].append(
+                    EdgeInstance(
+                        paper_id=primary.paper_id,
+                        paper_title=primary.paper_title,
+                        confidence=combined_confidence,
+                        evidence=combined_evidence,
+                        dataset_id=primary.dataset_id,
+                        dataset_label=primary.dataset_label,
+                        metric_id=primary.metric_id,
+                        metric_label=primary.metric_label,
+                        task_id=primary.task_id,
+                        task_label=primary.task_label,
+                    )
+                )
+
+    aggregated: list[AggregatedEdge] = []
+    for (relation, source_key, target_key), instances in edges.items():
+        if relation not in allowed_relations:
+            continue
+        if source_key[0] not in allowed_types or target_key[0] not in allowed_types:
+            continue
+
+        paper_confidences: dict[UUID, list[float]] = defaultdict(list)
+        paper_titles: dict[UUID, str | None] = {}
+        contexts_map: dict[tuple[UUID, UUID | None, UUID | None, UUID | None], dict[str, Any]] = {}
+        evidence_items: list[dict[str, Any]] = []
+
+        for instance in instances:
+            paper_confidences[instance.paper_id].append(instance.confidence)
+            paper_titles.setdefault(instance.paper_id, instance.paper_title)
+            context_key = (
+                instance.paper_id,
+                instance.dataset_id,
+                instance.metric_id,
+                instance.task_id,
+            )
+            if context_key not in contexts_map:
+                context: dict[str, Any] = {
+                    "paper_id": instance.paper_id,
+                    "paper_title": instance.paper_title,
                 }
-            )
-            node_map[concept_node_key] = GraphNode(
-                data=GraphNodeData(
-                    id=concept_node_key,
-                    type="concept",
-                    label=row.get("concept_name") or str(concept_id),
-                    concept_id=concept_id,
-                    paper_id=paper_id,
-                    metadata=concept_metadata,
+                if instance.dataset_label:
+                    context["dataset"] = instance.dataset_label
+                if instance.metric_label:
+                    context["metric"] = instance.metric_label
+                if instance.task_label:
+                    context["task"] = instance.task_label
+                contexts_map[context_key] = context
+            for snippet in instance.evidence:
+                snippet_text = None
+                if isinstance(snippet, Mapping):
+                    snippet_text = snippet.get("snippet")
+                elif isinstance(snippet, str):
+                    snippet_text = snippet
+                evidence_items.append(
+                    {
+                        "paper_id": instance.paper_id,
+                        "paper_title": instance.paper_title,
+                        "snippet": snippet_text,
+                        "confidence": instance.confidence,
+                        "relation": relation,
+                    }
                 )
-            )
 
-        if not include_paper_concept_edges:
+        if not paper_confidences:
             continue
 
-        paper_node_key = _paper_node_id(paper_id)
-        if paper_node_key not in node_map:
-            paper_metadata = _clean_metadata(
-                {
-                    "authors": row.get("paper_authors"),
-                    "venue": row.get("paper_venue"),
-                    "year": row.get("paper_year"),
-                }
-            )
-            node_map[paper_node_key] = GraphNode(
-                data=GraphNodeData(
-                    id=paper_node_key,
-                    type="paper",
-                    label=row.get("paper_title") or str(paper_id),
-                    paper_id=paper_id,
-                    metadata=paper_metadata,
-                )
-            )
-
-        edge_key = _paper_concept_edge_id(paper_node_key, concept_node_key)
-        if edge_key not in edge_map:
-            edge_map[edge_key] = GraphEdge(
-                data=GraphEdgeData(
-                    id=edge_key,
-                    source=paper_node_key,
-                    target=concept_node_key,
-                    type="mentions",
-                    paper_id=paper_id,
-                    concept_id=concept_id,
-                )
-            )
-
-    for row in relation_rows:
-        relation_id: Optional[UUID] = row.get("id")
-        source_concept_id: Optional[UUID] = row.get("concept_id")
-        target_concept_id: Optional[UUID] = row.get("related_concept_id")
-        if source_concept_id is None or target_concept_id is None:
+        per_paper_avg = [sum(values) / len(values) for values in paper_confidences.values()]
+        average_confidence = sum(per_paper_avg) / len(per_paper_avg)
+        if average_confidence < min_conf:
             continue
 
-        source_key = _concept_node_id(source_concept_id)
-        target_key = _concept_node_id(target_concept_id)
-        if source_key not in node_map or target_key not in node_map:
-            continue
+        paper_details = [
+            {
+                "paper_id": paper_id,
+                "paper_title": paper_titles.get(paper_id),
+                "average_confidence": sum(values) / len(values),
+            }
+            for paper_id, values in paper_confidences.items()
+        ]
+        weight = len(paper_details) * average_confidence
+        metadata: dict[str, Any] = {"papers": paper_details}
+        if contexts_map:
+            metadata["contexts"] = list(contexts_map.values())
 
-        edge_key = f"relation:{relation_id}" if relation_id is not None else f"relation:{source_key}->{target_key}"
-        if edge_key in edge_map:
-            continue
+        evidence_items = evidence_items[:_MAX_EDGE_EVIDENCE]
+        if evidence_items:
+            metadata["evidence"] = evidence_items
 
-        relation_metadata = _clean_metadata({"description": row.get("description")})
-        edge_map[edge_key] = GraphEdge(
-            data=GraphEdgeData(
-                id=edge_key,
-                source=source_key,
-                target=target_key,
-                type=row.get("relation_type") or "related",
-                paper_id=row.get("paper_id"),
-                concept_id=source_concept_id,
-                related_concept_id=target_concept_id,
-                relation_id=relation_id,
-                metadata=relation_metadata,
+        aggregated.append(
+            AggregatedEdge(
+                relation=relation,
+                source_key=source_key,
+                target_key=target_key,
+                paper_details=paper_details,
+                average_confidence=average_confidence,
+                weight=weight,
+                evidence=evidence_items,
+                metadata=metadata,
             )
         )
 
-    return node_map, edge_map
+    return aggregated
+
+
+def _build_graph_response(
+    aggregated_edges: list[AggregatedEdge],
+    node_details: dict[tuple[NodeType, UUID], NodeDetail],
+    *,
+    limit: int,
+    allowed_types: set[str],
+    allowed_relations: set[str],
+    min_conf: float,
+    center_key: tuple[NodeType, UUID] | None = None,
+) -> GraphResponse:
+    node_papers: dict[tuple[NodeType, UUID], set[UUID]] = defaultdict(set)
+    node_edges: dict[tuple[NodeType, UUID], list[AggregatedEdge]] = defaultdict(list)
+
+    for edge in aggregated_edges:
+        source_key = edge.source_key
+        target_key = edge.target_key
+        papers = {detail["paper_id"] for detail in edge.paper_details}
+        node_papers[source_key].update(papers)
+        node_papers[target_key].update(papers)
+        node_edges[source_key].append(edge)
+        node_edges[target_key].append(edge)
+
+    if center_key and center_key not in node_papers:
+        node_papers[center_key] = set()
+        node_edges.setdefault(center_key, [])
+
+    all_node_keys = list(node_papers.keys())
+    total_nodes = len(all_node_keys)
+
+    def sort_key(item: tuple[NodeType, UUID]) -> tuple[int, str]:
+        paper_count = len(node_papers[item])
+        label = node_details.get(item)
+        return (-paper_count, (label.label if label else str(item[1])).lower())
+
+    sorted_nodes = sorted(all_node_keys, key=sort_key)
+
+    selected: list[tuple[NodeType, UUID]] = []
+    if center_key:
+        selected.append(center_key)
+    for key in sorted_nodes:
+        if key == center_key:
+            continue
+        selected.append(key)
+        if len(selected) >= limit:
+            break
+
+    allowed_node_keys = set(selected)
+    filtered_edges = [
+        edge
+        for edge in aggregated_edges
+        if edge.source_key in allowed_node_keys and edge.target_key in allowed_node_keys
+    ]
+
+    node_links: dict[tuple[NodeType, UUID], list[GraphNodeLink]] = defaultdict(list)
+    node_evidence: dict[tuple[NodeType, UUID], list[GraphEvidenceItem]] = defaultdict(list)
+
+    for edge in filtered_edges:
+        source_key = edge.source_key
+        target_key = edge.target_key
+        source_detail = node_details.get(source_key)
+        target_detail = node_details.get(target_key)
+        if source_detail and target_detail:
+            node_links[source_key].append(
+                GraphNodeLink(
+                    id=_node_id_str(target_key[0], target_key[1]),
+                    label=target_detail.label,
+                    type=target_detail.type,
+                    relation=edge.relation,
+                    weight=edge.weight,
+                )
+            )
+            node_links[target_key].append(
+                GraphNodeLink(
+                    id=_node_id_str(source_key[0], source_key[1]),
+                    label=source_detail.label,
+                    type=source_detail.type,
+                    relation=edge.relation,
+                    weight=edge.weight,
+                )
+            )
+
+        for evidence in edge.evidence:
+            item = GraphEvidenceItem(
+                paper_id=evidence["paper_id"],
+                paper_title=evidence.get("paper_title"),
+                snippet=evidence.get("snippet"),
+                confidence=evidence.get("confidence", edge.average_confidence),
+                relation=edge.relation,
+            )
+            node_evidence[source_key].append(item)
+            node_evidence[target_key].append(item)
+
+    nodes: list[GraphNode] = []
+    for key in selected:
+        detail = node_details.get(key)
+        if not detail:
+            detail = NodeDetail(
+                id=key[1],
+                type=key[0],
+                label=_safe_label(None, key[0].title(), key[1]),
+                aliases=(),
+                description=None,
+                metadata={},
+            )
+
+        papers = node_papers.get(key, set())
+        links = sorted(
+            node_links.get(key, []),
+            key=lambda link: (-link.weight, link.label.lower()),
+        )[:_MAX_TOP_LINKS]
+
+        evidences = node_evidence.get(key, [])[:_MAX_NODE_EVIDENCE]
+
+        nodes.append(
+            GraphNode(
+                data=GraphNodeData(
+                    id=_node_id_str(key[0], key[1]),
+                    type=detail.type,
+                    label=detail.label,
+                    entity_id=detail.id,
+                    paper_count=len(papers),
+                    aliases=list(detail.aliases),
+                    description=detail.description,
+                    top_links=links,
+                    evidence=evidences,
+                    metadata=detail.metadata or None,
+                )
+            )
+        )
+
+    edges: list[GraphEdge] = []
+    for edge in sorted(filtered_edges, key=lambda item: (-item.weight, item.relation, item.source_key[0])):
+        metadata = dict(edge.metadata)
+        if not metadata.get("papers"):
+            metadata.pop("papers", None)
+        if not metadata.get("contexts"):
+            metadata.pop("contexts", None)
+        if not metadata.get("evidence"):
+            metadata.pop("evidence", None)
+
+        edges.append(
+            GraphEdge(
+                data=GraphEdgeData(
+                    id=f"edge:{edge.relation}:{_node_id_str(edge.source_key[0], edge.source_key[1])}->{_node_id_str(edge.target_key[0], edge.target_key[1])}",
+                    source=_node_id_str(edge.source_key[0], edge.source_key[1]),
+                    target=_node_id_str(edge.target_key[0], edge.target_key[1]),
+                    type=edge.relation,
+                    weight=edge.weight,
+                    paper_count=edge.paper_count,
+                    average_confidence=edge.average_confidence,
+                    metadata=metadata or None,
+                )
+            )
+        )
+
+    paper_ids = set()
+    for key in allowed_node_keys:
+        paper_ids.update(node_papers.get(key, set()))
+
+    has_more = total_nodes > len(selected)
+    ordered_types = [item for item in _DEFAULT_TYPES if item in allowed_types]
+    extra_types = sorted(allowed_types - set(_DEFAULT_TYPES))
+    ordered_relations = [item for item in _ORDERED_RELATIONS if item in allowed_relations]
+    extra_relations = sorted(allowed_relations - set(_ORDERED_RELATIONS))
+
+    meta = GraphMeta(
+        limit=limit,
+        node_count=len(nodes),
+        edge_count=len(edges),
+        concept_count=total_nodes,
+        paper_count=len(paper_ids),
+        has_more=has_more if has_more else None,
+        center_id=_node_id_str(center_key[0], center_key[1]) if center_key else None,
+        center_type=center_key[0] if center_key else None,
+        filters={
+            "types": ordered_types + extra_types,
+            "relations": ordered_relations + extra_relations,
+            "min_conf": min_conf,
+        },
+    )
+
+    return GraphResponse(nodes=nodes, edges=edges, meta=meta)
 
 
 async def get_graph_overview(
     limit: int = 100,
     *,
-    paper_id: Optional[UUID] = None,
-    concept_type: Optional[str] = None,
+    types: Optional[Sequence[str]] = None,
+    relations: Optional[Sequence[str]] = None,
+    min_conf: float = _DEFAULT_MIN_CONFIDENCE,
 ) -> GraphResponse:
-    normalized_limit = _normalize_limit(limit)
+    normalized_limit = _normalize_limit(limit, maximum=MAX_GRAPH_LIMIT)
+    allowed_types = _parse_selection(types, _ALLOWED_TYPES, _DEFAULT_TYPES)
+    allowed_relations = _parse_selection(relations, _ALLOWED_RELATIONS, _ALLOWED_RELATIONS)
+
     pool = get_pool()
-
-    filters: Dict[str, Any] = {}
-    params: list[Any] = []
-    where_clauses: list[str] = []
-
-    if paper_id:
-        where_clauses.append(f"c.paper_id = ${len(params) + 1}")
-        params.append(paper_id)
-        filters["paper_id"] = str(paper_id)
-
-    if concept_type:
-        where_clauses.append(f"c.type = ${len(params) + 1}")
-        params.append(concept_type)
-        filters["concept_type"] = concept_type
-
-    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
-    limit_placeholder = len(params) + 1
-    concept_query = f"""{_CONCEPT_SELECT_BASE}
-        {where_sql}
-        ORDER BY c.created_at DESC
-        LIMIT ${limit_placeholder}
-    """
-
     async with pool.acquire() as conn:
-        concept_rows = await conn.fetch(concept_query, *params, normalized_limit)
-        count_query = f"SELECT COUNT(*) FROM concepts c {where_sql}"
-        total_concepts = await conn.fetchval(count_query, *params)
+        rows = await _fetch_results(conn)
 
-        concept_ids = [row["concept_id"] for row in concept_rows]
-        relation_rows: Sequence[Mapping[str, Any]] = []
-        if concept_ids:
-            relation_params: list[Any] = [concept_ids]
-            relation_limit_placeholder = 2
-            relation_where = "concept_id = ANY($1::uuid[]) AND related_concept_id = ANY($1::uuid[])"
-            if paper_id:
-                relation_where += f" AND paper_id = ${relation_limit_placeholder}"
-                relation_params.append(paper_id)
-                relation_limit_placeholder += 1
-            relation_params.append(min(normalized_limit * _RELATION_LIMIT_MULTIPLIER, MAX_GRAPH_LIMIT))
-            relations_query = f"""
-                SELECT id, paper_id, concept_id, related_concept_id, relation_type, description
-                FROM relations
-                WHERE {relation_where}
-                ORDER BY created_at DESC
-                LIMIT ${relation_limit_placeholder}
-            """
-            relation_rows = await conn.fetch(relations_query, *relation_params)
-
-    nodes, edges = _build_graph_elements(concept_rows, relation_rows)
-    paper_ids: Set[UUID] = {
-        node.data.paper_id
-        for node in nodes.values()
-        if node.data.type == "paper" and node.data.paper_id is not None
-    }
-    concept_node_count = sum(1 for node in nodes.values() if node.data.type == "concept")
-    meta = GraphMeta(
+    node_details: dict[tuple[NodeType, UUID], NodeDetail] = {}
+    aggregated_edges = _aggregate_edges(rows, allowed_types, allowed_relations, min_conf, node_details)
+    return _build_graph_response(
+        aggregated_edges,
+        node_details,
         limit=normalized_limit,
-        node_count=len(nodes),
-        edge_count=len(edges),
-        concept_count=total_concepts,
-        paper_count=len(paper_ids),
-        has_more=bool(total_concepts and total_concepts > concept_node_count),
-        filters=filters or None,
+        allowed_types=allowed_types,
+        allowed_relations=allowed_relations,
+        min_conf=min_conf,
     )
-    return GraphResponse(nodes=list(nodes.values()), edges=list(edges.values()), meta=meta)
 
 
-async def get_graph_neighborhood(node_id: UUID, *, limit: int = 50) -> GraphResponse:
-    normalized_limit = _normalize_limit(limit)
+async def get_graph_neighborhood(
+    node_id: UUID,
+    *,
+    limit: int = 50,
+    types: Optional[Sequence[str]] = None,
+    relations: Optional[Sequence[str]] = None,
+    min_conf: float = _DEFAULT_MIN_CONFIDENCE,
+) -> GraphResponse:
+    normalized_limit = _normalize_limit(limit, maximum=MAX_GRAPH_LIMIT)
+    allowed_types = _parse_selection(types, _ALLOWED_TYPES, _DEFAULT_TYPES)
+    allowed_relations = _parse_selection(relations, _ALLOWED_RELATIONS, _ALLOWED_RELATIONS)
+
     pool = get_pool()
-
-    concept_query = f"""{_CONCEPT_SELECT_BASE}
-        WHERE c.id = $1
-    """
-
     async with pool.acquire() as conn:
-        concept_row = await conn.fetchrow(concept_query, node_id)
-        if concept_row:
-            return await _build_concept_neighborhood(conn, concept_row, normalized_limit)
+        center_detail = await _resolve_entity(conn, node_id)
+        if center_detail is None:
+            raise GraphEntityNotFoundError(f"Graph node {node_id} was not found")
 
-        paper_row = await conn.fetchrow(
-            """
-            SELECT p.id AS paper_id,
-                   p.title AS paper_title,
-                   p.authors AS paper_authors,
-                   p.venue AS paper_venue,
-                   p.year AS paper_year
-            FROM papers p
-            WHERE p.id = $1
-            """,
-            node_id,
-        )
-        if paper_row:
-            return await _build_paper_neighborhood(conn, paper_row, normalized_limit)
+        paper_ids = await _fetch_related_papers(conn, center_detail)
+        rows = await _fetch_results(conn, paper_ids=paper_ids)
 
-    raise GraphEntityNotFoundError(f"Graph node {node_id} was not found")
+    allowed_types.add(center_detail.type)
 
+    node_details: dict[tuple[NodeType, UUID], NodeDetail] = {(_node_key(center_detail.type, center_detail.id)): center_detail}
+    aggregated_edges = _aggregate_edges(rows, allowed_types, allowed_relations, min_conf, node_details)
 
-async def _build_concept_neighborhood(
-    conn: Any,
-    concept_row: Mapping[str, Any],
-    limit: int,
-) -> GraphResponse:
-    nodes, edges = _build_graph_elements([concept_row], [])
-    paper_id: UUID = concept_row["paper_id"]
-    concept_id: UUID = concept_row["concept_id"]
-
-    neighbor_rows = await conn.fetch(
-        f"""{_CONCEPT_SELECT_BASE}
-            WHERE c.paper_id = $1
-            ORDER BY c.created_at DESC
-            LIMIT $2
-        """,
-        paper_id,
-        limit,
-    )
-    nodes, edges = _build_graph_elements(neighbor_rows, [], nodes=nodes, edges=edges)
-
-    total_concepts_for_paper = await conn.fetchval(
-        "SELECT COUNT(*) FROM concepts WHERE paper_id = $1",
-        paper_id,
+    return _build_graph_response(
+        aggregated_edges,
+        node_details,
+        limit=normalized_limit,
+        allowed_types=allowed_types,
+        allowed_relations=allowed_relations,
+        min_conf=min_conf,
+        center_key=_node_key(center_detail.type, center_detail.id),
     )
 
-    relation_rows = await conn.fetch(
-        """
-        SELECT id, paper_id, concept_id, related_concept_id, relation_type, description
-        FROM relations
-        WHERE (concept_id = $1 OR related_concept_id = $1)
-        ORDER BY created_at DESC
-        LIMIT $2
-        """,
-        concept_id,
-        min(limit * _RELATION_LIMIT_MULTIPLIER, MAX_GRAPH_LIMIT),
-    )
-
-    existing_concept_ids: Set[UUID] = {
-        node.data.concept_id
-        for node in nodes.values()
-        if node.data.type == "concept" and node.data.concept_id is not None
-    }
-    missing_concept_ids: Set[UUID] = set()
-    for row in relation_rows:
-        source_id = row.get("concept_id")
-        target_id = row.get("related_concept_id")
-        if source_id and source_id not in existing_concept_ids:
-            missing_concept_ids.add(source_id)
-        if target_id and target_id not in existing_concept_ids:
-            missing_concept_ids.add(target_id)
-
-    if missing_concept_ids:
-        extra_rows = await conn.fetch(
-            f"""{_CONCEPT_SELECT_BASE}
-                WHERE c.id = ANY($1::uuid[])
-            """,
-            list(missing_concept_ids),
-        )
-        nodes, edges = _build_graph_elements(extra_rows, [], nodes=nodes, edges=edges)
-
-    nodes, edges = _build_graph_elements(
-        [],
-        relation_rows,
-        nodes=nodes,
-        edges=edges,
-        include_paper_concept_edges=False,
-    )
-
-    same_paper_concepts = [
-        node
-        for node in nodes.values()
-        if node.data.type == "concept" and node.data.paper_id == paper_id
-    ]
-    has_more = bool(total_concepts_for_paper and total_concepts_for_paper > len(same_paper_concepts))
-    paper_ids: Set[UUID] = {
-        node.data.paper_id
-        for node in nodes.values()
-        if node.data.type == "paper" and node.data.paper_id is not None
-    }
-
-    meta = GraphMeta(
-        limit=limit,
-        node_count=len(nodes),
-        edge_count=len(edges),
-        concept_count=total_concepts_for_paper,
-        paper_count=len(paper_ids),
-        has_more=has_more,
-        center_id=_concept_node_id(concept_id),
-        center_type="concept",
-    )
-    return GraphResponse(nodes=list(nodes.values()), edges=list(edges.values()), meta=meta)
-
-
-async def _build_paper_neighborhood(
-    conn: Any,
-    paper_row: Mapping[str, Any],
-    limit: int,
-) -> GraphResponse:
-    paper_id: UUID = paper_row["paper_id"]
-    nodes: MutableMapping[str, GraphNode] = OrderedDict()
-    edges: MutableMapping[str, GraphEdge] = OrderedDict()
-
-    paper_metadata = _clean_metadata(
-        {
-            "authors": paper_row.get("paper_authors"),
-            "venue": paper_row.get("paper_venue"),
-            "year": paper_row.get("paper_year"),
-        }
-    )
-    paper_key = _paper_node_id(paper_id)
-    nodes[paper_key] = GraphNode(
-        data=GraphNodeData(
-            id=paper_key,
-            type="paper",
-            label=paper_row.get("paper_title") or str(paper_id),
-            paper_id=paper_id,
-            metadata=paper_metadata,
-        )
-    )
-
-    concept_rows = await conn.fetch(
-        f"""{_CONCEPT_SELECT_BASE}
-            WHERE c.paper_id = $1
-            ORDER BY c.created_at DESC
-            LIMIT $2
-        """,
-        paper_id,
-        limit,
-    )
-    nodes, edges = _build_graph_elements(concept_rows, [], nodes=nodes, edges=edges)
-
-    total_concepts_for_paper = await conn.fetchval(
-        "SELECT COUNT(*) FROM concepts WHERE paper_id = $1",
-        paper_id,
-    )
-
-    concept_ids: Set[UUID] = {
-        node.data.concept_id
-        for node in nodes.values()
-        if node.data.type == "concept" and node.data.concept_id is not None and node.data.paper_id == paper_id
-    }
-
-    relation_rows: Sequence[Mapping[str, Any]] = []
-    if concept_ids:
-        relation_rows = await conn.fetch(
-            """
-            SELECT id, paper_id, concept_id, related_concept_id, relation_type, description
-            FROM relations
-            WHERE paper_id = $1
-            ORDER BY created_at DESC
-            LIMIT $2
-            """,
-            paper_id,
-            min(limit * _RELATION_LIMIT_MULTIPLIER, MAX_GRAPH_LIMIT),
-        )
-
-    nodes, edges = _build_graph_elements(
-        [],
-        [
-            row
-            for row in relation_rows
-            if row.get("concept_id") in concept_ids
-            and row.get("related_concept_id") in concept_ids
-        ],
-        nodes=nodes,
-        edges=edges,
-        include_paper_concept_edges=False,
-    )
-
-    paper_ids: Set[UUID] = {
-        node.data.paper_id
-        for node in nodes.values()
-        if node.data.type == "paper" and node.data.paper_id is not None
-    }
-    has_more = bool(total_concepts_for_paper and total_concepts_for_paper > len(concept_ids))
-
-    meta = GraphMeta(
-        limit=limit,
-        node_count=len(nodes),
-        edge_count=len(edges),
-        concept_count=total_concepts_for_paper,
-        paper_count=len(paper_ids),
-        has_more=has_more,
-        center_id=paper_key,
-        center_type="paper",
-    )
-    return GraphResponse(nodes=list(nodes.values()), edges=list(edges.values()), meta=meta)
