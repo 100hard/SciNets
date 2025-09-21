@@ -45,7 +45,10 @@ RESULT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 EVALUATE_PATTERN = re.compile(
-    r"(?:evaluate(?:d)? on|tested on|trained on|measured on)\s+(?P<dataset>[A-Za-z0-9\-\+\/ ]{2,})",
+    r"(?:evaluate(?:d)?|tested|trained|measured)"
+    r"(?:\s+[A-Za-z0-9\-]+){0,6}\s+on\s+"
+    r"(?P<dataset>[A-Za-z0-9\-\+\/ ]{2,}?)(?=(?:[,.;]"
+    r"|\s+(?:and|with|for|using|achiev(?:es|ing)?|reports?|showing|compared|where)\b|$))",
     re.IGNORECASE,
 )
 PROPOSE_PATTERN = re.compile(
