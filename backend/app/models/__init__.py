@@ -1,10 +1,39 @@
 
 from .concept import Concept, ConceptBase, ConceptCreate
 from .evidence import Evidence, EvidenceBase, EvidenceCreate
+from .ontology import (
+    Claim,
+    ClaimBase,
+    ClaimCreate,
+    ClaimCategory,
+    ConceptResolution,
+    ConceptResolutionBase,
+    ConceptResolutionCreate,
+    ConceptResolutionType,
+    Dataset,
+    DatasetBase,
+    DatasetCreate,
+    Method,
+    MethodBase,
+    MethodCreate,
+    Metric,
+    MetricBase,
+    MetricCreate,
+    PaperRelation,
+    PaperRelationBase,
+    PaperRelationCreate,
+    PaperRelationType,
+    Result,
+    ResultBase,
+    ResultCreate,
+    Task,
+    TaskBase,
+    TaskCreate,
+)
 from .paper import Paper, PaperBase, PaperCreate
 from .relation import Relation, RelationBase, RelationCreate
-from .section import Section, SectionBase, SectionCreate
 from .search import SearchResult
+from .section import Section, SectionBase, SectionCreate
 
 __all__ = [
     "Paper",
@@ -23,5 +52,32 @@ __all__ = [
     "EvidenceBase",
     "EvidenceCreate",
     "SearchResult",
+    "Method",
+    "MethodBase",
+    "MethodCreate",
+    "Task",
+    "TaskBase",
+    "TaskCreate",
+    "Dataset",
+    "DatasetBase",
+    "DatasetCreate",
+    "Metric",
+    "MetricBase",
+    "MetricCreate",
+    "Result",
+    "ResultBase",
+    "ResultCreate",
+    "Claim",
+    "ClaimBase",
+    "ClaimCreate",
+    "ClaimCategory",
+    "PaperRelation",
+    "PaperRelationBase",
+    "PaperRelationCreate",
+    "PaperRelationType",
+    "ConceptResolution",
+    "ConceptResolutionBase",
+    "ConceptResolutionCreate",
+    "ConceptResolutionType",
 ]
 
