@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, Iterable, List, Mapping
-from uuid import UUID
+from typing import Any, Mapping, Sequence
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -16,11 +16,11 @@ from app.services.graph import (
 
 PAPER_A = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 PAPER_B = UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
-CONCEPT_ALPHA = UUID("11111111-1111-1111-1111-111111111111")
-CONCEPT_BETA = UUID("22222222-2222-2222-2222-222222222222")
-CONCEPT_GAMMA = UUID("33333333-3333-3333-3333-333333333333")
-RELATION_ALPHA = UUID("44444444-4444-4444-4444-444444444444")
-RELATION_BETA = UUID("55555555-5555-5555-5555-555555555555")
+METHOD_ALPHA = UUID("11111111-1111-1111-1111-111111111111")
+METHOD_BETA = UUID("22222222-2222-2222-2222-222222222222")
+DATASET_X = UUID("33333333-3333-3333-3333-333333333333")
+METRIC_F1 = UUID("44444444-4444-4444-4444-444444444444")
+TASK_SUMMARY = UUID("55555555-5555-5555-5555-555555555555")
 
 
 class FakeAcquireContext:
@@ -44,323 +44,272 @@ class FakePool:
 
 class FakeGraphConnection:
     def __init__(self) -> None:
-        self._papers: Dict[UUID, Dict[str, Any]] = {
+        self.papers = {
             PAPER_A: {
                 "id": PAPER_A,
-                "title": "Quantum Linking",
-                "authors": "Ada Lovelace",
-                "venue": "SciConf",
-                "year": 2023,
+                "title": "Structured Summarisation",
             },
             PAPER_B: {
                 "id": PAPER_B,
-                "title": "Graph Learning",
-                "authors": "Alan Turing",
-                "venue": "MLSymposium",
-                "year": 2024,
+                "title": "Benchmarking Methods",
             },
         }
-        self._concepts: Dict[UUID, Dict[str, Any]] = {
-            CONCEPT_ALPHA: {
-                "id": CONCEPT_ALPHA,
-                "paper_id": PAPER_A,
-                "name": "Quantum Fields",
-                "type": "physics",
-                "description": "Field theory overview",
-                "created_at": 1,
+        self.methods = {
+            METHOD_ALPHA: {
+                "id": METHOD_ALPHA,
+                "name": "AlphaNet",
+                "aliases": ["Alpha"],
+                "description": "Primary approach",
             },
-            CONCEPT_BETA: {
-                "id": CONCEPT_BETA,
-                "paper_id": PAPER_A,
-                "name": "Gauge Symmetry",
-                "type": "physics",
-                "description": "Symmetry discussion",
-                "created_at": 2,
+            METHOD_BETA: {
+                "id": METHOD_BETA,
+                "name": "BetaBaseline",
+                "aliases": ["Beta"],
+                "description": "Baseline comparison",
             },
-            CONCEPT_GAMMA: {
-                "id": CONCEPT_GAMMA,
+        }
+        self.datasets = {
+            DATASET_X: {
+                "id": DATASET_X,
+                "name": "Dataset-X",
+                "aliases": ["DX"],
+                "description": "Evaluation corpus",
+            }
+        }
+        self.metrics = {
+            METRIC_F1: {
+                "id": METRIC_F1,
+                "name": "F1",
+                "aliases": ["F1 Score"],
+                "description": "Harmonic mean",
+                "unit": "%",
+            }
+        }
+        self.tasks = {
+            TASK_SUMMARY: {
+                "id": TASK_SUMMARY,
+                "name": "Summarisation",
+                "aliases": [],
+                "description": "Automatic summarisation",
+            }
+        }
+        self.results = [
+            {
+                "id": uuid4(),
+                "paper_id": PAPER_A,
+                "method_id": METHOD_ALPHA,
+                "dataset_id": DATASET_X,
+                "metric_id": METRIC_F1,
+                "task_id": TASK_SUMMARY,
+                "confidence": 0.8,
+                "evidence": [{"snippet": "Alpha performs well."}],
+            },
+            {
+                "id": uuid4(),
                 "paper_id": PAPER_B,
-                "name": "Graph Embeddings",
-                "type": "ml",
-                "description": "Embedding pipelines",
-                "created_at": 3,
+                "method_id": METHOD_ALPHA,
+                "dataset_id": DATASET_X,
+                "metric_id": METRIC_F1,
+                "task_id": TASK_SUMMARY,
+                "confidence": 0.6,
+                "evidence": [{"snippet": "Alpha remains competitive."}],
             },
-        }
-        self._relations: Dict[UUID, Dict[str, Any]] = {
-            RELATION_ALPHA: {
-                "id": RELATION_ALPHA,
-                "paper_id": PAPER_A,
-                "concept_id": CONCEPT_ALPHA,
-                "related_concept_id": CONCEPT_BETA,
-                "relation_type": "related_to",
-                "description": "Alpha influences Beta",
-                "created_at": 10,
+            {
+                "id": uuid4(),
+                "paper_id": PAPER_B,
+                "method_id": METHOD_BETA,
+                "dataset_id": DATASET_X,
+                "metric_id": METRIC_F1,
+                "task_id": TASK_SUMMARY,
+                "confidence": 0.7,
+                "evidence": [{"snippet": "Beta comparison."}],
             },
-            RELATION_BETA: {
-                "id": RELATION_BETA,
-                "paper_id": PAPER_A,
-                "concept_id": CONCEPT_BETA,
-                "related_concept_id": CONCEPT_GAMMA,
-                "relation_type": "extends",
-                "description": "Cross paper relationship",
-                "created_at": 8,
-            },
-        }
+        ]
 
     # AsyncPG compatibility helpers -------------------------------------------------
-    async def fetch(self, query: str, *params: Any) -> List[Mapping[str, Any]]:
+    async def fetch(self, query: str, *params: Any) -> list[Mapping[str, Any]]:
         normalized = " ".join(query.split())
-        if normalized.startswith("SELECT c.id AS concept_id"):
-            if "WHERE c.id = ANY" in normalized:
-                concept_ids = set(params[0])
-                return [self._build_concept_row(rec) for rec in self._filter_concepts(ids=concept_ids)]
-            paper_id, concept_type, limit = self._parse_concept_filters(normalized, list(params))
-            concepts = self._filter_concepts(paper_id=paper_id, concept_type=concept_type)
-            return [self._build_concept_row(rec) for rec in concepts[:limit]]
+        if normalized.startswith("SELECT r.id AS result_id"):
+            paper_ids: Sequence[UUID] | None = None
+            if "WHERE r.paper_id = ANY($1::uuid[])" in normalized:
+                paper_ids = params[0]
+            rows = [res for res in self.results if paper_ids is None or res["paper_id"] in paper_ids]
+            return [self._build_result_row(res) for res in rows]
 
-        if normalized.startswith("SELECT id, paper_id, concept_id, related_concept_id, relation_type, description FROM relations"):
-            if "concept_id = ANY($1::uuid[]) AND related_concept_id = ANY($1::uuid[])" in normalized:
-                concept_ids = set(params[0])
-                idx = 1
-                paper_filter = None
-                if "AND paper_id = $2" in normalized:
-                    paper_filter = params[1]
-                    idx = 2
-                limit = params[idx]
-                relations = self._relations_between(concept_ids, paper_filter)
-                return [self._build_relation_row(rec) for rec in relations[:limit]]
-            if "WHERE (concept_id = $1 OR related_concept_id = $1)" in normalized:
-                concept_id = params[0]
-                limit = params[1]
-                relations = self._relations_touching(concept_id)
-                return [self._build_relation_row(rec) for rec in relations[:limit]]
-            if "WHERE paper_id = $1" in normalized:
-                paper_id = params[0]
-                limit = params[1]
-                relations = self._relations_for_paper(paper_id)
-                return [self._build_relation_row(rec) for rec in relations[:limit]]
+        if normalized.startswith("SELECT DISTINCT paper_id FROM results WHERE"):
+            if "method_id" in normalized:
+                target = params[0]
+                return [
+                    {"paper_id": res["paper_id"]}
+                    for res in self.results
+                    if res["method_id"] == target
+                ]
+            if "dataset_id" in normalized:
+                target = params[0]
+                return [
+                    {"paper_id": res["paper_id"]}
+                    for res in self.results
+                    if res["dataset_id"] == target
+                ]
+            if "metric_id" in normalized:
+                target = params[0]
+                return [
+                    {"paper_id": res["paper_id"]}
+                    for res in self.results
+                    if res["metric_id"] == target
+                ]
+            if "task_id" in normalized:
+                target = params[0]
+                return [
+                    {"paper_id": res["paper_id"]}
+                    for res in self.results
+                    if res["task_id"] == target
+                ]
 
         raise AssertionError(f"Unsupported fetch query: {normalized}")
 
     async def fetchrow(self, query: str, *params: Any) -> Mapping[str, Any] | None:
         normalized = " ".join(query.split())
-        if normalized.startswith("SELECT c.id AS concept_id") and "WHERE c.id = $1" in normalized:
-            concept_id = params[0]
-            concepts = self._filter_concepts(ids={concept_id})
-            return self._build_concept_row(concepts[0]) if concepts else None
-        if normalized.startswith("SELECT p.id AS paper_id") and "WHERE p.id = $1" in normalized:
-            paper_id = params[0]
-            paper = self._papers.get(paper_id)
-            return self._build_paper_row(paper) if paper else None
-        raise AssertionError(f"Unsupported fetchrow query: {normalized}")
-
-    async def fetchval(self, query: str, *params: Any) -> Any:
-        normalized = " ".join(query.split())
-        if normalized.startswith("SELECT COUNT(*) FROM concepts c"):
-            paper_id, concept_type, _ = self._parse_concept_filters(normalized, list(params), include_limit=False)
-            return len(self._filter_concepts(paper_id=paper_id, concept_type=concept_type))
-        if normalized.startswith("SELECT COUNT(*) FROM concepts WHERE paper_id = $1"):
-            paper_id = params[0]
-            return len(self._filter_concepts(paper_id=paper_id))
-        raise AssertionError(f"Unsupported fetchval query: {normalized}")
+        target = params[0]
+        if normalized.startswith("SELECT id, name, aliases, description FROM methods"):
+            return self.methods.get(target)
+        if normalized.startswith("SELECT id, name, aliases, description FROM datasets"):
+            return self.datasets.get(target)
+        if normalized.startswith("SELECT id, name, aliases, description, unit FROM metrics"):
+            return self.metrics.get(target)
+        if normalized.startswith("SELECT id, name, aliases, description FROM tasks"):
+            return self.tasks.get(target)
+        return None
 
     # Helpers ----------------------------------------------------------------------
-    def _filter_concepts(
-        self,
-        *,
-        paper_id: UUID | None = None,
-        concept_type: str | None = None,
-        ids: Iterable[UUID] | None = None,
-    ) -> List[Dict[str, Any]]:
-        records = list(self._concepts.values())
-        if ids is not None:
-            target = set(ids)
-            records = [rec for rec in records if rec["id"] in target]
-        if paper_id is not None:
-            records = [rec for rec in records if rec["paper_id"] == paper_id]
-        if concept_type is not None:
-            records = [rec for rec in records if rec["type"] == concept_type]
-        records.sort(key=lambda rec: rec["created_at"], reverse=True)
-        return records
-
-    def _parse_concept_filters(
-        self,
-        normalized_query: str,
-        params: List[Any],
-        *,
-        include_limit: bool = True,
-    ) -> tuple[UUID | None, str | None, int]:
-        paper_id = None
-        concept_type = None
-        limit = params[-1] if include_limit and params else 0
-
-        if "WHERE c.paper_id = $1 AND c.type = $2" in normalized_query:
-            paper_id = params[0]
-            concept_type = params[1]
-            if include_limit:
-                limit = params[2]
-        elif "WHERE c.paper_id = $1" in normalized_query and "AND" not in normalized_query.split("WHERE c.paper_id = $1", 1)[1][:5]:
-            paper_id = params[0]
-            if include_limit:
-                limit = params[1]
-        elif "WHERE c.type = $1" in normalized_query:
-            concept_type = params[0]
-            if include_limit:
-                limit = params[1]
-        elif include_limit:
-            limit = params[0]
-
-        return paper_id, concept_type, limit
-
-    def _build_concept_row(self, concept: Mapping[str, Any]) -> Dict[str, Any]:
-        paper = self._papers[concept["paper_id"]]
+    def _build_result_row(self, result: Mapping[str, Any]) -> dict[str, Any]:
+        paper = self.papers[result["paper_id"]]
+        method = self.methods.get(result.get("method_id"))
+        dataset = self.datasets.get(result.get("dataset_id"))
+        metric = self.metrics.get(result.get("metric_id"))
+        task = self.tasks.get(result.get("task_id"))
         return {
-            "concept_id": concept["id"],
-            "concept_name": concept["name"],
-            "concept_type": concept["type"],
-            "concept_description": concept["description"],
-            "paper_id": concept["paper_id"],
-            "paper_title": paper["title"],
-            "paper_authors": paper["authors"],
-            "paper_venue": paper["venue"],
-            "paper_year": paper["year"],
+            "result_id": result["id"],
+            "paper_id": result["paper_id"],
+            "method_id": result.get("method_id"),
+            "dataset_id": result.get("dataset_id"),
+            "metric_id": result.get("metric_id"),
+            "task_id": result.get("task_id"),
+            "confidence": result.get("confidence"),
+            "evidence": result.get("evidence"),
+            "paper_title": paper.get("title"),
+            "method_name": method.get("name") if method else None,
+            "method_aliases": method.get("aliases") if method else None,
+            "method_description": method.get("description") if method else None,
+            "dataset_name": dataset.get("name") if dataset else None,
+            "dataset_aliases": dataset.get("aliases") if dataset else None,
+            "dataset_description": dataset.get("description") if dataset else None,
+            "metric_name": metric.get("name") if metric else None,
+            "metric_aliases": metric.get("aliases") if metric else None,
+            "metric_description": metric.get("description") if metric else None,
+            "metric_unit": metric.get("unit") if metric else None,
+            "task_name": task.get("name") if task else None,
+            "task_aliases": task.get("aliases") if task else None,
+            "task_description": task.get("description") if task else None,
         }
 
-    def _build_paper_row(self, paper: Mapping[str, Any] | None) -> Dict[str, Any] | None:
-        if not paper:
-            return None
-        return {
-            "paper_id": paper["id"],
-            "paper_title": paper["title"],
-            "paper_authors": paper["authors"],
-            "paper_venue": paper["venue"],
-            "paper_year": paper["year"],
-        }
 
-    def _build_relation_row(self, relation: Mapping[str, Any]) -> Dict[str, Any]:
-        return {
-            "id": relation["id"],
-            "paper_id": relation["paper_id"],
-            "concept_id": relation["concept_id"],
-            "related_concept_id": relation["related_concept_id"],
-            "relation_type": relation["relation_type"],
-            "description": relation["description"],
-        }
-
-    def _relations_between(
-        self,
-        concept_ids: Iterable[UUID],
-        paper_filter: UUID | None,
-    ) -> List[Dict[str, Any]]:
-        targets = set(concept_ids)
-        relations = [
-            rel
-            for rel in self._relations.values()
-            if rel["concept_id"] in targets and rel["related_concept_id"] in targets
-        ]
-        if paper_filter is not None:
-            relations = [rel for rel in relations if rel["paper_id"] == paper_filter]
-        relations.sort(key=lambda rec: rec["created_at"], reverse=True)
-        return relations
-
-    def _relations_touching(self, concept_id: UUID) -> List[Dict[str, Any]]:
-        relations = [
-            rel
-            for rel in self._relations.values()
-            if rel["concept_id"] == concept_id or rel["related_concept_id"] == concept_id
-        ]
-        relations.sort(key=lambda rec: rec["created_at"], reverse=True)
-        return relations
-
-    def _relations_for_paper(self, paper_id: UUID) -> List[Dict[str, Any]]:
-        relations = [rel for rel in self._relations.values() if rel["paper_id"] == paper_id]
-        relations.sort(key=lambda rec: rec["created_at"], reverse=True)
-        return relations
-
-
-def _setup_fake_pool(monkeypatch: pytest.MonkeyPatch) -> FakePool:
+def _setup_fake_pool(monkeypatch: pytest.MonkeyPatch) -> FakeGraphConnection:
     conn = FakeGraphConnection()
     pool = FakePool(conn)
     monkeypatch.setattr("app.services.graph.get_pool", lambda: pool)
-    return pool
+    return conn
 
 
-def test_get_graph_overview_returns_concepts_and_relations(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_graph_overview_returns_typed_graph(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_run_get_graph_overview(monkeypatch))
 
 
 async def _run_get_graph_overview(monkeypatch: pytest.MonkeyPatch) -> None:
     _setup_fake_pool(monkeypatch)
 
-    response = await get_graph_overview(limit=5)
+    response = await get_graph_overview(limit=10, min_conf=0.6)
 
     assert isinstance(response, GraphResponse)
-    assert response.meta.limit == 5
-    assert response.meta.concept_count == 3
-    assert response.meta.paper_count == 2
-    assert not response.meta.has_more
-
-    concept_ids = {node.data.concept_id for node in response.nodes if node.data.type == "concept"}
-    assert concept_ids == {CONCEPT_ALPHA, CONCEPT_BETA, CONCEPT_GAMMA}
-
-    relation_ids = {edge.data.relation_id for edge in response.edges if edge.data.relation_id}
-    assert RELATION_ALPHA in relation_ids
-    assert RELATION_BETA in relation_ids
-
-
-def test_get_graph_neighborhood_for_concept(monkeypatch: pytest.MonkeyPatch) -> None:
-    asyncio.run(_run_get_graph_neighborhood_for_concept(monkeypatch))
-
-
-async def _run_get_graph_neighborhood_for_concept(monkeypatch: pytest.MonkeyPatch) -> None:
-    _setup_fake_pool(monkeypatch)
-
-    response = await get_graph_neighborhood(CONCEPT_BETA, limit=3)
-
-    concept_ids = {node.data.concept_id for node in response.nodes if node.data.type == "concept"}
-    assert {CONCEPT_ALPHA, CONCEPT_BETA, CONCEPT_GAMMA}.issubset(concept_ids)
-
-    assert response.meta.center_type == "concept"
-    assert response.meta.center_id.endswith(str(CONCEPT_BETA))
-    assert response.meta.concept_count == 2  # two concepts share the primary paper
-    assert response.meta.paper_count >= 1
-
-    relation_pairs = {
-        (edge.data.concept_id, edge.data.related_concept_id)
-        for edge in response.edges
-        if edge.data.relation_id == RELATION_BETA
+    assert response.meta.limit == 10
+    assert response.meta.node_count >= 4
+    assert response.meta.edge_count >= 4
+    assert response.meta.filters == {
+        "types": ["method", "dataset", "metric", "task"],
+        "relations": ["proposes", "evaluates_on", "reports", "compares"],
+        "min_conf": 0.6,
     }
-    assert (CONCEPT_BETA, CONCEPT_GAMMA) in relation_pairs
+
+    node_types = {node.data.type for node in response.nodes}
+    assert node_types == {"method", "dataset", "metric", "task"}
+
+    method_node = next(node for node in response.nodes if node.data.type == "method" and node.data.entity_id == METHOD_ALPHA)
+    assert method_node.data.paper_count == 2
+    assert method_node.data.aliases == ["Alpha"]
+    assert method_node.data.top_links
+
+    edge_types = {edge.data.type for edge in response.edges}
+    assert {"evaluates_on", "reports", "proposes", "compares"}.issubset(edge_types)
+
+    compare_edge = next(edge for edge in response.edges if edge.data.type == "compares")
+    assert compare_edge.data.weight == pytest.approx(0.65, rel=1e-5)
+    assert compare_edge.data.paper_count == 1
+    assert compare_edge.data.average_confidence == pytest.approx(0.65, rel=1e-5)
 
 
-def test_get_graph_neighborhood_for_paper(monkeypatch: pytest.MonkeyPatch) -> None:
-    asyncio.run(_run_get_graph_neighborhood_for_paper(monkeypatch))
+def test_get_graph_overview_respects_min_confidence(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_run_get_graph_overview_min_conf(monkeypatch))
 
 
-async def _run_get_graph_neighborhood_for_paper(monkeypatch: pytest.MonkeyPatch) -> None:
+async def _run_get_graph_overview_min_conf(monkeypatch: pytest.MonkeyPatch) -> None:
     _setup_fake_pool(monkeypatch)
 
-    response = await get_graph_neighborhood(PAPER_A, limit=5)
+    response = await get_graph_overview(limit=10, min_conf=0.75)
 
-    assert response.meta.center_type == "paper"
-    assert response.meta.center_id.endswith(str(PAPER_A))
-    assert response.meta.concept_count == 2
-    assert not response.meta.has_more
+    assert response.nodes == []
+    assert response.edges == []
+    assert response.meta.edge_count == 0
+    assert response.meta.node_count == 0
 
-    concept_ids = {node.data.concept_id for node in response.nodes if node.data.type == "concept"}
-    assert concept_ids == {CONCEPT_ALPHA, CONCEPT_BETA}
 
-    relation_ids = {edge.data.relation_id for edge in response.edges if edge.data.relation_id}
-    assert relation_ids == {RELATION_ALPHA}
+def test_get_graph_neighborhood_for_method(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_run_get_graph_neighborhood(monkeypatch))
+
+
+async def _run_get_graph_neighborhood(monkeypatch: pytest.MonkeyPatch) -> None:
+    _setup_fake_pool(monkeypatch)
+
+    response = await get_graph_neighborhood(METHOD_ALPHA, limit=5, min_conf=0.6)
+
+    assert response.meta.center_type == "method"
+    assert response.meta.center_id.endswith(str(METHOD_ALPHA))
+    assert response.meta.node_count >= 2
+    assert response.meta.edge_count >= 3
+    assert response.meta.filters["min_conf"] == 0.6
+
+    node_ids = {node.data.entity_id for node in response.nodes}
+    assert METHOD_ALPHA in node_ids
+    assert DATASET_X in node_ids
+    assert METRIC_F1 in node_ids
+    assert TASK_SUMMARY in node_ids
+
+    method_node = next(node for node in response.nodes if node.data.entity_id == METHOD_ALPHA)
+    assert any(evidence.snippet for evidence in method_node.data.evidence)
 
 
 def test_get_graph_neighborhood_missing_node(monkeypatch: pytest.MonkeyPatch) -> None:
-    asyncio.run(_run_get_graph_neighborhood_missing_node(monkeypatch))
+    asyncio.run(_run_get_graph_neighborhood_missing(monkeypatch))
 
 
-async def _run_get_graph_neighborhood_missing_node(monkeypatch: pytest.MonkeyPatch) -> None:
-    _setup_fake_pool(monkeypatch)
-
+async def _run_get_graph_neighborhood_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = _setup_fake_pool(monkeypatch)
     missing_id = UUID("99999999-9999-9999-9999-999999999999")
+    # Remove all entities to simulate missing identifier
+    conn.methods.clear()
+    conn.datasets.clear()
+    conn.metrics.clear()
+    conn.tasks.clear()
+
     with pytest.raises(GraphEntityNotFoundError):
-        await get_graph_neighborhood(missing_id, limit=3)
+        await get_graph_neighborhood(missing_id, limit=5)
+
