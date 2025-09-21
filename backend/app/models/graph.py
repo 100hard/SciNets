@@ -3,18 +3,39 @@ from __future__ import annotations
 from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-NodeType = Literal["paper", "concept"]
+NodeType = Literal["method", "dataset", "metric", "task"]
+RelationType = Literal["proposes", "evaluates_on", "reports", "compares"]
+
+
+class GraphNodeLink(BaseModel):
+    id: str
+    label: str
+    type: NodeType
+    relation: RelationType
+    weight: float
+
+
+class GraphEvidenceItem(BaseModel):
+    paper_id: UUID
+    paper_title: Optional[str] = None
+    snippet: Optional[str] = None
+    confidence: float
+    relation: RelationType
 
 
 class GraphNodeData(BaseModel):
     id: str
     type: NodeType
     label: str
-    paper_id: Optional[UUID] = None
-    concept_id: Optional[UUID] = None
+    entity_id: UUID
+    paper_count: int
+    aliases: List[str] = Field(default_factory=list)
+    description: Optional[str] = None
+    top_links: List[GraphNodeLink] = Field(default_factory=list)
+    evidence: List[GraphEvidenceItem] = Field(default_factory=list)
     metadata: Optional[Dict[str, Any]] = None
 
     class Config:
@@ -32,11 +53,10 @@ class GraphEdgeData(BaseModel):
     id: str
     source: str
     target: str
-    type: str
-    paper_id: Optional[UUID] = None
-    concept_id: Optional[UUID] = None
-    related_concept_id: Optional[UUID] = None
-    relation_id: Optional[UUID] = None
+    type: RelationType
+    weight: float
+    paper_count: int
+    average_confidence: float
     metadata: Optional[Dict[str, Any]] = None
 
     class Config:

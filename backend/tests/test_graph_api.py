@@ -1,13 +1,22 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Sequence
 from uuid import UUID
 
 import pytest
 from fastapi import HTTPException
 
 from app.api.graph import api_graph_neighborhood, api_graph_overview
-from app.models.graph import GraphEdge, GraphEdgeData, GraphMeta, GraphNode, GraphNodeData, GraphResponse
+from app.models.graph import (
+    GraphEdge,
+    GraphEdgeData,
+    GraphMeta,
+    GraphNode,
+    GraphNodeData,
+    GraphNodeLink,
+    GraphResponse,
+)
 from app.services.graph import GraphEntityNotFoundError
 
 
@@ -20,20 +29,35 @@ def _sample_response() -> GraphResponse:
         nodes=[
             GraphNode(
                 data=GraphNodeData(
-                    id=f"paper:{PAPER_ID}",
-                    type="paper",
-                    label="Sample Paper",
-                    paper_id=PAPER_ID,
+                    id=f"method:{CONCEPT_ID}",
+                    type="method",
+                    label="Sample Method",
+                    entity_id=CONCEPT_ID,
+                    paper_count=3,
+                    aliases=["Baseline"],
+                    top_links=[
+                        GraphNodeLink(
+                            id=f"dataset:{PAPER_ID}",
+                            label="Dataset",
+                            type="dataset",
+                            relation="evaluates_on",
+                            weight=1.8,
+                        )
+                    ],
+                    evidence=[],
                     metadata=None,
                 )
             ),
             GraphNode(
                 data=GraphNodeData(
-                    id=f"concept:{CONCEPT_ID}",
-                    type="concept",
-                    label="Concept",
-                    paper_id=PAPER_ID,
-                    concept_id=CONCEPT_ID,
+                    id=f"dataset:{PAPER_ID}",
+                    type="dataset",
+                    label="Dataset",
+                    entity_id=PAPER_ID,
+                    paper_count=2,
+                    aliases=[],
+                    top_links=[],
+                    evidence=[],
                     metadata=None,
                 )
             ),
@@ -41,12 +65,14 @@ def _sample_response() -> GraphResponse:
         edges=[
             GraphEdge(
                 data=GraphEdgeData(
-                    id=f"edge:paper:{PAPER_ID}->concept:{CONCEPT_ID}",
-                    source=f"paper:{PAPER_ID}",
-                    target=f"concept:{CONCEPT_ID}",
-                    type="mentions",
-                    paper_id=PAPER_ID,
-                    concept_id=CONCEPT_ID,
+                    id=f"edge:evaluates_on:method:{CONCEPT_ID}->dataset:{PAPER_ID}",
+                    source=f"method:{CONCEPT_ID}",
+                    target=f"dataset:{PAPER_ID}",
+                    type="evaluates_on",
+                    weight=1.8,
+                    paper_count=2,
+                    average_confidence=0.9,
+                    metadata=None,
                 )
             )
         ],
@@ -61,15 +87,22 @@ def test_api_graph_overview_delegates_to_service(monkeypatch: pytest.MonkeyPatch
 async def _run_api_graph_overview(monkeypatch: pytest.MonkeyPatch) -> None:
     expected = _sample_response()
 
-    async def fake_get_graph_overview(*, limit: int, paper_id: UUID | None, concept_type: str | None) -> GraphResponse:
+    async def fake_get_graph_overview(
+        *,
+        limit: int,
+        types: Sequence[str] | None,
+        relations: Sequence[str] | None,
+        min_conf: float,
+    ) -> GraphResponse:
         assert limit == 25
-        assert paper_id is None
-        assert concept_type is None
+        assert types is None
+        assert relations is None
+        assert min_conf == 0.75
         return expected
 
     monkeypatch.setattr("app.api.graph.get_graph_overview", fake_get_graph_overview)
 
-    response = await api_graph_overview(limit=25, paper_id=None, concept_type=None)
+    response = await api_graph_overview(limit=25, min_conf=0.75, types=None, relations=None)
     assert response == expected
 
 
@@ -80,14 +113,30 @@ def test_api_graph_neighborhood_success(monkeypatch: pytest.MonkeyPatch) -> None
 async def _run_api_graph_neighborhood_success(monkeypatch: pytest.MonkeyPatch) -> None:
     expected = _sample_response()
 
-    async def fake_get_graph_neighborhood(node_id: UUID, *, limit: int) -> GraphResponse:
+    async def fake_get_graph_neighborhood(
+        node_id: UUID,
+        *,
+        limit: int,
+        types: Sequence[str] | None,
+        relations: Sequence[str] | None,
+        min_conf: float,
+    ) -> GraphResponse:
         assert node_id == CONCEPT_ID
         assert limit == 5
+        assert types == ["method"]
+        assert relations == ["reports"]
+        assert min_conf == 0.65
         return expected
 
     monkeypatch.setattr("app.api.graph.get_graph_neighborhood", fake_get_graph_neighborhood)
 
-    response = await api_graph_neighborhood(CONCEPT_ID, limit=5)
+    response = await api_graph_neighborhood(
+        CONCEPT_ID,
+        limit=5,
+        types=["method"],
+        relations=["reports"],
+        min_conf=0.65,
+    )
     assert response == expected
 
 
@@ -96,7 +145,14 @@ def test_api_graph_neighborhood_not_found(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 async def _run_api_graph_neighborhood_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_get_graph_neighborhood(node_id: UUID, *, limit: int) -> GraphResponse:
+    async def fake_get_graph_neighborhood(
+        node_id: UUID,
+        *,
+        limit: int,
+        types: Sequence[str] | None,
+        relations: Sequence[str] | None,
+        min_conf: float,
+    ) -> GraphResponse:
         raise GraphEntityNotFoundError("missing")
 
     monkeypatch.setattr("app.api.graph.get_graph_neighborhood", fake_get_graph_neighborhood)
