@@ -13,3 +13,4 @@ python-multipart==0.0.9
 pytest==8.2.1
 qdrant-client==1.9.1
 sentence-transformers==2.7.0
+pdfplumber==0.11.0
