@@ -68,6 +68,23 @@ class VectorRecord:
     payload: Dict[str, Any]
 
 
+@dataclass
+class VectorSearchResult:
+    vector_id: str
+    score: float
+    payload: Dict[str, Any]
+
+
+def build_embedding_backend(model_name: str, dimension: int) -> EmbeddingBackend:
+    if SentenceTransformer is not None:
+        try:
+            return SentenceTransformerBackend(model_name)
+        except Exception as exc:  # pragma: no cover - fallback logging
+            print(f"[EmbeddingService] Failed to initialize SentenceTransformer: {exc}")
+    print("[EmbeddingService] Using deterministic hash embedding backend")
+    return HashEmbeddingBackend(dimension)
+
+
 class EmbeddingBackend:
     async def embed(self, texts: Sequence[str], batch_size: int) -> List[List[float]]:
         raise NotImplementedError
@@ -201,6 +218,34 @@ class VectorStore:
                 wait=True,
             )
 
+    async def search(self, vector: Sequence[float], limit: int) -> List[VectorSearchResult]:
+        client = await self._ensure_client()
+        await self._ensure_collection(client)
+        if limit <= 0:
+            return []
+        try:
+            results = await asyncio.to_thread(
+                client.search,
+                collection_name=self._collection_name,
+                query_vector=list(map(float, vector)),
+                limit=max(1, limit),
+                with_payload=True,
+            )
+        except Exception as exc:
+            raise VectorStoreNotAvailableError(str(exc)) from exc
+
+        normalized: List[VectorSearchResult] = []
+        for item in results:
+            payload = dict(getattr(item, "payload", {}) or {})
+            normalized.append(
+                VectorSearchResult(
+                    vector_id=str(getattr(item, "id", "")),
+                    score=float(getattr(item, "score", 0.0) or 0.0),
+                    payload=payload,
+                )
+            )
+        return normalized
+
     async def delete_for_paper(self, paper_id: UUID) -> None:
         client = await self._ensure_client()
         await self._ensure_collection(client)
@@ -281,7 +326,9 @@ class EmbeddingService:
         self._dimension = max(1, settings.embedding_dimension)
         self._batch_size = max(1, settings.embedding_batch_size)
         self._upsert_batch_size = max(1, settings.qdrant_upsert_batch_size)
-        self._backend = backend or self._build_backend()
+        self._backend = backend or build_embedding_backend(
+            self._model_name, self._dimension
+        )
         self._cache = cache or EmbeddingCacheRepository()
         self._vector_store = vector_store or VectorStore(
             settings.qdrant_collection_name, self._dimension
@@ -289,15 +336,6 @@ class EmbeddingService:
         self._list_sections = sections_fetcher or list_sections
         self._create_evidence = create_evidence_fn or create_evidence
         self._delete_evidence = delete_evidence_fn or delete_evidence_for_paper
-
-    def _build_backend(self) -> EmbeddingBackend:
-        if SentenceTransformer is not None:
-            try:
-                return SentenceTransformerBackend(self._model_name)
-            except Exception as exc:  # pragma: no cover - fallback logging
-                print(f"[EmbeddingService] Failed to initialize SentenceTransformer: {exc}")
-        print("[EmbeddingService] Using deterministic hash embedding backend")
-        return HashEmbeddingBackend(self._dimension)
 
     async def embed_paper_sections(self, paper_id: UUID) -> None:
         sections = await self._load_sections(paper_id)

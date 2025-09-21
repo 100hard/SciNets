@@ -6,6 +6,8 @@ import {
   Users,
 } from "lucide-react";
 
+import SemanticSearch from "../components/semantic-search";
+
 const stats = [
   {
     title: "Knowledge Graph Nodes",
@@ -54,6 +56,8 @@ const activityFeed = [
 export default function Home() {
   return (
     <div className="space-y-6">
+      <SemanticSearch />
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
