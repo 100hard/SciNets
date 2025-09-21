@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Sequence, TYPE_CHECKING
 from uuid import UUID
 
 from app.db.pool import get_pool
 from app.models.relation import Relation, RelationCreate
+
+if TYPE_CHECKING:  # pragma: no cover - used for typing only
+    from app.models.concept import Concept
 
 
 async def list_relations(
@@ -61,4 +64,47 @@ async def get_relation(relation_id: UUID) -> Optional[Relation]:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, relation_id)
     return Relation(**dict(row)) if row else None
+
+
+async def replace_paper_concept_relations(
+    paper_id: UUID,
+    concepts: Sequence["Concept"],
+    relation_type: str = "mentions",
+) -> None:
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                "DELETE FROM relations WHERE paper_id = $1 AND relation_type = $2",
+                paper_id,
+                relation_type,
+            )
+            if not concepts:
+                return
+
+            records = [
+                (
+                    paper_id,
+                    concept.id,
+                    None,
+                    None,
+                    relation_type,
+                    concept.description,
+                )
+                for concept in concepts
+            ]
+            await conn.executemany(
+                """
+                INSERT INTO relations (
+                    paper_id,
+                    concept_id,
+                    related_concept_id,
+                    section_id,
+                    relation_type,
+                    description
+                )
+                VALUES ($1, $2, $3, $4, $5, $6)
+                """,
+                records,
+            )
 

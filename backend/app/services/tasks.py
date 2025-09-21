@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover - optional dependency
     TesseractNotFoundError = Exception  # type: ignore[assignment]
 
 from app.models.section import SectionCreate
+from app.services.concept_extraction import extract_and_store_concepts
 from app.services.embeddings import embed_paper_sections
 from app.services.papers import get_paper, update_paper_status
 from app.services.sections import replace_sections
@@ -123,6 +124,12 @@ async def parse_pdf_task(paper_id: UUID) -> None:
         ]
 
         await replace_sections(paper_id, section_models)
+        try:
+            await extract_and_store_concepts(paper_id, section_models)
+        except Exception as exc:  # pragma: no cover - background task logging
+            print(
+                f"[parse_pdf_task] Failed to extract concepts for paper {paper_id}: {exc}"
+            )
         try:
             await embed_paper_sections(paper_id)
         except Exception as exc:  # pragma: no cover - background task logging

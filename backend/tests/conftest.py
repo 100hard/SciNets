@@ -173,5 +173,6 @@ def datastore(monkeypatch: pytest.MonkeyPatch) -> InMemoryDataStore:
     monkeypatch.setattr("app.services.tasks.replace_sections", store.replace_sections)
     monkeypatch.setattr("app.services.tasks.download_pdf_from_storage", store.download_pdf_from_storage)
     monkeypatch.setattr("app.services.tasks.embed_paper_sections", async_noop)
+    monkeypatch.setattr("app.services.tasks.extract_and_store_concepts", async_noop)
 
     return store
