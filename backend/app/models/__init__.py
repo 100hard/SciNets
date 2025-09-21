@@ -4,6 +4,7 @@ from .evidence import Evidence, EvidenceBase, EvidenceCreate
 from .paper import Paper, PaperBase, PaperCreate
 from .relation import Relation, RelationBase, RelationCreate
 from .section import Section, SectionBase, SectionCreate
+from .search import SearchResult
 
 __all__ = [
     "Paper",
@@ -21,5 +22,6 @@ __all__ = [
     "Evidence",
     "EvidenceBase",
     "EvidenceCreate",
+    "SearchResult",
 ]
 
