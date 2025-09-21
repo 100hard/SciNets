@@ -476,5 +476,4 @@ async def embed_paper_sections(paper_id: UUID) -> None:
     service = get_embedding_service()
     await service.embed_paper_sections(paper_id)
 
-
-from app.db.pool import get_pool  # noqa: E402  # isort: skip - avoid circular import
+from app.db.pool import get_pool

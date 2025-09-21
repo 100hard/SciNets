@@ -1,10 +1,36 @@
 from __future__ import annotations
 
-from typing import List, Optional
+import json
+from typing import Any, List, Optional
 from uuid import UUID
 
 from app.db.pool import get_pool
 from app.models.evidence import Evidence, EvidenceCreate
+
+
+def _encode_metadata(metadata: Optional[dict[str, Any]]) -> Optional[str]:
+    if metadata is None:
+        return None
+    return json.dumps(metadata, ensure_ascii=False)
+
+
+def _decode_metadata(value: Any) -> Optional[dict[str, Any]]:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+        try:
+            decoded = json.loads(value)
+        except json.JSONDecodeError:
+            return None
+        if isinstance(decoded, dict):
+            return decoded
+        return None
+    return None
 
 
 async def list_evidence(
@@ -48,7 +74,13 @@ async def list_evidence(
     params.extend([limit, offset])
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
-    return [Evidence(**dict(row)) for row in rows]
+
+    normalized = []
+    for row in rows:
+        payload = dict(row)
+        payload["metadata"] = _decode_metadata(payload.get("metadata"))
+        normalized.append(Evidence(**payload))
+    return normalized
 
 
 async def create_evidence(data: EvidenceCreate) -> Evidence:
@@ -58,6 +90,7 @@ async def create_evidence(data: EvidenceCreate) -> Evidence:
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id, paper_id, section_id, concept_id, relation_id, snippet, vector_id, embedding_model, score, metadata, created_at, updated_at
     """
+    metadata = _encode_metadata(data.metadata)
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             query,
@@ -69,9 +102,17 @@ async def create_evidence(data: EvidenceCreate) -> Evidence:
             data.vector_id,
             data.embedding_model,
             data.score,
-            data.metadata,
+            metadata,
         )
-    return Evidence(**dict(row))
+    payload = dict(row)
+    payload["metadata"] = _decode_metadata(payload.get("metadata"))
+    return Evidence(**payload)
+
+
+async def delete_evidence_for_paper(paper_id: UUID) -> None:
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM evidence WHERE paper_id = $1", paper_id)
 
 
 async def delete_evidence_for_paper(paper_id: UUID) -> None:
@@ -89,5 +130,9 @@ async def get_evidence(evidence_id: UUID) -> Optional[Evidence]:
     """
     async with pool.acquire() as conn:
         row = await conn.fetchrow(query, evidence_id)
-    return Evidence(**dict(row)) if row else None
+    if not row:
+        return None
+    payload = dict(row)
+    payload["metadata"] = _decode_metadata(payload.get("metadata"))
+    return Evidence(**payload)
 
