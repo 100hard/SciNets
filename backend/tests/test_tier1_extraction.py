@@ -104,7 +104,6 @@ def test_extract_signals_ignores_method_like_spans_for_datasets() -> None:
     assert not artifacts.datasets
     assert not artifacts.results
 
-
 @pytest.mark.anyio("asyncio")
 async def test_run_tier1_extraction_persists_results(monkeypatch: pytest.MonkeyPatch) -> None:
     paper_id = uuid4()
