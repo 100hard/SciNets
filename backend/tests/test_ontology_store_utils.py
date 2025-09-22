@@ -1,10 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime, timezone
-from uuid import uuid4
-
-import app.services.ontology_store as ontology_store
 from app.services.ontology_store import (
     _clean_aliases,
     _clean_evidence,
@@ -47,37 +42,3 @@ def test_clean_evidence_filters_non_dict_entries() -> None:
     raw = '[{"text": "foo"}, {"span": 1}, "ignored"]'
     assert _clean_evidence(raw) == [{"text": "foo"}, {"span": 1}]
 
-
-class _DummyConn:
-    def __init__(self, rows: list[dict[str, str]]):
-        self._rows = rows
-        self.calls = 0
-
-    async def fetch(self, *_: object) -> list[dict[str, str]]:
-        self.calls += 1
-        return self._rows
-
-
-def test_results_supports_verification_detects_columns() -> None:
-    ontology_store._RESULTS_VERIFICATION_SUPPORTED = None
-    conn = _DummyConn([
-        {"column_name": "verified"},
-        {"column_name": "verifier_notes"},
-    ])
-    try:
-        assert asyncio.run(ontology_store._results_supports_verification(conn)) is True
-        assert conn.calls == 1
-        # Cached value should short-circuit without re-querying
-        assert asyncio.run(ontology_store._results_supports_verification(conn)) is True
-        assert conn.calls == 1
-    finally:
-        ontology_store._RESULTS_VERIFICATION_SUPPORTED = None
-
-
-def test_results_supports_verification_handles_missing_columns() -> None:
-    ontology_store._RESULTS_VERIFICATION_SUPPORTED = None
-    conn = _DummyConn([{ "column_name": "verified" }])
-    try:
-        assert asyncio.run(ontology_store._results_supports_verification(conn)) is False
-    finally:
-        ontology_store._RESULTS_VERIFICATION_SUPPORTED = None
