@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Sequence
+from typing import Any
 from uuid import UUID
 
 from app.db.pool import get_pool
@@ -23,6 +24,72 @@ _METRIC_COLUMNS = "id, name, unit, aliases, description, created_at, updated_at"
 _TASK_COLUMNS = "id, name, aliases, description, created_at, updated_at"
 
 
+def _clean_aliases(raw_aliases: Iterable[str] | str | None) -> list[str]:
+    if raw_aliases is None:
+        candidates: list[Any] = []
+    elif isinstance(raw_aliases, str):
+        try:
+            decoded = json.loads(raw_aliases)
+        except json.JSONDecodeError:
+            candidates = [raw_aliases]
+        else:
+            if isinstance(decoded, list):
+                candidates = decoded
+            elif decoded is None:
+                candidates = []
+            else:
+                candidates = [decoded]
+    else:
+        candidates = list(raw_aliases)
+
+    cleaned = [
+        alias.strip()
+        for alias in candidates
+        if isinstance(alias, str) and alias.strip()
+    ]
+    return list(dict.fromkeys(cleaned))
+
+
+def _clean_evidence(raw_evidence: Any) -> list[dict[str, Any]]:
+    if raw_evidence is None:
+        return []
+    if isinstance(raw_evidence, list):
+        return [item for item in raw_evidence if isinstance(item, dict)]
+    if isinstance(raw_evidence, str):
+        try:
+            decoded = json.loads(raw_evidence)
+        except json.JSONDecodeError:
+            return []
+        if isinstance(decoded, list):
+            return [item for item in decoded if isinstance(item, dict)]
+        return []
+    return []
+
+
+def _method_from_row(row: Any) -> Method:
+    payload = dict(row)
+    payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    return Method(**payload)
+
+
+def _dataset_from_row(row: Any) -> Dataset:
+    payload = dict(row)
+    payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    return Dataset(**payload)
+
+
+def _metric_from_row(row: Any) -> Metric:
+    payload = dict(row)
+    payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    return Metric(**payload)
+
+
+def _task_from_row(row: Any) -> Task:
+    payload = dict(row)
+    payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    return Task(**payload)
+
+
 async def ensure_method(
     name: str,
     *,
@@ -33,7 +100,7 @@ async def ensure_method(
     if not cleaned:
         raise ValueError("Method name cannot be empty")
 
-    alias_list = list(dict.fromkeys(alias.strip() for alias in (aliases or []) if alias))
+    alias_list = _clean_aliases(aliases)
 
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -42,7 +109,7 @@ async def ensure_method(
             cleaned,
         )
         if row:
-            return Method(**dict(row))
+            return _method_from_row(row)
 
         row = await conn.fetchrow(
             """
@@ -54,7 +121,7 @@ async def ensure_method(
             json.dumps(alias_list),
             description,
         )
-    return Method(**dict(row))
+    return _method_from_row(row)
 
 
 async def ensure_dataset(
@@ -67,7 +134,7 @@ async def ensure_dataset(
     if not cleaned:
         raise ValueError("Dataset name cannot be empty")
 
-    alias_list = list(dict.fromkeys(alias.strip() for alias in (aliases or []) if alias))
+    alias_list = _clean_aliases(aliases)
 
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -76,7 +143,7 @@ async def ensure_dataset(
             cleaned,
         )
         if row:
-            return Dataset(**dict(row))
+            return _dataset_from_row(row)
 
         row = await conn.fetchrow(
             """
@@ -88,7 +155,7 @@ async def ensure_dataset(
             json.dumps(alias_list),
             description,
         )
-    return Dataset(**dict(row))
+    return _dataset_from_row(row)
 
 
 async def ensure_metric(
@@ -102,7 +169,7 @@ async def ensure_metric(
     if not cleaned:
         raise ValueError("Metric name cannot be empty")
 
-    alias_list = list(dict.fromkeys(alias.strip() for alias in (aliases or []) if alias))
+    alias_list = _clean_aliases(aliases)
 
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -111,7 +178,7 @@ async def ensure_metric(
             cleaned,
         )
         if row:
-            return Metric(**dict(row))
+            return _metric_from_row(row)
 
         row = await conn.fetchrow(
             """
@@ -124,7 +191,7 @@ async def ensure_metric(
             json.dumps(alias_list),
             description,
         )
-    return Metric(**dict(row))
+    return _metric_from_row(row)
 
 
 async def ensure_task(
@@ -137,7 +204,7 @@ async def ensure_task(
     if not cleaned:
         raise ValueError("Task name cannot be empty")
 
-    alias_list = list(dict.fromkeys(alias.strip() for alias in (aliases or []) if alias))
+    alias_list = _clean_aliases(aliases)
 
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -146,7 +213,7 @@ async def ensure_task(
             cleaned,
         )
         if row:
-            return Task(**dict(row))
+            return _task_from_row(row)
 
         row = await conn.fetchrow(
             """
@@ -158,7 +225,7 @@ async def ensure_task(
             json.dumps(alias_list),
             description,
         )
-    return Task(**dict(row))
+    return _task_from_row(row)
 
 
 async def replace_results(
@@ -210,7 +277,9 @@ async def replace_results(
                     result.verified,
                     result.verifier_notes,
                 )
-                inserted.append(Result(**dict(row)))
+                payload = dict(row)
+                payload["evidence"] = _clean_evidence(payload.get("evidence"))
+                inserted.append(Result(**payload))
     return inserted
 
 
@@ -239,5 +308,7 @@ async def replace_claims(
                     claim.confidence,
                     json.dumps(claim.evidence),
                 )
-                inserted.append(Claim(**dict(row)))
+                payload = dict(row)
+                payload["evidence"] = _clean_evidence(payload.get("evidence"))
+                inserted.append(Claim(**payload))
     return inserted
