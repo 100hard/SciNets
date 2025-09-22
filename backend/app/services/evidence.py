@@ -6,6 +6,7 @@ from uuid import UUID
 
 from app.db.pool import get_pool
 from app.models.evidence import Evidence, EvidenceCreate
+from app.utils.text_sanitize import sanitize_text
 
 
 def _encode_metadata(metadata: Optional[dict[str, Any]]) -> Optional[str]:
@@ -91,6 +92,9 @@ async def create_evidence(data: EvidenceCreate) -> Evidence:
         RETURNING id, paper_id, section_id, concept_id, relation_id, snippet, vector_id, embedding_model, score, metadata, created_at, updated_at
     """
     metadata = _encode_metadata(data.metadata)
+    snippet = sanitize_text(data.snippet)
+    if not snippet:
+        raise ValueError("Evidence snippet cannot be empty after sanitization")
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             query,
@@ -98,7 +102,7 @@ async def create_evidence(data: EvidenceCreate) -> Evidence:
             data.section_id,
             data.concept_id,
             data.relation_id,
-            data.snippet,
+            snippet,
             data.vector_id,
             data.embedding_model,
             data.score,

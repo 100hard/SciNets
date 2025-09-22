@@ -389,4 +389,4 @@ async def replace_claims(
                 payload = dict(row)
                 payload["evidence"] = _clean_evidence(payload.get("evidence"))
                 inserted.append(Claim(**payload))
-    return inserted
+

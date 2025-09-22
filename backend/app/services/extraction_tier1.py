@@ -30,6 +30,7 @@ from app.services.ontology_store import (
 from app.services.papers import get_paper
 from app.services.sections import list_sections
 from app.services.storage import download_pdf_from_storage
+from app.utils.text_sanitize import sanitize_text
 
 try:  # pragma: no cover - optional dependency
     import pdfplumber  # type: ignore[import]
@@ -292,9 +293,15 @@ def extract_text_from_pdf_tables(pdf_bytes: bytes) -> list[str]:
                     if not table:
                         continue
                     for row in table:
-                        cells = [cell.strip() for cell in row if isinstance(cell, str) and cell and cell.strip()]
-                        if cells:
-                            texts.append(" ".join(cells))
+                        cleaned_cells: list[str] = []
+                        for cell in row:
+                            if not isinstance(cell, str):
+                                continue
+                            cleaned = sanitize_text(cell)
+                            if cleaned:
+                                cleaned_cells.append(cleaned)
+                        if cleaned_cells:
+                            texts.append(" ".join(cleaned_cells))
             return texts
     except Exception:
         return []
