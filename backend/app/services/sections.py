@@ -5,6 +5,14 @@ from uuid import UUID
 
 from app.db.pool import get_pool
 from app.models.section import Section, SectionCreate
+from app.utils.text_sanitize import sanitize_text
+
+
+def _sanitize_content(value: Optional[str]) -> str:
+    cleaned = sanitize_text(value)
+    if not cleaned:
+        raise ValueError("Section content cannot be empty after sanitization")
+    return cleaned
 
 
 async def list_sections(
@@ -28,6 +36,9 @@ async def list_sections(
 
 async def create_section(data: SectionCreate) -> Section:
     pool = get_pool()
+    title = sanitize_text(data.title)
+    content = _sanitize_content(data.content)
+    snippet = sanitize_text(data.snippet)
     query = """
         INSERT INTO sections (paper_id, title, content, char_start, char_end, page_number, snippet)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -37,12 +48,12 @@ async def create_section(data: SectionCreate) -> Section:
         row = await conn.fetchrow(
             query,
             data.paper_id,
-            data.title,
-            data.content,
+            title,
+            content,
             data.char_start,
             data.char_end,
             data.page_number,
-            data.snippet,
+            snippet,
         )
     return Section(**dict(row))
 
@@ -68,12 +79,12 @@ async def replace_sections(paper_id: UUID, sections: Sequence[SectionCreate]) ->
                 values = [
                     (
                         section.paper_id,
-                        section.title,
-                        section.content,
+                        sanitize_text(section.title),
+                        _sanitize_content(section.content),
                         section.char_start,
                         section.char_end,
                         section.page_number,
-                        section.snippet,
+                        sanitize_text(section.snippet),
                     )
                     for section in sections
                 ]

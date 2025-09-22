@@ -32,6 +32,7 @@ from app.services.extraction_tier3 import run_tier3_verifier
 from app.services.papers import get_paper, update_paper_status
 from app.services.sections import replace_sections
 from app.services.storage import download_pdf_from_storage
+from app.utils.text_sanitize import sanitize_text
 
 
 HEADING_NUMERIC_RE = re.compile(r"^\s*\d+(?:\.\d+)*\s+.+")
@@ -113,18 +114,45 @@ async def parse_pdf_task(paper_id: UUID) -> None:
         if not parsed_sections:
             raise RuntimeError("Parsing pipeline returned no sections")
 
-        section_models = [
-            SectionCreate(
-                paper_id=paper_id,
-                title=section.title,
-                content=section.content,
-                char_start=section.char_start,
-                char_end=section.char_end,
-                page_number=section.page_number,
-                snippet=_build_snippet(section.content),
+        section_models: list[SectionCreate] = []
+        nul_removed_total = 0
+        dropped_sections = 0
+        for section in parsed_sections:
+            nul_removed_total += section.content.count("\x00")
+            cleaned_content = sanitize_text(section.content)
+            if not cleaned_content:
+                dropped_sections += 1
+                continue
+
+            cleaned_title = sanitize_text(section.title)
+            snippet = _build_snippet(cleaned_content)
+            cleaned_snippet = sanitize_text(snippet)
+
+            section_models.append(
+                SectionCreate(
+                    paper_id=paper_id,
+                    title=cleaned_title,
+                    content=cleaned_content,
+                    char_start=section.char_start,
+                    char_end=section.char_end,
+                    page_number=section.page_number,
+                    snippet=cleaned_snippet,
+                )
             )
-            for section in parsed_sections
-        ]
+
+        if not section_models:
+            raise RuntimeError(
+                "Sanitization removed all sections; unable to continue parsing"
+            )
+
+        if nul_removed_total:
+            print(
+                f"[parse_pdf_task] Removed {nul_removed_total} NUL bytes for paper {paper_id}"
+            )
+        if dropped_sections:
+            print(
+                f"[parse_pdf_task] Dropped {dropped_sections} empty sections after sanitization for paper {paper_id}"
+            )
 
         await replace_sections(paper_id, section_models)
         try:

@@ -14,6 +14,7 @@ from app.models.evidence import EvidenceCreate
 from app.models.section import Section
 from app.services.evidence import create_evidence, delete_evidence_for_paper
 from app.services.sections import list_sections
+from app.utils.text_sanitize import sanitize_text
 
 try:  # pragma: no cover - optional dependency
     from sentence_transformers import SentenceTransformer  # type: ignore[import]
@@ -373,13 +374,20 @@ class EmbeddingService:
                     payload=section.payload(),
                 )
             )
+            cleaned_snippet = sanitize_text(section.snippet)
+            if not cleaned_snippet:
+                print(
+                    f"[EmbeddingService] Skipping evidence for section {section.section_id}"
+                    " due to empty snippet after sanitization"
+                )
+                continue
             evidence_records.append(
                 EvidenceCreate(
                     paper_id=paper_id,
                     section_id=section.section_id,
                     concept_id=None,
                     relation_id=None,
-                    snippet=section.snippet,
+                    snippet=cleaned_snippet,
                     vector_id=vector_id,
                     embedding_model=self._model_name,
                     score=None,
@@ -437,10 +445,11 @@ class EmbeddingService:
     def _prepare_sections(self, sections: Sequence[Section]) -> List[PreparedSection]:
         prepared: List[PreparedSection] = []
         for section in sections:
-            content = (section.content or "").strip()
+            content = sanitize_text(section.content)
             if not content:
                 continue
-            snippet = section.snippet or _build_snippet(content)
+            snippet_source = section.snippet or _build_snippet(content)
+            snippet = sanitize_text(snippet_source)
             if not snippet:
                 continue
             text_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()

@@ -30,6 +30,7 @@ from app.services.ontology_store import (
 from app.services.papers import get_paper
 from app.services.sections import list_sections
 from app.services.storage import download_pdf_from_storage
+from app.utils.text_sanitize import sanitize_text
 
 try:  # pragma: no cover - optional dependency
     import pdfplumber  # type: ignore[import]
@@ -45,7 +46,10 @@ RESULT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 EVALUATE_PATTERN = re.compile(
-    r"(?:evaluate(?:d)? on|tested on|trained on|measured on)\s+(?P<dataset>[A-Za-z0-9\-\+\/ ]{2,})",
+    r"(?:evaluate(?:d)?|tested|trained|measured)"
+    r"(?:\s+[A-Za-z0-9\-]+){0,6}\s+on\s+"
+    r"(?P<dataset>[A-Za-z0-9\-\+\/ ]{2,}?)(?=(?:[,.;]"
+    r"|\s+(?:and|with|for|using|achiev(?:es|ing)?|reports?|showing|compared|where)\b|$))",
     re.IGNORECASE,
 )
 PROPOSE_PATTERN = re.compile(
@@ -289,9 +293,15 @@ def extract_text_from_pdf_tables(pdf_bytes: bytes) -> list[str]:
                     if not table:
                         continue
                     for row in table:
-                        cells = [cell.strip() for cell in row if isinstance(cell, str) and cell and cell.strip()]
-                        if cells:
-                            texts.append(" ".join(cells))
+                        cleaned_cells: list[str] = []
+                        for cell in row:
+                            if not isinstance(cell, str):
+                                continue
+                            cleaned = sanitize_text(cell)
+                            if cleaned:
+                                cleaned_cells.append(cleaned)
+                        if cleaned_cells:
+                            texts.append(" ".join(cleaned_cells))
             return texts
     except Exception:
         return []
@@ -810,6 +820,24 @@ def _clean_dataset_name(name: str) -> str:
     cleaned = parts[0]
     cleaned = re.sub(r"[(),]", " ", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if cleaned:
+        lowered = cleaned.lower()
+        if not any(ch.isdigit() for ch in cleaned):
+            disqualifiers = {
+                "model",
+                "method",
+                "approach",
+                "architecture",
+                "network",
+                "framework",
+                "system",
+                "technique",
+                "baseline",
+                "algorithm",
+            }
+            tokens = set(lowered.split())
+            if tokens.intersection(disqualifiers):
+                return ""
     return cleaned
 
 
