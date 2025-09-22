@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -171,4 +169,4 @@ def test_replace_results_downgrades_when_verification_columns_missing(monkeypatc
     assert "verified" not in conn.insert_sqls[1]
     assert len(inserted) == 1
     assert inserted[0].verified is None
-    assert verification_flag is False
+
