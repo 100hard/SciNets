@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from uuid import uuid4
-
 from app.services.ontology_store import (
     _clean_aliases,
     _clean_evidence,
@@ -44,3 +41,4 @@ def test_method_from_row_coerces_alias_payload() -> None:
 def test_clean_evidence_filters_non_dict_entries() -> None:
     raw = '[{"text": "foo"}, {"span": 1}, "ignored"]'
     assert _clean_evidence(raw) == [{"text": "foo"}, {"span": 1}]
+

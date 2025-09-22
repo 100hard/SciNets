@@ -90,6 +90,7 @@ def _task_from_row(row: Any) -> Task:
     return Task(**payload)
 
 
+
 async def ensure_method(
     name: str,
     *,
@@ -240,29 +241,15 @@ async def replace_results(
                 return []
 
             inserted: list[Result] = []
+            include_verification = await _results_supports_verification(conn)
+            insert_sql = (
+                _RESULT_INSERT_SQL_WITH_VERIFICATION
+                if include_verification
+                else _RESULT_INSERT_SQL
+            )
+
             for result in results:
-                row = await conn.fetchrow(
-                    """
-                    INSERT INTO results (
-                        paper_id,
-                        method_id,
-                        dataset_id,
-                        metric_id,
-                        task_id,
-                        split,
-                        value_numeric,
-                        value_text,
-                        is_sota,
-                        confidence,
-                        evidence,
-                        verified,
-                        verifier_notes
-                    )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13)
-                    RETURNING id, paper_id, method_id, dataset_id, metric_id, task_id,
-                              split, value_numeric, value_text, is_sota, confidence,
-                              evidence, verified, verifier_notes, created_at, updated_at
-                    """,
+
                     result.paper_id,
                     result.method_id,
                     result.dataset_id,
@@ -274,11 +261,7 @@ async def replace_results(
                     result.is_sota,
                     result.confidence,
                     json.dumps(result.evidence),
-                    result.verified,
-                    result.verifier_notes,
-                )
-                payload = dict(row)
-                payload["evidence"] = _clean_evidence(payload.get("evidence"))
+
                 inserted.append(Result(**payload))
     return inserted
 
