@@ -36,6 +36,20 @@ class Settings(BaseSettings):
     qdrant_collection_name: str = Field(default="paper_sections")
     qdrant_upsert_batch_size: int = Field(default=256)
 
+    # Tier-2 LLM
+    openai_api_key: str | None = Field(default=None)
+    openai_organization: str | None = Field(default=None)
+    tier2_llm_model: str | None = Field(default=None)
+    tier2_llm_base_url: str | None = Field(default=None)
+    tier2_llm_completion_path: str | None = Field(default=None)
+    tier2_llm_temperature: float = Field(default=0.1)
+    tier2_llm_top_p: float = Field(default=1.0)
+    tier2_llm_timeout_seconds: float = Field(default=60.0)
+    tier2_llm_max_sections: int = Field(default=24)
+    tier2_llm_max_section_chars: int = Field(default=3500)
+    tier2_llm_force_json: bool = Field(default=True)
+    tier2_llm_max_output_tokens: int = Field(default=1200)
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
