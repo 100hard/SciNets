@@ -1,4 +1,6 @@
+import asyncio
 import json
+from uuid import uuid4
 
 import pytest
 
@@ -148,3 +150,35 @@ def test_normalise_llm_payload_discards_invalid_entries(raw_payload, expected):
     assert normalised["metrics"] == expected["metrics"]
     assert normalised["results"] == expected["results"]
     assert normalised["claims"] == expected["claims"]
+
+
+def test_summary_inputs_with_null_collections_are_ignored():
+    summary = {
+        "methods": None,
+        "datasets": None,
+        "metrics": None,
+        "tasks": None,
+        "results": None,
+        "claims": None,
+        "tiers": None,
+    }
+    caches = extraction_tier2._Caches(methods={}, datasets={}, metrics={}, tasks={})
+
+    async def exercise() -> tuple[list, list]:
+        # Ensure catalog operations gracefully skip missing collections.
+        await extraction_tier2._ensure_catalog_from_summary(summary, caches)
+
+        # Conversion helpers should tolerate absent inputs and yield empty lists.
+        converted_results = await extraction_tier2._convert_summary_results(
+            uuid4(), summary, caches
+        )
+        converted_claims = await extraction_tier2._convert_summary_claims(
+            uuid4(), summary
+        )
+        return converted_results, converted_claims
+
+    converted_results, converted_claims = asyncio.run(exercise())
+
+    assert converted_results == []
+    assert converted_claims == []
+    assert extraction_tier2._merge_tiers(summary.get("tiers"), [2]) == [2]

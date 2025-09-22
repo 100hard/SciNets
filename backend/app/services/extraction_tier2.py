@@ -82,6 +82,23 @@ class _Caches:
     tasks: dict[str, Any]
 
 
+def _summary_list(summary: dict[str, Any], key: str) -> list[Any]:
+    """Return a safe list for the given summary key.
+
+    Earlier tiers occasionally produce ``None`` for collection fields which
+    causes ``TypeError`` when iterated over. To ensure Tier-2 remains robust we
+    coerce ``None`` (or other unexpected scalar values) into empty lists. Tuples
+    are converted to lists to preserve order while allowing iteration.
+    """
+
+    value = summary.get(key)
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return []
+
+
 async def run_tier2_structurer(
     paper_id: UUID,
     *,
@@ -174,7 +191,7 @@ async def run_tier2_structurer(
 
     summary_payload = {
         "paper_id": str(paper_id),
-        "tiers": _merge_tiers(summary.get("tiers", []), [2]),
+        "tiers": _merge_tiers(_summary_list(summary, "tiers"), [2]),
         "methods": [_serialize_method(model) for model in method_list],
         "datasets": [_serialize_dataset(model) for model in dataset_list],
         "metrics": [_serialize_metric(model) for model in metric_list],
@@ -682,17 +699,23 @@ def _coerce_int(value: Any, *, minimum: int = 0) -> int | None:
 
 
 async def _ensure_catalog_from_summary(summary: dict[str, Any], caches: _Caches) -> None:
-    for method in summary.get("methods", []):
+    for method in _summary_list(summary, "methods"):
+        if not isinstance(method, dict):
+            continue
         name = method.get("name")
         if name:
             await _ensure_method(name, caches, aliases=method.get("aliases"), description=method.get("description"))
 
-    for dataset in summary.get("datasets", []):
+    for dataset in _summary_list(summary, "datasets"):
+        if not isinstance(dataset, dict):
+            continue
         name = dataset.get("name")
         if name:
             await _ensure_dataset(name, caches, aliases=dataset.get("aliases"), description=dataset.get("description"))
 
-    for metric in summary.get("metrics", []):
+    for metric in _summary_list(summary, "metrics"):
+        if not isinstance(metric, dict):
+            continue
         name = metric.get("name")
         if name:
             await _ensure_metric(
@@ -703,7 +726,9 @@ async def _ensure_catalog_from_summary(summary: dict[str, Any], caches: _Caches)
                 description=metric.get("description"),
             )
 
-    for task in summary.get("tasks", []):
+    for task in _summary_list(summary, "tasks"):
+        if not isinstance(task, dict):
+            continue
         name = task.get("name")
         if name:
             await _ensure_task(name, caches, aliases=task.get("aliases"), description=task.get("description"))
@@ -729,7 +754,9 @@ async def _convert_summary_results(
     caches: _Caches,
 ) -> list[ResultCreate]:
     converted: list[ResultCreate] = []
-    for result in summary.get("results", []):
+    for result in _summary_list(summary, "results"):
+        if not isinstance(result, dict):
+            continue
         converted_model = await _summary_result_to_model(paper_id, result, caches)
         if converted_model is not None:
             converted.append(converted_model)
@@ -917,7 +944,9 @@ def _convert_payload_claims(paper_id: UUID, payload: Tier2LLMPayload) -> list[Cl
 
 async def _convert_summary_claims(paper_id: UUID, summary: dict[str, Any]) -> list[ClaimCreate]:
     converted: list[ClaimCreate] = []
-    for claim in summary.get("claims", []):
+    for claim in _summary_list(summary, "claims"):
+        if not isinstance(claim, dict):
+            continue
         category_raw = claim.get("category", "").strip().lower()
         try:
             category = ClaimCategory(category_raw)
@@ -1014,9 +1043,11 @@ def _normalize_text(value: str) -> str:
     return " ".join(normalized.split())
 
 
-def _merge_tiers(existing: Sequence[int] | Sequence[str], new: Sequence[int]) -> list[int]:
+def _merge_tiers(
+    existing: Sequence[int] | Sequence[str] | None, new: Sequence[int]
+) -> list[int]:
     tier_set: set[int] = set()
-    for tier in existing:
+    for tier in existing or []:
         try:
             tier_set.add(int(tier))
         except (TypeError, ValueError):
