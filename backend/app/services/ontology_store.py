@@ -5,6 +5,8 @@ from collections.abc import Iterable, Sequence
 from typing import Any
 from uuid import UUID
 
+import asyncpg
+
 from app.db.pool import get_pool
 from app.models.ontology import (
     Claim,
@@ -22,6 +24,9 @@ _METHOD_COLUMNS = "id, name, aliases, description, created_at, updated_at"
 _DATASET_COLUMNS = "id, name, aliases, description, created_at, updated_at"
 _METRIC_COLUMNS = "id, name, unit, aliases, description, created_at, updated_at"
 _TASK_COLUMNS = "id, name, aliases, description, created_at, updated_at"
+
+
+_RESULTS_VERIFICATION_SUPPORTED: bool | None = None
 
 
 def _clean_aliases(raw_aliases: Iterable[str] | str | None) -> list[str]:
@@ -89,6 +94,72 @@ def _task_from_row(row: Any) -> Task:
     payload["aliases"] = _clean_aliases(payload.get("aliases"))
     return Task(**payload)
 
+
+_RESULT_INSERT_SQL = """
+    INSERT INTO results (
+        paper_id,
+        method_id,
+        dataset_id,
+        metric_id,
+        task_id,
+        split,
+        value_numeric,
+        value_text,
+        is_sota,
+        confidence,
+        evidence
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
+    RETURNING id, paper_id, method_id, dataset_id, metric_id, task_id,
+              split, value_numeric, value_text, is_sota, confidence,
+              evidence, created_at, updated_at
+"""
+
+
+_RESULT_INSERT_SQL_WITH_VERIFICATION = """
+    INSERT INTO results (
+        paper_id,
+        method_id,
+        dataset_id,
+        metric_id,
+        task_id,
+        split,
+        value_numeric,
+        value_text,
+        is_sota,
+        confidence,
+        evidence,
+        verified,
+        verifier_notes
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13)
+    RETURNING id, paper_id, method_id, dataset_id, metric_id, task_id,
+              split, value_numeric, value_text, is_sota, confidence,
+              evidence, verified, verifier_notes, created_at, updated_at
+"""
+
+
+async def _results_supports_verification(conn: Any) -> bool:
+    global _RESULTS_VERIFICATION_SUPPORTED
+
+    if _RESULTS_VERIFICATION_SUPPORTED is not None:
+        return _RESULTS_VERIFICATION_SUPPORTED
+
+    rows = await conn.fetch(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'results'
+          AND column_name IN ('verified', 'verifier_notes')
+        """
+    )
+    columns = {row["column_name"] for row in rows}
+    _RESULTS_VERIFICATION_SUPPORTED = {
+        "verified",
+        "verifier_notes",
+    }.issubset(columns)
+    return _RESULTS_VERIFICATION_SUPPORTED
 
 
 async def ensure_method(
@@ -233,6 +304,7 @@ async def replace_results(
     paper_id: UUID,
     results: Sequence[ResultCreate],
 ) -> list[Result]:
+    global _RESULTS_VERIFICATION_SUPPORTED
     pool = get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -249,7 +321,7 @@ async def replace_results(
             )
 
             for result in results:
-
+                base_params: list[Any] = [
                     result.paper_id,
                     result.method_id,
                     result.dataset_id,
@@ -261,7 +333,30 @@ async def replace_results(
                     result.is_sota,
                     result.confidence,
                     json.dumps(result.evidence),
+                ]
 
+                while True:
+                    params = (
+                        [*base_params, result.verified, result.verifier_notes]
+                        if include_verification
+                        else base_params
+                    )
+                    try:
+                        row = await conn.fetchrow(insert_sql, *params)
+                    except asyncpg.UndefinedColumnError:
+                        if not include_verification:
+                            raise
+                        include_verification = False
+                        insert_sql = _RESULT_INSERT_SQL
+                        _RESULTS_VERIFICATION_SUPPORTED = False
+                        continue
+                    break
+
+                payload = dict(row)
+                payload["evidence"] = _clean_evidence(payload.get("evidence"))
+                if not include_verification:
+                    payload.setdefault("verified", None)
+                    payload.setdefault("verifier_notes", None)
                 inserted.append(Result(**payload))
     return inserted
 
