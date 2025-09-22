@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Sequence
+from typing import Any
 from uuid import UUID
 
 from app.db.pool import get_pool
@@ -22,6 +24,142 @@ _METRIC_COLUMNS = "id, name, unit, aliases, description, created_at, updated_at"
 _TASK_COLUMNS = "id, name, aliases, description, created_at, updated_at"
 
 
+_RESULTS_VERIFICATION_SUPPORTED: bool | None = None
+
+
+def _clean_aliases(raw_aliases: Iterable[str] | str | None) -> list[str]:
+    if raw_aliases is None:
+        candidates: list[Any] = []
+    elif isinstance(raw_aliases, str):
+        try:
+            decoded = json.loads(raw_aliases)
+        except json.JSONDecodeError:
+            candidates = [raw_aliases]
+        else:
+            if isinstance(decoded, list):
+                candidates = decoded
+            elif decoded is None:
+                candidates = []
+            else:
+                candidates = [decoded]
+    else:
+        candidates = list(raw_aliases)
+
+    cleaned = [
+        alias.strip()
+        for alias in candidates
+        if isinstance(alias, str) and alias.strip()
+    ]
+    return list(dict.fromkeys(cleaned))
+
+
+def _clean_evidence(raw_evidence: Any) -> list[dict[str, Any]]:
+    if raw_evidence is None:
+        return []
+    if isinstance(raw_evidence, list):
+        return [item for item in raw_evidence if isinstance(item, dict)]
+    if isinstance(raw_evidence, str):
+        try:
+            decoded = json.loads(raw_evidence)
+        except json.JSONDecodeError:
+            return []
+        if isinstance(decoded, list):
+            return [item for item in decoded if isinstance(item, dict)]
+        return []
+    return []
+
+
+def _method_from_row(row: Any) -> Method:
+    payload = dict(row)
+    payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    return Method(**payload)
+
+
+def _dataset_from_row(row: Any) -> Dataset:
+    payload = dict(row)
+    payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    return Dataset(**payload)
+
+
+def _metric_from_row(row: Any) -> Metric:
+    payload = dict(row)
+    payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    return Metric(**payload)
+
+
+def _task_from_row(row: Any) -> Task:
+    payload = dict(row)
+    payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    return Task(**payload)
+
+
+_RESULT_INSERT_SQL = """
+    INSERT INTO results (
+        paper_id,
+        method_id,
+        dataset_id,
+        metric_id,
+        task_id,
+        split,
+        value_numeric,
+        value_text,
+        is_sota,
+        confidence,
+        evidence
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
+    RETURNING id, paper_id, method_id, dataset_id, metric_id, task_id,
+              split, value_numeric, value_text, is_sota, confidence,
+              evidence, created_at, updated_at
+"""
+
+
+_RESULT_INSERT_SQL_WITH_VERIFICATION = """
+    INSERT INTO results (
+        paper_id,
+        method_id,
+        dataset_id,
+        metric_id,
+        task_id,
+        split,
+        value_numeric,
+        value_text,
+        is_sota,
+        confidence,
+        evidence,
+        verified,
+        verifier_notes
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13)
+    RETURNING id, paper_id, method_id, dataset_id, metric_id, task_id,
+              split, value_numeric, value_text, is_sota, confidence,
+              evidence, verified, verifier_notes, created_at, updated_at
+"""
+
+
+async def _results_supports_verification(conn: Any) -> bool:
+    global _RESULTS_VERIFICATION_SUPPORTED
+
+    if _RESULTS_VERIFICATION_SUPPORTED is not None:
+        return _RESULTS_VERIFICATION_SUPPORTED
+
+    rows = await conn.fetch(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'results'
+          AND column_name IN ('verified', 'verifier_notes')
+        """
+    )
+    columns = {row["column_name"] for row in rows}
+    _RESULTS_VERIFICATION_SUPPORTED = {
+        "verified",
+        "verifier_notes",
+    }.issubset(columns)
+    return _RESULTS_VERIFICATION_SUPPORTED
+
+
 async def ensure_method(
     name: str,
     *,
@@ -32,7 +170,7 @@ async def ensure_method(
     if not cleaned:
         raise ValueError("Method name cannot be empty")
 
-    alias_list = list(dict.fromkeys(alias.strip() for alias in (aliases or []) if alias))
+    alias_list = _clean_aliases(aliases)
 
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -41,19 +179,19 @@ async def ensure_method(
             cleaned,
         )
         if row:
-            return Method(**dict(row))
+            return _method_from_row(row)
 
         row = await conn.fetchrow(
             """
             INSERT INTO methods (name, aliases, description)
-            VALUES ($1, $2, $3)
+            VALUES ($1, $2::jsonb, $3)
             RETURNING id, name, aliases, description, created_at, updated_at
             """,
             cleaned,
-            alias_list,
+            json.dumps(alias_list),
             description,
         )
-    return Method(**dict(row))
+    return _method_from_row(row)
 
 
 async def ensure_dataset(
@@ -66,7 +204,7 @@ async def ensure_dataset(
     if not cleaned:
         raise ValueError("Dataset name cannot be empty")
 
-    alias_list = list(dict.fromkeys(alias.strip() for alias in (aliases or []) if alias))
+    alias_list = _clean_aliases(aliases)
 
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -75,19 +213,19 @@ async def ensure_dataset(
             cleaned,
         )
         if row:
-            return Dataset(**dict(row))
+            return _dataset_from_row(row)
 
         row = await conn.fetchrow(
             """
             INSERT INTO datasets (name, aliases, description)
-            VALUES ($1, $2, $3)
+            VALUES ($1, $2::jsonb, $3)
             RETURNING id, name, aliases, description, created_at, updated_at
             """,
             cleaned,
-            alias_list,
+            json.dumps(alias_list),
             description,
         )
-    return Dataset(**dict(row))
+    return _dataset_from_row(row)
 
 
 async def ensure_metric(
@@ -101,7 +239,7 @@ async def ensure_metric(
     if not cleaned:
         raise ValueError("Metric name cannot be empty")
 
-    alias_list = list(dict.fromkeys(alias.strip() for alias in (aliases or []) if alias))
+    alias_list = _clean_aliases(aliases)
 
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -110,20 +248,20 @@ async def ensure_metric(
             cleaned,
         )
         if row:
-            return Metric(**dict(row))
+            return _metric_from_row(row)
 
         row = await conn.fetchrow(
             """
             INSERT INTO metrics (name, unit, aliases, description)
-            VALUES ($1, $2, $3, $4)
+            VALUES ($1, $2, $3::jsonb, $4)
             RETURNING id, name, unit, aliases, description, created_at, updated_at
             """,
             cleaned,
             unit,
-            alias_list,
+            json.dumps(alias_list),
             description,
         )
-    return Metric(**dict(row))
+    return _metric_from_row(row)
 
 
 async def ensure_task(
@@ -136,7 +274,7 @@ async def ensure_task(
     if not cleaned:
         raise ValueError("Task name cannot be empty")
 
-    alias_list = list(dict.fromkeys(alias.strip() for alias in (aliases or []) if alias))
+    alias_list = _clean_aliases(aliases)
 
     pool = get_pool()
     async with pool.acquire() as conn:
@@ -145,19 +283,19 @@ async def ensure_task(
             cleaned,
         )
         if row:
-            return Task(**dict(row))
+            return _task_from_row(row)
 
         row = await conn.fetchrow(
             """
             INSERT INTO tasks (name, aliases, description)
-            VALUES ($1, $2, $3)
+            VALUES ($1, $2::jsonb, $3)
             RETURNING id, name, aliases, description, created_at, updated_at
             """,
             cleaned,
-            alias_list,
+            json.dumps(alias_list),
             description,
         )
-    return Task(**dict(row))
+    return _task_from_row(row)
 
 
 async def replace_results(
@@ -172,29 +310,15 @@ async def replace_results(
                 return []
 
             inserted: list[Result] = []
+            include_verification = await _results_supports_verification(conn)
+            insert_sql = (
+                _RESULT_INSERT_SQL_WITH_VERIFICATION
+                if include_verification
+                else _RESULT_INSERT_SQL
+            )
+
             for result in results:
-                row = await conn.fetchrow(
-                    """
-                    INSERT INTO results (
-                        paper_id,
-                        method_id,
-                        dataset_id,
-                        metric_id,
-                        task_id,
-                        split,
-                        value_numeric,
-                        value_text,
-                        is_sota,
-                        confidence,
-                        evidence,
-                        verified,
-                        verifier_notes
-                    )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-                    RETURNING id, paper_id, method_id, dataset_id, metric_id, task_id,
-                              split, value_numeric, value_text, is_sota, confidence,
-                              evidence, verified, verifier_notes, created_at, updated_at
-                    """,
+                params: list[Any] = [
                     result.paper_id,
                     result.method_id,
                     result.dataset_id,
@@ -205,11 +329,18 @@ async def replace_results(
                     result.value_text,
                     result.is_sota,
                     result.confidence,
-                    result.evidence,
-                    result.verified,
-                    result.verifier_notes,
-                )
-                inserted.append(Result(**dict(row)))
+                    json.dumps(result.evidence),
+                ]
+                if include_verification:
+                    params.extend([result.verified, result.verifier_notes])
+
+                row = await conn.fetchrow(insert_sql, *params)
+                payload = dict(row)
+                payload["evidence"] = _clean_evidence(payload.get("evidence"))
+                if not include_verification:
+                    payload.setdefault("verified", None)
+                    payload.setdefault("verifier_notes", None)
+                inserted.append(Result(**payload))
     return inserted
 
 
@@ -229,14 +360,16 @@ async def replace_claims(
                 row = await conn.fetchrow(
                     """
                     INSERT INTO claims (paper_id, category, text, confidence, evidence)
-                    VALUES ($1, $2, $3, $4, $5)
+                    VALUES ($1, $2, $3, $4, $5::jsonb)
                     RETURNING id, paper_id, category, text, confidence, evidence, created_at, updated_at
                     """,
                     claim.paper_id,
                     claim.category,
                     claim.text,
                     claim.confidence,
-                    claim.evidence,
+                    json.dumps(claim.evidence),
                 )
-                inserted.append(Claim(**dict(row)))
+                payload = dict(row)
+                payload["evidence"] = _clean_evidence(payload.get("evidence"))
+                inserted.append(Claim(**payload))
     return inserted
