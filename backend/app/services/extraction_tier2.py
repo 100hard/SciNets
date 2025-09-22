@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import json
+import math
 import re
 from dataclasses import dataclass
 from decimal import Decimal
+from textwrap import dedent
 from typing import Any, Iterable, Sequence
 from uuid import UUID
 
+import httpx
 from pydantic import BaseModel, Field, ValidationError
 
+from app.core.config import settings
 from app.models.ontology import ClaimCategory, ClaimCreate, ResultCreate
 from app.models.section import Section
 from app.services.ontology_store import (
@@ -202,15 +207,478 @@ async def run_tier2_structurer(
 
 
 async def call_structurer_llm(*, paper_title: str, sections: Sequence[dict[str, Any]]) -> str:
-    """Invoke the Tier-2 structuring LLM.
+    """Invoke the Tier-2 structuring LLM using the configured OpenAI endpoint."""
 
-    This project does not bundle a concrete LLM integration. The function is
-    intended to be monkeypatched in tests or overridden by downstream
-    deployments. The default implementation raises ``RuntimeError`` to make the
-    missing configuration explicit.
-    """
+    api_key = settings.openai_api_key
+    model = settings.tier2_llm_model
 
-    raise RuntimeError("Tier-2 structurer LLM is not configured")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY environment variable is not set")
+
+    if not model:
+        raise RuntimeError("TIER2_LLM_MODEL environment variable is not set")
+
+    base_url = settings.tier2_llm_base_url or "https://api.openai.com/v1"
+    timeout = httpx.Timeout(settings.tier2_llm_timeout_seconds)
+
+    rendered_sections = _render_sections_for_prompt(
+        sections,
+        max_sections=settings.tier2_llm_max_sections,
+        max_chars=settings.tier2_llm_max_section_chars,
+    )
+
+    if not rendered_sections:
+        raise RuntimeError("No sections available for Tier-2 structurer prompt")
+
+    system_message = dedent(
+        """
+        You are an expert scientific information extraction system. Given a research
+        paper you must populate a JSON object that lists the unique methods, tasks,
+        datasets, metrics, quantitative results, and natural-language claims that
+        appear in the paper. Carefully read the provided sections before producing
+        the JSON output. Only include information that is explicitly supported by
+        the text. If an item is not present in the paper, leave the relevant array
+        empty.
+        """
+    ).strip()
+
+    extraction_instructions = dedent(
+        """
+        Follow these guidelines when constructing the JSON response:
+
+        1. Return a single JSON object that matches the schema described below. Do
+           not wrap the JSON in markdown fences or include any commentary.
+        2. The `paper_title` field must echo the provided paper title string.
+        3. Populate the `methods`, `datasets`, `metrics`, and `tasks` arrays with
+           distinct strings encountered in the text. If you are unsure, omit the
+           item.
+        4. For each quantitative result create an entry with `method`, `dataset`,
+           `metric`, `value`, and, when available, `split` or `task`. Use the
+           canonical names surfaced in the earlier arrays. If a numeric value is
+           present express it as a number; otherwise fall back to a short string.
+        5. Populate `claims` with important findings or conclusions from the paper
+           and classify them into one of: `sota`, `ablations`, `limitations`,
+           `future_work`, `data`, or `other`.
+        6. Whenever a result or claim is grounded in a specific section, provide
+           an `evidence_span` object containing the `section_id` along with
+           character offsets `start` and `end` relative to the provided section
+           content. If precise offsets are unclear you may use `0` and the
+           section length as a reasonable bound.
+
+        JSON schema:
+
+        {
+          "paper_title": string,
+          "methods": [
+            {
+              "name": string,
+              "is_new": boolean (optional),
+              "aliases": array of strings (optional)
+            }
+          ],
+          "tasks": [string],
+          "datasets": [string],
+          "metrics": [string],
+          "results": [
+            {
+              "method": string,
+              "dataset": string,
+              "metric": string,
+              "value": number|string|null,
+              "split": string|null,
+              "task": string|null,
+              "evidence_span": {
+                "section_id": string,
+                "start": integer,
+                "end": integer
+              } | null
+            }
+          ],
+          "claims": [
+            {
+              "category": string,
+              "text": string,
+              "evidence_span": {
+                "section_id": string,
+                "start": integer,
+                "end": integer
+              } | null
+            }
+          ]
+        }
+        """
+    ).strip()
+
+    user_prompt = dedent(
+        f"""
+        Paper title: {paper_title}
+
+        Sections:
+        {rendered_sections}
+
+        Return only the JSON object that follows the schema.
+        """
+    ).strip()
+
+    request_payload: dict[str, Any] = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": extraction_instructions},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": settings.tier2_llm_temperature,
+        "top_p": settings.tier2_llm_top_p,
+        "max_tokens": settings.tier2_llm_max_output_tokens,
+    }
+
+    response_format: dict[str, Any] | None = None
+    if settings.tier2_llm_force_json:
+        response_format = {"type": "json_object"}
+    if response_format is not None:
+        request_payload["response_format"] = response_format
+
+    async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as client:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        if settings.openai_organization:
+            headers["OpenAI-Organization"] = settings.openai_organization
+
+        path = settings.tier2_llm_completion_path or "/chat/completions"
+
+        try:
+            response = await client.post(path, headers=headers, json=request_payload)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:  # pragma: no cover - network error path
+            raise RuntimeError(
+                f"Tier-2 structurer LLM request failed with status "
+                f"{exc.response.status_code}: {exc.response.text}"
+            ) from exc
+        except httpx.RequestError as exc:  # pragma: no cover - network error path
+            raise RuntimeError(f"Tier-2 structurer LLM request failed: {exc}") from exc
+
+    payload = response.json()
+    try:
+        content = payload["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:  # pragma: no cover - defensive
+        raise RuntimeError(
+            "Tier-2 structurer LLM response missing message content"
+        ) from exc
+
+    normalized = _normalise_llm_payload(
+        content,
+        paper_title=paper_title,
+        sections=sections,
+    )
+
+    return json.dumps(normalized)
+
+
+def _render_sections_for_prompt(
+    sections: Sequence[dict[str, Any]],
+    *,
+    max_sections: int,
+    max_chars: int,
+) -> str:
+    if max_sections <= 0 or max_chars <= 0:
+        return ""
+
+    rendered_parts: list[str] = []
+    for index, section in enumerate(sections):
+        if index >= max_sections:
+            break
+
+        section_id = str(section.get("id", ""))
+        title = (section.get("title") or "").strip() or "Untitled"
+        content = section.get("content") or ""
+        char_start = section.get("char_start")
+        char_end = section.get("char_end")
+        span_description = ""
+        if isinstance(char_start, int) and isinstance(char_end, int):
+            span_description = f"[{char_start}, {char_end}]"
+
+        truncated_content = _truncate_text(content, max_chars)
+        rendered_parts.append(
+            dedent(
+                f"""
+                Section ID: {section_id}
+                Title: {title}
+                Span: {span_description}
+                Content:
+                {truncated_content}
+                """
+            ).strip()
+        )
+
+    return "\n\n".join(rendered_parts)
+
+
+def _truncate_text(value: str, max_chars: int) -> str:
+    if len(value) <= max_chars:
+        return value
+    truncated = value[: max(0, max_chars - 1)].rstrip()
+    return f"{truncated}…"
+
+
+def _normalise_llm_payload(
+    raw_content: str,
+    *,
+    paper_title: str,
+    sections: Sequence[dict[str, Any]],
+) -> dict[str, Any]:
+    try:
+        parsed = json.loads(raw_content)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Tier-2 structurer returned non-JSON response") from exc
+
+    if not isinstance(parsed, dict):
+        raise RuntimeError("Tier-2 structurer returned unexpected payload type")
+
+    parsed.setdefault("paper_title", paper_title)
+    if not isinstance(parsed["paper_title"], str):
+        parsed["paper_title"] = str(parsed["paper_title"])
+
+    parsed.setdefault("methods", [])
+    parsed.setdefault("tasks", [])
+    parsed.setdefault("datasets", [])
+    parsed.setdefault("metrics", [])
+    parsed.setdefault("results", [])
+    parsed.setdefault("claims", [])
+
+    parsed["methods"] = _normalise_method_entries(parsed.get("methods"))
+    parsed["tasks"] = _normalise_string_list(parsed.get("tasks"))
+    parsed["datasets"] = _normalise_string_list(parsed.get("datasets"))
+    parsed["metrics"] = _normalise_string_list(parsed.get("metrics"))
+
+    section_lookup = {
+        str(section.get("id")): section for section in sections if section.get("id")
+    }
+    fallback_section_id = next(iter(section_lookup), None)
+
+    parsed["results"] = _normalise_result_entries(
+        parsed.get("results"),
+        section_lookup=section_lookup,
+        fallback_section_id=fallback_section_id,
+    )
+    parsed["claims"] = _normalise_claim_entries(
+        parsed.get("claims"),
+        section_lookup=section_lookup,
+        fallback_section_id=fallback_section_id,
+    )
+
+    return parsed
+
+
+def _normalise_string_list(values: Any) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    normalised: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        stripped = value.strip()
+        key = stripped.lower()
+        if stripped and key not in seen:
+            normalised.append(stripped)
+            seen.add(key)
+    return normalised
+
+
+def _normalise_method_entries(values: Any) -> list[dict[str, Any]]:
+    if not isinstance(values, list):
+        return []
+    normalised: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        name_raw = value.get("name")
+        if not isinstance(name_raw, str):
+            continue
+        name = name_raw.strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        aliases = value.get("aliases", [])
+        if not isinstance(aliases, list):
+            aliases = []
+        alias_list = [alias.strip() for alias in aliases if isinstance(alias, str) and alias.strip()]
+        is_new = value.get("is_new")
+        if is_new is None:
+            normalised_is_new = None
+        else:
+            normalised_is_new = bool(is_new)
+        entry = {"name": name, "aliases": alias_list}
+        if normalised_is_new is not None:
+            entry["is_new"] = normalised_is_new
+        normalised.append(entry)
+    return normalised
+
+
+def _normalise_result_entries(
+    values: Any,
+    *,
+    section_lookup: dict[str, dict[str, Any]],
+    fallback_section_id: str | None,
+) -> list[dict[str, Any]]:
+    if not isinstance(values, list):
+        return []
+
+    normalised: list[dict[str, Any]] = []
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+
+        method = _coerce_string(value.get("method"))
+        dataset = _coerce_string(value.get("dataset"))
+        metric = _coerce_string(value.get("metric"))
+
+        if not (method and dataset and metric):
+            continue
+
+        result_entry: dict[str, Any] = {
+            "method": method,
+            "dataset": dataset,
+            "metric": metric,
+            "value": _coerce_result_value(value.get("value")),
+            "split": _coerce_optional_string(value.get("split")),
+            "task": _coerce_optional_string(value.get("task")),
+        }
+
+        evidence = _normalise_evidence_span(
+            value.get("evidence_span"),
+            section_lookup=section_lookup,
+            fallback_section_id=fallback_section_id,
+        )
+        result_entry["evidence_span"] = evidence
+
+        normalised.append(result_entry)
+
+    return normalised
+
+
+def _normalise_claim_entries(
+    values: Any,
+    *,
+    section_lookup: dict[str, dict[str, Any]],
+    fallback_section_id: str | None,
+) -> list[dict[str, Any]]:
+    if not isinstance(values, list):
+        return []
+
+    normalised: list[dict[str, Any]] = []
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+
+        text = _coerce_string(value.get("text"))
+        category = _coerce_string(value.get("category")) or "other"
+        if not text:
+            continue
+
+        entry: dict[str, Any] = {
+            "text": text,
+            "category": category,
+        }
+
+        evidence = _normalise_evidence_span(
+            value.get("evidence_span"),
+            section_lookup=section_lookup,
+            fallback_section_id=fallback_section_id,
+        )
+        entry["evidence_span"] = evidence
+
+        normalised.append(entry)
+
+    return normalised
+
+
+def _normalise_evidence_span(
+    value: Any,
+    *,
+    section_lookup: dict[str, dict[str, Any]],
+    fallback_section_id: str | None,
+) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+
+    section_id = _coerce_string(value.get("section_id"))
+    if not section_id or section_id not in section_lookup:
+        section_id = fallback_section_id
+    if section_id is None:
+        return None
+
+    section = section_lookup.get(section_id) or {}
+    section_length = len(section.get("content") or "")
+
+    start = _coerce_int(value.get("start"), minimum=0) or 0
+    end = _coerce_int(value.get("end"), minimum=start) or section_length
+
+    start = min(start, section_length)
+    end = min(end, section_length)
+    if end < start:
+        start = 0
+        end = min(section_length, max(end, 0))
+
+    return {
+        "section_id": section_id,
+        "start": start,
+        "end": end,
+    }
+
+
+def _coerce_string(value: Any) -> str | None:
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    return None
+
+
+def _coerce_optional_string(value: Any) -> str | None:
+    result = _coerce_string(value)
+    return result
+
+
+def _coerce_result_value(value: Any) -> float | int | str | None:
+    if isinstance(value, bool):
+        # Prefer textual representation for booleans to avoid confusing them with
+        # numeric scores.
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        return value
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    return None
+
+
+def _coerce_int(value: Any, *, minimum: int = 0) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            integer_value = int(value)
+        except (TypeError, ValueError):
+            return None
+        return max(minimum, integer_value)
+    if isinstance(value, str):
+        value_stripped = value.strip()
+        if not value_stripped:
+            return None
+        try:
+            integer_value = int(float(value_stripped))
+        except (TypeError, ValueError):
+            return None
+        return max(minimum, integer_value)
+    return None
 
 
 async def _ensure_catalog_from_summary(summary: dict[str, Any], caches: _Caches) -> None:
