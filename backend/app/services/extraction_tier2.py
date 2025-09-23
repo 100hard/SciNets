@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import math
 import re
 from dataclasses import dataclass
@@ -10,7 +12,7 @@ from typing import Any, Iterable, Sequence
 from uuid import UUID
 
 import httpx
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 
 from app.core.config import settings
 from app.models.ontology import ClaimCategory, ClaimCreate, ResultCreate
@@ -25,53 +27,29 @@ from app.services.ontology_store import (
 )
 from app.services.papers import get_paper
 from app.services.sections import list_sections
+from app.schemas.tier2 import Tier2LLMPayload
 
+
+logger = logging.getLogger(__name__)
 
 TIER_NAME = "llm_structurer"
 BASE_CONFIDENCE = 0.7
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
+
+TRANSIENT_STATUS_CODES = {429, 500, 502, 503, 504}
+LLM_RETRY_DELAYS = (0.5, 1.0, 2.0)
 
 
 class Tier2ValidationError(RuntimeError):
     """Raised when the tier-2 LLM payload cannot be validated."""
 
 
-class EvidenceSpan(BaseModel):
-    section_id: str = Field(..., min_length=1)
-    start: int = Field(..., ge=0)
-    end: int = Field(..., ge=0)
+class TransientLLMError(RuntimeError):
+    """Raised when the LLM request fails with a retriable error."""
 
 
-class MethodPayload(BaseModel):
-    name: str = Field(..., min_length=1)
-    is_new: bool | None = None
-    aliases: list[str] = Field(default_factory=list)
-
-
-class ResultPayload(BaseModel):
-    method: str = Field(..., min_length=1)
-    dataset: str = Field(..., min_length=1)
-    metric: str = Field(..., min_length=1)
-    value: float | int | str | None = None
-    split: str | None = None
-    task: str | None = None
-    evidence_span: EvidenceSpan | None = None
-
-
-class ClaimPayload(BaseModel):
-    category: str = Field(..., min_length=1)
-    text: str = Field(..., min_length=1)
-    evidence_span: EvidenceSpan | None = None
-
-
-class Tier2LLMPayload(BaseModel):
-    paper_title: str = Field(..., min_length=1)
-    methods: list[MethodPayload] = Field(default_factory=list)
-    tasks: list[str] = Field(default_factory=list)
-    datasets: list[str] = Field(default_factory=list)
-    metrics: list[str] = Field(default_factory=list)
-    results: list[ResultPayload] = Field(default_factory=list)
-    claims: list[ClaimPayload] = Field(default_factory=list)
+class ParseLLMError(RuntimeError):
+    """Raised when the LLM response cannot be parsed."""
 
 
 @dataclass
@@ -80,6 +58,106 @@ class _Caches:
     datasets: dict[str, Any]
     metrics: dict[str, Any]
     tasks: dict[str, Any]
+
+
+def _summary_list(summary: dict[str, Any], key: str) -> list[Any]:
+    """Return a safe list for the given summary key.
+
+    Earlier tiers occasionally produce ``None`` for collection fields which
+    causes ``TypeError`` when iterated over. To ensure Tier-2 remains robust we
+    coerce ``None`` (or other unexpected scalar values) into empty lists. Tuples
+    are converted to lists to preserve order while allowing iteration.
+    """
+
+    value = summary.get(key)
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    return []
+
+
+def _truncate_for_log(value: str, limit: int = 500) -> str:
+    if len(value) <= limit:
+        return value
+    return f"{value[:limit]}…"
+
+
+def _stringify_for_log(payload: Any) -> str:
+    if isinstance(payload, str):
+        return payload
+    try:
+        return json.dumps(payload)
+    except Exception:  # pragma: no cover - defensive
+        return repr(payload)
+
+
+def _describe_sections(sections: Sequence[dict[str, Any]]) -> str:
+    """Return a compact description of the provided sections for logging."""
+
+    identifiers: list[str] = []
+    for section in sections:
+        section_id = section.get("id")
+        if not section_id:
+            continue
+        identifiers.append(str(section_id))
+
+    count = len(sections)
+    if not identifiers:
+        return f"count={count}"
+
+    preview = ", ".join(identifiers[:5])
+    if len(identifiers) > 5:
+        preview = f"{preview}, …"
+    return f"count={count} ids=[{preview}]"
+
+
+def _coerce_tier2_payload(
+    raw_payload: Any,
+    *,
+    paper_id: UUID,
+    paper_title: str,
+    sections: Sequence[dict[str, Any]],
+) -> Tier2LLMPayload:
+    """Coerce the raw LLM payload into the validated Tier-2 schema."""
+
+    section_descriptor = _describe_sections(sections)
+
+    try:
+        normalised = _normalise_llm_payload(
+            raw_payload,
+            paper_title=paper_title,
+            sections=sections,
+        )
+    except RuntimeError as exc:
+        raw_repr = _truncate_for_log(_stringify_for_log(raw_payload))
+        detail = str(exc)
+        if exc.__cause__ is not None:
+            detail = f"{detail} ({exc.__cause__})"
+        logger.error(
+            "[tier2] failed to normalise payload paper=%s sections=%s error=%s raw=%s",
+            paper_id,
+            section_descriptor,
+            detail,
+            raw_repr,
+        )
+        return Tier2LLMPayload()
+
+    try:
+        return Tier2LLMPayload.model_validate(normalised)
+    except ValidationError as exc:
+        try:
+            serialised = json.dumps(normalised)
+        except Exception:  # pragma: no cover - defensive
+            serialised = repr(normalised)
+        logger.error(
+            "[tier2] schema validation failed paper=%s sections=%s error=%s data=%s",
+            paper_id,
+            section_descriptor,
+            exc,
+            _truncate_for_log(serialised),
+        )
+        return Tier2LLMPayload()
 
 
 async def run_tier2_structurer(
@@ -113,26 +191,30 @@ async def run_tier2_structurer(
     if sections is None:
         sections = await list_sections(paper_id=paper_id, limit=500, offset=0)
 
+    section_payloads = [
+        {
+            "id": str(section.id),
+            "title": section.title,
+            "content": section.content,
+            "char_start": section.char_start,
+            "char_end": section.char_end,
+        }
+        for section in sections
+    ]
+
     if llm_response is None:
-        section_payloads = [
-            {
-                "id": str(section.id),
-                "title": section.title,
-                "content": section.content,
-                "char_start": section.char_start,
-                "char_end": section.char_end,
-            }
-            for section in sections
-        ]
-        llm_response = await call_structurer_llm(
+        payload = await call_structurer_llm(
+            paper_id=paper_id,
             paper_title=paper.title,
             sections=section_payloads,
         )
-
-    try:
-        payload = Tier2LLMPayload.model_validate_json(llm_response)
-    except (ValidationError, ValueError, TypeError) as exc:
-        raise Tier2ValidationError(f"Tier-2 structurer returned invalid payload: {exc}") from exc
+    else:
+        payload = _coerce_tier2_payload(
+            llm_response,
+            paper_id=paper_id,
+            paper_title=paper.title,
+            sections=section_payloads,
+        )
 
     caches = _Caches(methods={}, datasets={}, metrics={}, tasks={})
 
@@ -174,7 +256,7 @@ async def run_tier2_structurer(
 
     summary_payload = {
         "paper_id": str(paper_id),
-        "tiers": _merge_tiers(summary.get("tiers", []), [2]),
+        "tiers": _merge_tiers(_summary_list(summary, "tiers"), [2]),
         "methods": [_serialize_method(model) for model in method_list],
         "datasets": [_serialize_dataset(model) for model in dataset_list],
         "metrics": [_serialize_metric(model) for model in metric_list],
@@ -206,8 +288,68 @@ async def run_tier2_structurer(
     return summary_payload
 
 
-async def call_structurer_llm(*, paper_title: str, sections: Sequence[dict[str, Any]]) -> str:
-    """Invoke the Tier-2 structuring LLM using the configured OpenAI endpoint."""
+async def call_structurer_llm(
+    *,
+    paper_id: UUID,
+    paper_title: str,
+    sections: Sequence[dict[str, Any]],
+) -> Tier2LLMPayload:
+    """Invoke the Tier-2 structuring LLM and return a validated payload."""
+
+    section_descriptor = _describe_sections(sections)
+    attempts = len(LLM_RETRY_DELAYS) + 1
+    last_transient: TransientLLMError | None = None
+
+    for index, delay in enumerate((0.0, *LLM_RETRY_DELAYS), start=1):
+        if delay:
+            await asyncio.sleep(delay)
+        try:
+            raw_content = await _call_structurer_llm_once(
+                paper_title=paper_title,
+                sections=sections,
+            )
+        except TransientLLMError as exc:
+            last_transient = exc
+            logger.warning(
+                "[tier2] transient LLM error attempt=%s/%s paper=%s sections=%s error=%s",
+                index,
+                attempts,
+                paper_id,
+                section_descriptor,
+                exc,
+            )
+            continue
+        except ParseLLMError as exc:
+            logger.error(
+                "[tier2] failed to acquire LLM payload paper=%s sections=%s error=%s",
+                paper_id,
+                section_descriptor,
+                exc,
+            )
+            return Tier2LLMPayload()
+
+        return _coerce_tier2_payload(
+            raw_content,
+            paper_id=paper_id,
+            paper_title=paper_title,
+            sections=sections,
+        )
+
+    if last_transient is not None:
+        logger.error(
+            "[tier2] transient LLM error after retries paper=%s sections=%s error=%s",
+            paper_id,
+            section_descriptor,
+            last_transient,
+        )
+
+    return Tier2LLMPayload()
+
+
+async def _call_structurer_llm_once(
+    *, paper_title: str, sections: Sequence[dict[str, Any]]
+) -> str:
+    """Call the Tier-2 LLM once and return the raw response content."""
 
     api_key = settings.openai_api_key
     model = settings.tier2_llm_model
@@ -217,9 +359,6 @@ async def call_structurer_llm(*, paper_title: str, sections: Sequence[dict[str, 
 
     if not model:
         raise RuntimeError("TIER2_LLM_MODEL environment variable is not set")
-
-    base_url = settings.tier2_llm_base_url or "https://api.openai.com/v1"
-    timeout = httpx.Timeout(settings.tier2_llm_timeout_seconds)
 
     rendered_sections = _render_sections_for_prompt(
         sections,
@@ -332,48 +471,48 @@ async def call_structurer_llm(*, paper_title: str, sections: Sequence[dict[str, 
         "max_tokens": settings.tier2_llm_max_output_tokens,
     }
 
-    response_format: dict[str, Any] | None = None
     if settings.tier2_llm_force_json:
-        response_format = {"type": "json_object"}
-    if response_format is not None:
-        request_payload["response_format"] = response_format
+        request_payload["response_format"] = {"type": "json_object"}
+
+    timeout = httpx.Timeout(settings.tier2_llm_timeout_seconds)
+    base_url = settings.tier2_llm_base_url or "https://api.openai.com/v1"
+    path = settings.tier2_llm_completion_path or "/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    if settings.openai_organization:
+        headers["OpenAI-Organization"] = settings.openai_organization
 
     async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as client:
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-        if settings.openai_organization:
-            headers["OpenAI-Organization"] = settings.openai_organization
-
-        path = settings.tier2_llm_completion_path or "/chat/completions"
-
         try:
             response = await client.post(path, headers=headers, json=request_payload)
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:  # pragma: no cover - network error path
-            raise RuntimeError(
-                f"Tier-2 structurer LLM request failed with status "
-                f"{exc.response.status_code}: {exc.response.text}"
-            ) from exc
-        except httpx.RequestError as exc:  # pragma: no cover - network error path
-            raise RuntimeError(f"Tier-2 structurer LLM request failed: {exc}") from exc
+        except httpx.RequestError as exc:
+            raise TransientLLMError(f"network error: {exc}") from exc
 
-    payload = response.json()
+    status = response.status_code
+    if status in TRANSIENT_STATUS_CODES:
+        raise TransientLLMError(f"http {status}")
+    if status >= 400:
+        raise ParseLLMError(
+            f"http {status}: {_truncate_for_log(response.text or '')}"
+        )
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise ParseLLMError(f"invalid JSON response: {exc}") from exc
+
     try:
         content = payload["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as exc:  # pragma: no cover - defensive
-        raise RuntimeError(
-            "Tier-2 structurer LLM response missing message content"
-        ) from exc
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ParseLLMError("missing message content") from exc
 
-    normalized = _normalise_llm_payload(
-        content,
-        paper_title=paper_title,
-        sections=sections,
-    )
+    if not isinstance(content, str) or not content.strip():
+        raise ParseLLMError("empty response content")
 
-    return json.dumps(normalized)
+    return content
 
 
 def _render_sections_for_prompt(
@@ -423,17 +562,19 @@ def _truncate_text(value: str, max_chars: int) -> str:
 
 
 def _normalise_llm_payload(
-    raw_content: str,
+    raw_content: Any,
     *,
     paper_title: str,
     sections: Sequence[dict[str, Any]],
 ) -> dict[str, Any]:
-    try:
-        parsed = json.loads(raw_content)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError("Tier-2 structurer returned non-JSON response") from exc
-
-    if not isinstance(parsed, dict):
+    if isinstance(raw_content, str):
+        try:
+            parsed = json.loads(raw_content)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("Tier-2 structurer returned non-JSON response") from exc
+    elif isinstance(raw_content, dict):
+        parsed = raw_content
+    else:
         raise RuntimeError("Tier-2 structurer returned unexpected payload type")
 
     parsed.setdefault("paper_title", paper_title)
@@ -682,17 +823,23 @@ def _coerce_int(value: Any, *, minimum: int = 0) -> int | None:
 
 
 async def _ensure_catalog_from_summary(summary: dict[str, Any], caches: _Caches) -> None:
-    for method in summary.get("methods", []):
+    for method in _summary_list(summary, "methods"):
+        if not isinstance(method, dict):
+            continue
         name = method.get("name")
         if name:
             await _ensure_method(name, caches, aliases=method.get("aliases"), description=method.get("description"))
 
-    for dataset in summary.get("datasets", []):
+    for dataset in _summary_list(summary, "datasets"):
+        if not isinstance(dataset, dict):
+            continue
         name = dataset.get("name")
         if name:
             await _ensure_dataset(name, caches, aliases=dataset.get("aliases"), description=dataset.get("description"))
 
-    for metric in summary.get("metrics", []):
+    for metric in _summary_list(summary, "metrics"):
+        if not isinstance(metric, dict):
+            continue
         name = metric.get("name")
         if name:
             await _ensure_metric(
@@ -703,7 +850,9 @@ async def _ensure_catalog_from_summary(summary: dict[str, Any], caches: _Caches)
                 description=metric.get("description"),
             )
 
-    for task in summary.get("tasks", []):
+    for task in _summary_list(summary, "tasks"):
+        if not isinstance(task, dict):
+            continue
         name = task.get("name")
         if name:
             await _ensure_task(name, caches, aliases=task.get("aliases"), description=task.get("description"))
@@ -729,7 +878,9 @@ async def _convert_summary_results(
     caches: _Caches,
 ) -> list[ResultCreate]:
     converted: list[ResultCreate] = []
-    for result in summary.get("results", []):
+    for result in _summary_list(summary, "results"):
+        if not isinstance(result, dict):
+            continue
         converted_model = await _summary_result_to_model(paper_id, result, caches)
         if converted_model is not None:
             converted.append(converted_model)
@@ -917,7 +1068,9 @@ def _convert_payload_claims(paper_id: UUID, payload: Tier2LLMPayload) -> list[Cl
 
 async def _convert_summary_claims(paper_id: UUID, summary: dict[str, Any]) -> list[ClaimCreate]:
     converted: list[ClaimCreate] = []
-    for claim in summary.get("claims", []):
+    for claim in _summary_list(summary, "claims"):
+        if not isinstance(claim, dict):
+            continue
         category_raw = claim.get("category", "").strip().lower()
         try:
             category = ClaimCategory(category_raw)
@@ -1014,9 +1167,11 @@ def _normalize_text(value: str) -> str:
     return " ".join(normalized.split())
 
 
-def _merge_tiers(existing: Sequence[int] | Sequence[str], new: Sequence[int]) -> list[int]:
+def _merge_tiers(
+    existing: Sequence[int] | Sequence[str] | None, new: Sequence[int]
+) -> list[int]:
     tier_set: set[int] = set()
-    for tier in existing:
+    for tier in existing or []:
         try:
             tier_set.add(int(tier))
         except (TypeError, ValueError):
