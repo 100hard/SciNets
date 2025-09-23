@@ -112,6 +112,35 @@ def _describe_sections(sections: Sequence[dict[str, Any]]) -> str:
     return f"count={count} ids=[{preview}]"
 
 
+def _format_section_ids(sections: Sequence[dict[str, Any]]) -> str:
+    """Return a sanitised list of section identifiers for logging purposes."""
+
+    identifiers: list[str] = []
+    for section in sections:
+        section_id = section.get("id")
+        if section_id is None:
+            continue
+        if isinstance(section_id, str):
+            cleaned = section_id.strip()
+            if not cleaned:
+                continue
+            identifiers.append(cleaned)
+            continue
+        try:
+            identifiers.append(str(section_id))
+        except Exception:  # pragma: no cover - defensive
+            continue
+
+    count = len(sections)
+    if not identifiers:
+        return f"count={count}"
+
+    preview = identifiers[:5]
+    if len(identifiers) > 5:
+        preview.append("…")
+    return f"count={count} ids=[{', '.join(preview)}]"
+
+
 def _coerce_tier2_payload(
     raw_payload: Any,
     *,
