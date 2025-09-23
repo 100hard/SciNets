@@ -112,6 +112,7 @@ def _describe_sections(sections: Sequence[dict[str, Any]]) -> str:
     return f"count={count} ids=[{preview}]"
 
 
+
 def _format_section_ids(
     sections: Sequence[dict[str, Any]] | None,
 ) -> str:
@@ -121,6 +122,13 @@ def _format_section_ids(
 
     identifiers: list[str] = []
     for section in section_list:
+
+def _format_section_ids(sections: Sequence[dict[str, Any]]) -> str:
+    """Return a sanitised list of section identifiers for logging purposes."""
+
+    identifiers: list[str] = []
+    for section in sections:
+
         section_id = section.get("id")
         if section_id is None:
             continue
@@ -135,7 +143,11 @@ def _format_section_ids(
         except Exception:  # pragma: no cover - defensive
             continue
 
+
     count = len(section_list)
+
+    count = len(sections)
+
     if not identifiers:
         return f"count={count}"
 
