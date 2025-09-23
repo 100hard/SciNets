@@ -3,6 +3,8 @@ import json
 from typing import Any
 from uuid import uuid4
 
+from uuid import uuid4
+
 import pytest
 
 from app.services import extraction_tier2
@@ -202,6 +204,7 @@ def test_summary_inputs_with_null_collections_are_ignored():
     assert extraction_tier2._merge_tiers(summary.get("tiers"), [2]) == [2]
 
 
+
 def test_coerce_tier2_payload_missing_keys_returns_defaults():
     sections = _build_sections()
     payload = extraction_tier2._coerce_tier2_payload(
@@ -306,3 +309,4 @@ def test_call_structurer_llm_returns_valid_payload(monkeypatch):
 
     assert result.paper_title == "Original"
     assert [method.name for method in result.methods] == ["Method Alpha"]
+

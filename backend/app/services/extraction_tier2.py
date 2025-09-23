@@ -47,7 +47,6 @@ class Tier2ValidationError(RuntimeError):
 class TransientLLMError(RuntimeError):
     """Raised when the LLM request fails with a retriable error."""
 
-
 class ParseLLMError(RuntimeError):
     """Raised when the LLM response cannot be parsed."""
 
@@ -75,6 +74,7 @@ def _summary_list(summary: dict[str, Any], key: str) -> list[Any]:
     if isinstance(value, tuple):
         return list(value)
     return []
+
 
 
 def _truncate_for_log(value: str, limit: int = 500) -> str:
@@ -158,6 +158,7 @@ def _coerce_tier2_payload(
             _truncate_for_log(serialised),
         )
         return Tier2LLMPayload()
+
 
 
 async def run_tier2_structurer(
@@ -296,7 +297,11 @@ async def call_structurer_llm(
 ) -> Tier2LLMPayload:
     """Invoke the Tier-2 structuring LLM and return a validated payload."""
 
+
     section_descriptor = _describe_sections(sections)
+
+    section_descriptor = _format_section_ids(sections)
+
     attempts = len(LLM_RETRY_DELAYS) + 1
     last_transient: TransientLLMError | None = None
 
@@ -509,8 +514,15 @@ async def _call_structurer_llm_once(
     except (KeyError, IndexError, TypeError) as exc:
         raise ParseLLMError("missing message content") from exc
 
+
     if not isinstance(content, str) or not content.strip():
         raise ParseLLMError("empty response content")
+
+
+
+    if not isinstance(content, str) or not content.strip():
+        raise ParseLLMError("empty response content")
+
 
     return content
 
