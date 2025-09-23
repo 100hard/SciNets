@@ -591,13 +591,13 @@ async def _ensure_catalog_from_summary(summary: dict[str, Any], caches: _Caches)
 
 
 async def _ensure_catalog_from_payload(payload: Tier2LLMPayload, caches: _Caches) -> None:
-    for method in payload.methods or []:
+    for method in (payload.methods or []):
         await _ensure_method(method.name, caches, aliases=method.aliases)
-    for dataset in payload.datasets or []:
+    for dataset in (payload.datasets or []):
         await _ensure_dataset(dataset, caches)
-    for metric in payload.metrics or []:
+    for metric in (payload.metrics or []):
         await _ensure_metric(metric, caches)
-    for task in payload.tasks or []:
+    for task in (payload.tasks or []):
         await _ensure_task(task, caches)
 
 
@@ -670,9 +670,9 @@ async def _convert_payload_results(
     paper_id: UUID, payload: Tier2LLMPayload, caches: _Caches,
 ) -> list[ResultCreate]:
     converted: list[ResultCreate] = []
-    method_lookup = { _normalize_text(m.name): m for m in payload.methods or [] }
+    method_lookup = { _normalize_text(m.name): m for m in (payload.methods or []) }
     
-    for result in payload.results or []:
+    for result in (payload.results or []):
         method_meta = method_lookup.get(_normalize_text(result.method))
         method_aliases = method_meta.aliases if method_meta else None
         
@@ -716,7 +716,7 @@ async def _convert_payload_results(
 
 def _convert_payload_claims(paper_id: UUID, payload: Tier2LLMPayload) -> list[ClaimCreate]:
     converted: list[ClaimCreate] = []
-    for claim in payload.claims or []:
+    for claim in (payload.claims or []):
         try:
             category = ClaimCategory(claim.category.strip().lower())
         except ValueError:

@@ -44,11 +44,11 @@ class Settings(BaseSettings):
     tier2_llm_completion_path: str | None = Field(default=None)
     tier2_llm_temperature: float = Field(default=0.1)
     tier2_llm_top_p: float = Field(default=1.0)
-    tier2_llm_timeout_seconds: float = Field(default=60.0)
+    tier2_llm_timeout_seconds: float = Field(default=120.0)
     tier2_llm_max_sections: int = Field(default=24)
     tier2_llm_max_section_chars: int = Field(default=3500)
     tier2_llm_force_json: bool = Field(default=True)
-    tier2_llm_max_output_tokens: int = Field(default=1200)
+    tier2_llm_max_output_tokens: int = Field(default=8129)
 
     class Config:
         env_file = ".env"
@@ -56,4 +56,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
