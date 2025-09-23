@@ -47,7 +47,6 @@ class Tier2ValidationError(RuntimeError):
 class TransientLLMError(RuntimeError):
     """Raised when the LLM request fails with a retriable error."""
 
-
 class ParseLLMError(RuntimeError):
     """Raised when the LLM response cannot be parsed."""
 
@@ -75,6 +74,91 @@ def _summary_list(summary: dict[str, Any], key: str) -> list[Any]:
     if isinstance(value, tuple):
         return list(value)
     return []
+
+
+
+def _truncate_for_log(value: str, limit: int = 500) -> str:
+    if len(value) <= limit:
+        return value
+    return f"{value[:limit]}…"
+
+
+def _stringify_for_log(payload: Any) -> str:
+    if isinstance(payload, str):
+        return payload
+    try:
+        return json.dumps(payload)
+    except Exception:  # pragma: no cover - defensive
+        return repr(payload)
+
+
+def _describe_sections(sections: Sequence[dict[str, Any]]) -> str:
+    """Return a compact description of the provided sections for logging."""
+
+    identifiers: list[str] = []
+    for section in sections:
+        section_id = section.get("id")
+        if not section_id:
+            continue
+        identifiers.append(str(section_id))
+
+    count = len(sections)
+    if not identifiers:
+        return f"count={count}"
+
+    preview = ", ".join(identifiers[:5])
+    if len(identifiers) > 5:
+        preview = f"{preview}, …"
+    return f"count={count} ids=[{preview}]"
+
+
+def _coerce_tier2_payload(
+    raw_payload: Any,
+    *,
+    paper_id: UUID,
+    paper_title: str,
+    sections: Sequence[dict[str, Any]],
+) -> Tier2LLMPayload:
+    """Coerce the raw LLM payload into the validated Tier-2 schema."""
+
+    section_descriptor = _describe_sections(sections)
+
+    try:
+        normalised = _normalise_llm_payload(
+            raw_payload,
+            paper_title=paper_title,
+            sections=sections,
+        )
+    except RuntimeError as exc:
+        raw_repr = _truncate_for_log(_stringify_for_log(raw_payload))
+        detail = str(exc)
+        if exc.__cause__ is not None:
+            detail = f"{detail} ({exc.__cause__})"
+        logger.error(
+            "[tier2] failed to normalise payload paper=%s sections=%s error=%s raw=%s",
+            paper_id,
+            section_descriptor,
+            detail,
+            raw_repr,
+        )
+        return Tier2LLMPayload()
+
+    try:
+        return Tier2LLMPayload.model_validate(normalised)
+    except ValidationError as exc:
+        try:
+            serialised = json.dumps(normalised)
+        except Exception:  # pragma: no cover - defensive
+            serialised = repr(normalised)
+        logger.error(
+            "[tier2] schema validation failed paper=%s sections=%s error=%s data=%s",
+            paper_id,
+            section_descriptor,
+            exc,
+            _truncate_for_log(serialised),
+        )
+        return Tier2LLMPayload()
+
 
 
 async def run_tier2_structurer(
@@ -213,7 +297,11 @@ async def call_structurer_llm(
 ) -> Tier2LLMPayload:
     """Invoke the Tier-2 structuring LLM and return a validated payload."""
 
+
+    section_descriptor = _describe_sections(sections)
+
     section_descriptor = _format_section_ids(sections)
+
     attempts = len(LLM_RETRY_DELAYS) + 1
     last_transient: TransientLLMError | None = None
 
@@ -426,8 +514,15 @@ async def _call_structurer_llm_once(
     except (KeyError, IndexError, TypeError) as exc:
         raise ParseLLMError("missing message content") from exc
 
+
     if not isinstance(content, str) or not content.strip():
         raise ParseLLMError("empty response content")
+
+
+
+    if not isinstance(content, str) or not content.strip():
+        raise ParseLLMError("empty response content")
+
 
     return content
 

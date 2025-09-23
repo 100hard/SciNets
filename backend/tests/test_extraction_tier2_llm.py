@@ -1,5 +1,7 @@
 import asyncio
 import json
+from typing import Any
+from uuid import uuid4
 
 from uuid import uuid4
 
@@ -25,6 +27,23 @@ def _build_sections():
             "char_end": 120,
         },
     ]
+
+
+def test_describe_sections_handles_missing_ids():
+    assert extraction_tier2._describe_sections([]) == "count=0"
+
+    description = extraction_tier2._describe_sections([
+        {"id": "a"},
+        {},
+        {"id": "b"},
+        {"id": "c"},
+        {"id": "d"},
+        {"id": "e"},
+        {"id": "f"},
+    ])
+
+    assert description.startswith("count=7")
+    assert "ids=[a, b, c, d, e" in description
 
 
 def test_normalise_llm_payload_coerces_structures():
@@ -183,3 +202,111 @@ def test_summary_inputs_with_null_collections_are_ignored():
     assert converted_results == []
     assert converted_claims == []
     assert extraction_tier2._merge_tiers(summary.get("tiers"), [2]) == [2]
+
+
+
+def test_coerce_tier2_payload_missing_keys_returns_defaults():
+    sections = _build_sections()
+    payload = extraction_tier2._coerce_tier2_payload(
+        "{}",
+        paper_id=uuid4(),
+        paper_title="Paper",
+        sections=sections,
+    )
+
+    assert payload.paper_title == "Paper"
+    assert payload.methods == []
+    assert payload.datasets == []
+    assert payload.results == []
+
+
+def test_call_structurer_llm_returns_empty_payload_on_empty_response(monkeypatch):
+    async def fake_once(*_: Any, **__: Any) -> str:
+        return ""
+
+    monkeypatch.setattr(extraction_tier2, "_call_structurer_llm_once", fake_once)
+
+    result = asyncio.run(
+        extraction_tier2.call_structurer_llm(
+            paper_id=uuid4(),
+            paper_title="Paper",
+            sections=_build_sections(),
+        )
+    )
+
+    assert result.methods == []
+    assert result.claims == []
+
+
+def test_call_structurer_llm_handles_malformed_json(monkeypatch):
+    async def fake_once(*_: Any, **__: Any) -> str:
+        return "{not:json"
+
+    monkeypatch.setattr(extraction_tier2, "_call_structurer_llm_once", fake_once)
+
+    result = asyncio.run(
+        extraction_tier2.call_structurer_llm(
+            paper_id=uuid4(),
+            paper_title="Paper",
+            sections=_build_sections(),
+        )
+    )
+
+    assert result.methods == []
+    assert result.results == []
+
+
+def test_call_structurer_llm_retries_transient_errors(monkeypatch):
+    call_count = 0
+
+    async def fake_once(*_: Any, **__: Any) -> str:
+        nonlocal call_count
+        call_count += 1
+        raise extraction_tier2.TransientLLMError("http 429")
+
+    async def fake_sleep(*_: Any, **__: Any) -> None:
+        return None
+
+    monkeypatch.setattr(extraction_tier2, "_call_structurer_llm_once", fake_once)
+    monkeypatch.setattr(extraction_tier2.asyncio, "sleep", fake_sleep)
+
+    result = asyncio.run(
+        extraction_tier2.call_structurer_llm(
+            paper_id=uuid4(),
+            paper_title="Paper",
+            sections=_build_sections(),
+        )
+    )
+
+    assert result.methods == []
+    assert call_count == len(extraction_tier2.LLM_RETRY_DELAYS) + 1
+
+
+def test_call_structurer_llm_returns_valid_payload(monkeypatch):
+    sections = _build_sections()
+    raw_payload = json.dumps(
+        {
+            "paper_title": "Original",
+            "methods": [{"name": "Method Alpha"}],
+            "tasks": ["Task"],
+            "datasets": ["Dataset"],
+            "metrics": ["Metric"],
+        }
+    )
+
+    async def fake_once(*_: Any, **__: Any) -> str:
+        return raw_payload
+
+    monkeypatch.setattr(extraction_tier2, "_call_structurer_llm_once", fake_once)
+
+    result = asyncio.run(
+        extraction_tier2.call_structurer_llm(
+            paper_id=uuid4(),
+            paper_title="Paper",
+            sections=sections,
+        )
+    )
+
+    assert result.paper_title == "Original"
+    assert [method.name for method in result.methods] == ["Method Alpha"]
+
