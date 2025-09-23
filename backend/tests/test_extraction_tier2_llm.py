@@ -1,12 +1,12 @@
 import asyncio
 import json
+from datetime import datetime, timezone
 from typing import Any
-from uuid import uuid4
-
 from uuid import uuid4
 
 import pytest
 
+from app.models.ontology import Method
 from app.services import extraction_tier2
 
 
@@ -44,6 +44,34 @@ def test_describe_sections_handles_missing_ids():
 
     assert description.startswith("count=7")
     assert "ids=[a, b, c, d, e" in description
+
+
+def test_format_section_ids_handles_none_values():
+    assert extraction_tier2._format_section_ids(None) == "count=0"
+
+    formatted = extraction_tier2._format_section_ids([
+        {"id": "  alpha  "},
+        {"id": None},
+    ])
+
+    assert formatted == "count=2 ids=[alpha]"
+
+
+def test_serialize_method_handles_missing_aliases():
+    now = datetime.now(timezone.utc)
+    method = Method.model_construct(
+        id=uuid4(),
+        name="Method Alpha",
+        aliases=None,
+        description=None,
+        created_at=now,
+        updated_at=now,
+    )
+
+    payload = extraction_tier2._serialize_method(method)
+
+    assert payload["aliases"] == []
+    assert payload["name"] == "Method Alpha"
 
 
 def test_normalise_llm_payload_coerces_structures():

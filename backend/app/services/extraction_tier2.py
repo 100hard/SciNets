@@ -112,11 +112,23 @@ def _describe_sections(sections: Sequence[dict[str, Any]]) -> str:
     return f"count={count} ids=[{preview}]"
 
 
+
+def _format_section_ids(
+    sections: Sequence[dict[str, Any]] | None,
+) -> str:
+    """Return a sanitised list of section identifiers for logging purposes."""
+
+    section_list = list(sections or [])
+
+    identifiers: list[str] = []
+    for section in section_list:
+
 def _format_section_ids(sections: Sequence[dict[str, Any]]) -> str:
     """Return a sanitised list of section identifiers for logging purposes."""
 
     identifiers: list[str] = []
     for section in sections:
+
         section_id = section.get("id")
         if section_id is None:
             continue
@@ -131,7 +143,11 @@ def _format_section_ids(sections: Sequence[dict[str, Any]]) -> str:
         except Exception:  # pragma: no cover - defensive
             continue
 
+
+    count = len(section_list)
+
     count = len(sections)
+
     if not identifiers:
         return f"count={count}"
 
@@ -146,17 +162,18 @@ def _coerce_tier2_payload(
     *,
     paper_id: UUID,
     paper_title: str,
-    sections: Sequence[dict[str, Any]],
+    sections: Sequence[dict[str, Any]] | None,
 ) -> Tier2LLMPayload:
     """Coerce the raw LLM payload into the validated Tier-2 schema."""
 
-    section_descriptor = _describe_sections(sections)
+    section_records = list(sections or [])
+    section_descriptor = _describe_sections(section_records)
 
     try:
         normalised = _normalise_llm_payload(
             raw_payload,
             paper_title=paper_title,
-            sections=sections,
+            sections=section_records,
         )
     except RuntimeError as exc:
         raw_repr = _truncate_for_log(_stringify_for_log(raw_payload))
@@ -220,6 +237,8 @@ async def run_tier2_structurer(
 
     if sections is None:
         sections = await list_sections(paper_id=paper_id, limit=500, offset=0)
+    else:
+        sections = list(sections)
 
     section_payloads = [
         {
@@ -322,14 +341,12 @@ async def call_structurer_llm(
     *,
     paper_id: UUID,
     paper_title: str,
-    sections: Sequence[dict[str, Any]],
+    sections: Sequence[dict[str, Any]] | None,
 ) -> Tier2LLMPayload:
     """Invoke the Tier-2 structuring LLM and return a validated payload."""
 
-
-    section_descriptor = _describe_sections(sections)
-
-    section_descriptor = _format_section_ids(sections)
+    section_records = list(sections or [])
+    section_descriptor = _format_section_ids(section_records)
 
     attempts = len(LLM_RETRY_DELAYS) + 1
     last_transient: TransientLLMError | None = None
@@ -340,7 +357,7 @@ async def call_structurer_llm(
         try:
             raw_content = await _call_structurer_llm_once(
                 paper_title=paper_title,
-                sections=sections,
+                sections=section_records,
             )
         except TransientLLMError as exc:
             last_transient = exc
@@ -366,7 +383,7 @@ async def call_structurer_llm(
             raw_content,
             paper_id=paper_id,
             paper_title=paper_title,
-            sections=sections,
+            sections=section_records,
         )
 
     if last_transient is not None:
@@ -1221,11 +1238,29 @@ def _merge_tiers(
     return sorted(tier_set)
 
 
+def _coerce_aliases_for_serialization(values: Any) -> list[str]:
+    if not values:
+        return []
+    if isinstance(values, (str, bytes)):
+        stripped = values.strip()
+        return [stripped] if stripped else []
+    if isinstance(values, Iterable):
+        aliases: list[str] = []
+        for alias in values:
+            if not isinstance(alias, str):
+                continue
+            stripped = alias.strip()
+            if stripped:
+                aliases.append(stripped)
+        return aliases
+    return []
+
+
 def _serialize_method(model) -> dict[str, Any]:
     return {
         "id": str(model.id),
         "name": model.name,
-        "aliases": list(model.aliases),
+        "aliases": _coerce_aliases_for_serialization(getattr(model, "aliases", None)),
         "description": model.description,
         "created_at": model.created_at.isoformat(),
         "updated_at": model.updated_at.isoformat(),
@@ -1236,7 +1271,7 @@ def _serialize_dataset(model) -> dict[str, Any]:
     return {
         "id": str(model.id),
         "name": model.name,
-        "aliases": list(model.aliases),
+        "aliases": _coerce_aliases_for_serialization(getattr(model, "aliases", None)),
         "description": model.description,
         "created_at": model.created_at.isoformat(),
         "updated_at": model.updated_at.isoformat(),
@@ -1248,7 +1283,7 @@ def _serialize_metric(model) -> dict[str, Any]:
         "id": str(model.id),
         "name": model.name,
         "unit": model.unit,
-        "aliases": list(model.aliases),
+        "aliases": _coerce_aliases_for_serialization(getattr(model, "aliases", None)),
         "description": model.description,
         "created_at": model.created_at.isoformat(),
         "updated_at": model.updated_at.isoformat(),
@@ -1259,7 +1294,7 @@ def _serialize_task(model) -> dict[str, Any]:
     return {
         "id": str(model.id),
         "name": model.name,
-        "aliases": list(model.aliases),
+        "aliases": _coerce_aliases_for_serialization(getattr(model, "aliases", None)),
         "description": model.description,
         "created_at": model.created_at.isoformat(),
         "updated_at": model.updated_at.isoformat(),
