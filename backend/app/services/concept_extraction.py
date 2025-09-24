@@ -487,14 +487,130 @@ def _compose_description(section: SectionBase, snippet: str) -> Optional[str]:
     return " · ".join(parts)
 
 
+DATASET_HINTS = {
+    "dataset",
+    "data set",
+    "corpus",
+    "benchmark",
+    "collection",
+    "library",
+    "suite",
+    "set",
+    "track",
+    "challenge",
+}
+
+METRIC_HINTS = {
+    "accuracy",
+    "precision",
+    "recall",
+    "f1",
+    "f-score",
+    "bleu",
+    "rouge",
+    "meteor",
+    "perplexity",
+    "auc",
+    "mae",
+    "rmse",
+    "error",
+    "loss",
+    "score",
+    "psnr",
+    "ssim",
+}
+
+TASK_HINTS = {
+    "classification",
+    "segmentation",
+    "translation",
+    "labeling",
+    "detection",
+    "regression",
+    "prediction",
+    "generation",
+    "retrieval",
+    "forecasting",
+    "recognition",
+    "synthesis",
+    "analysis",
+    "clustering",
+    "matching",
+}
+
+METHOD_HINTS = {
+    "network",
+    "transformer",
+    "model",
+    "encoder",
+    "decoder",
+    "framework",
+    "approach",
+    "algorithm",
+    "architecture",
+    "pipeline",
+    "system",
+    "gan",
+    "cnn",
+    "rnn",
+    "bert",
+    "gpt",
+    "resnet",
+    "lstm",
+}
+
+KNOWN_DATASETS = {
+    "imagenet",
+    "coco",
+    "mnist",
+    "cifar10",
+    "cifar-10",
+    "cifar100",
+    "cifar-100",
+    "wmt",
+    "wmt14",
+    "squad",
+    "wikidata",
+    "openwebtext",
+    "msmarco",
+    "libri",
+    "librispeech",
+    "glue",
+    "superglue",
+    "kitti",
+    "nyuv2",
+}
+
+
 def _infer_concept_type(phrase: str) -> str:
-    if any(char.isdigit() for char in phrase):
+    normalized = phrase.lower()
+
+    if any(char.isdigit() for char in phrase) and len(phrase.split()) <= 3:
+        if any(hint in normalized for hint in DATASET_HINTS) or normalized.replace("-", "") in KNOWN_DATASETS:
+            return "dataset"
         return "identifier"
-    if phrase.isupper():
+
+    if phrase.isupper() and len(phrase) <= 12:
         return "acronym"
-    tokens = phrase.replace("-", " ").split()
+
+    tokens = normalized.replace("-", " ").split()
+    token_set = set(tokens)
+
+    if token_set & METRIC_HINTS:
+        return "metric"
+
+    if token_set & DATASET_HINTS or any(name in normalized for name in KNOWN_DATASETS):
+        return "dataset"
+
+    if token_set & TASK_HINTS or any(normalized.endswith(suffix) for suffix in TASK_HINTS):
+        return "task"
+
+    if token_set & METHOD_HINTS:
+        return "method"
+
     if len(tokens) >= 3:
         return "method"
+
     return "keyword"
 
 

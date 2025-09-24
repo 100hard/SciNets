@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-const POLL_INTERVAL_MS = 8000;
+const POLL_INTERVAL_MS = 12000;
+const ACTIVE_STATUSES = new Set(["uploaded", "parsing", "processing", "pending"]);
 
 export type Paper = {
   id: string;
@@ -123,12 +124,41 @@ export default function PapersPage() {
     void fetchPapers("loading");
   }, [fetchPapers]);
 
+  const shouldPoll = useMemo(
+    () => papers.some((paper) => ACTIVE_STATUSES.has(paper.status.toLowerCase())),
+    [papers],
+  );
+
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (!shouldPoll) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
       void fetchPapers("refresh");
     }, POLL_INTERVAL_MS);
 
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
+  }, [fetchPapers, shouldPoll]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      void fetchPapers("refresh");
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void fetchPapers("refresh");
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [fetchPapers]);
 
   const filteredPapers = useMemo(() => {

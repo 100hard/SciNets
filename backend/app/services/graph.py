@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from itertools import combinations
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
-from uuid import UUID
+from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, cast
+from uuid import UUID, uuid4, uuid5
 
 from app.db.pool import get_pool
 from app.models.graph import (
@@ -29,6 +30,8 @@ _MAX_NODE_EVIDENCE = 8
 _MAX_EDGE_EVIDENCE = 12
 _MAX_TOP_LINKS = 6
 _ORDERED_RELATIONS: tuple[RelationType, ...] = ("proposes", "evaluates_on", "reports", "compares")
+_CONCEPT_TYPES: tuple[str, ...] = ("method", "dataset", "metric", "task")
+_FALLBACK_NAMESPACE = UUID("00000000-0000-0000-0000-000000000000")
 
 _RESULT_SELECT = """
     SELECT
@@ -211,6 +214,191 @@ async def _fetch_results(
     return await conn.fetch(_RESULT_SELECT)
 
 
+async def _fetch_concept_fallback_rows(
+    conn: Any,
+    *,
+    paper_ids: Sequence[UUID] | None = None,
+) -> list[Mapping[str, Any]]:
+    concept_types = _CONCEPT_TYPES
+    if not concept_types:
+        return []
+
+    params: list[Any] = [list(concept_types)]
+    where_clause = "WHERE c.type = ANY($1::text[])"
+    if paper_ids:
+        params.append(list(paper_ids))
+        where_clause += " AND c.paper_id = ANY($2::uuid[])"
+
+    records = await conn.fetch(
+        f"""
+        SELECT
+            c.id,
+            c.paper_id,
+            c.name,
+            c.type,
+            p.title AS paper_title,
+            p.created_at,
+            c.created_at AS concept_created_at
+        FROM concepts c
+        JOIN papers p ON p.id = c.paper_id
+        {where_clause}
+        ORDER BY p.created_at DESC, concept_created_at DESC
+        LIMIT 2000
+        """,
+        *params,
+    )
+
+    grouped: dict[UUID, dict[str, Any]] = {}
+    for record in records:
+        concept_type = (record.get("type") or "").lower()
+        if concept_type not in _CONCEPT_TYPES:
+            continue
+        paper_id: UUID = record["paper_id"]
+        bucket = grouped.setdefault(
+            paper_id,
+            {
+                "paper_title": record.get("paper_title"),
+                "method": [],
+                "dataset": [],
+                "metric": [],
+                "task": [],
+            },
+        )
+        bucket[concept_type].append(
+            {
+                "id": record["id"],
+                "name": str(record.get("name") or "").strip(),
+                "type": concept_type,
+                "metadata": {"concept": True},
+            }
+        )
+
+    fallback_rows: list[Mapping[str, Any]] = []
+    for paper_id, payload in grouped.items():
+        methods = payload.get("method", [])[:4]
+        if not methods:
+            continue
+
+        datasets = payload.get("dataset", [])[:3]
+        metrics = payload.get("metric", [])[:3]
+        tasks = payload.get("task", [])[:3]
+        paper_title = payload.get("paper_title")
+
+        placeholder_dataset: Mapping[str, Any] | None = None
+        placeholder_metric: Mapping[str, Any] | None = None
+
+        if not datasets:
+            placeholder_dataset = {
+                "id": uuid5(_FALLBACK_NAMESPACE, f"{paper_id}:dataset"),
+                "name": "Dataset (unspecified)",
+                "type": "dataset",
+                "metadata": {"placeholder": True},
+            }
+            datasets = [placeholder_dataset]
+
+        if not metrics:
+            placeholder_metric = {
+                "id": uuid5(_FALLBACK_NAMESPACE, f"{paper_id}:metric"),
+                "name": "Metric (unspecified)",
+                "type": "metric",
+                "metadata": {"placeholder": True},
+            }
+            metrics = [placeholder_metric]
+
+        def _append_row(
+            *,
+            method: Mapping[str, Any],
+            dataset: Mapping[str, Any] | None,
+            metric: Mapping[str, Any] | None,
+            task: Mapping[str, Any] | None,
+        ) -> None:
+            fallback_rows.append(
+                {
+                    "result_id": uuid4(),
+                    "paper_id": paper_id,
+                    "paper_title": paper_title,
+                    "confidence": 0.8,
+                    "evidence": [],
+                    "method_id": method["id"],
+                    "method_name": method.get("name"),
+                    "method_aliases": [],
+                    "method_description": None,
+                    "method_metadata": method.get("metadata"),
+                    "dataset_id": dataset.get("id") if dataset else None,
+                    "dataset_name": dataset.get("name") if dataset else None,
+                    "dataset_aliases": [],
+                    "dataset_description": None,
+                    "dataset_metadata": dataset.get("metadata") if dataset else None,
+                    "metric_id": metric.get("id") if metric else None,
+                    "metric_name": metric.get("name") if metric else None,
+                    "metric_aliases": [],
+                    "metric_description": None,
+                    "metric_unit": None,
+                    "metric_metadata": metric.get("metadata") if metric else None,
+                    "task_id": task.get("id") if task else None,
+                    "task_name": task.get("name") if task else None,
+                    "task_aliases": [],
+                    "task_description": None,
+                    "task_metadata": task.get("metadata") if task else None,
+                }
+            )
+
+        for method in methods:
+            if datasets or metrics:
+                dataset_candidates = datasets or [None]
+                metric_candidates = metrics or [None]
+                for dataset in dataset_candidates:
+                    for metric in metric_candidates:
+                        if not dataset and not metric:
+                            continue
+                        _append_row(method=method, dataset=dataset, metric=metric, task=None)
+
+            if tasks:
+                for task in tasks:
+                    _append_row(method=method, dataset=None, metric=None, task=task)
+
+        # Avoid creating placeholder-only rows when there was a single method and no
+        # additional context available.
+        if (
+            placeholder_dataset
+            and placeholder_metric
+            and not tasks
+            and len(methods) == 1
+        ):
+            # For lone methods fall back to a single generic task edge so the
+            # node appears in the graph.
+            fallback_rows.append(
+                {
+                    "result_id": uuid4(),
+                    "paper_id": paper_id,
+                    "paper_title": paper_title,
+                    "confidence": 0.8,
+                    "evidence": [],
+                    "method_id": methods[0]["id"],
+                    "method_name": methods[0].get("name"),
+                    "method_aliases": [],
+                    "method_description": None,
+                    "method_metadata": methods[0].get("metadata"),
+                    "dataset_id": None,
+                    "dataset_name": None,
+                    "dataset_aliases": [],
+                    "dataset_description": None,
+                    "metric_id": None,
+                    "metric_name": None,
+                    "metric_aliases": [],
+                    "metric_description": None,
+                    "metric_unit": None,
+                    "task_id": uuid5(_FALLBACK_NAMESPACE, f"{paper_id}:task"),
+                    "task_name": "Task (unspecified)",
+                    "task_aliases": [],
+                    "task_description": None,
+                    "task_metadata": {"placeholder": True},
+                }
+            )
+
+    return fallback_rows
+
+
 async def _resolve_entity(conn: Any, entity_id: UUID) -> NodeDetail | None:
     row = await conn.fetchrow(
         "SELECT id, name, aliases, description FROM methods WHERE id = $1",
@@ -269,6 +457,28 @@ async def _resolve_entity(conn: Any, entity_id: UUID) -> NodeDetail | None:
             metadata={},
         )
 
+    row = await conn.fetchrow(
+        "SELECT id, name, type, paper_id, description FROM concepts WHERE id = $1",
+        entity_id,
+    )
+    if row:
+        concept_type = str(row.get("type") or "").lower()
+        if concept_type in _CONCEPT_TYPES:
+            node_type = cast(NodeType, concept_type)
+            metadata = {
+                "concept": True,
+                "paper_id": str(row.get("paper_id")) if row.get("paper_id") else None,
+            }
+            metadata = _clean_metadata(metadata)
+            return NodeDetail(
+                id=row["id"],
+                type=node_type,
+                label=_safe_label(row.get("name"), node_type.title(), row["id"]),
+                aliases=(),
+                description=row.get("description"),
+                metadata=metadata,
+            )
+
     return None
 
 
@@ -283,7 +493,17 @@ async def _fetch_related_papers(conn: Any, center: NodeDetail) -> list[UUID]:
         f"SELECT DISTINCT paper_id FROM results WHERE {column} = $1",
         center.id,
     )
-    return [row["paper_id"] for row in rows]
+    paper_ids = [row["paper_id"] for row in rows]
+    if paper_ids:
+        return paper_ids
+
+    concept_row = await conn.fetchrow(
+        "SELECT paper_id FROM concepts WHERE id = $1",
+        center.id,
+    )
+    if concept_row and concept_row.get("paper_id"):
+        return [concept_row["paper_id"]]
+    return []
 
 
 def _build_node_detail(
@@ -337,6 +557,7 @@ def _aggregate_edges(
         metric_id: UUID | None = row.get("metric_id")
         task_id: UUID | None = row.get("task_id")
 
+        method_metadata = row.get("method_metadata")
         if method_id:
             _build_node_detail(
                 node_details,
@@ -345,7 +566,9 @@ def _aggregate_edges(
                 name=row.get("method_name"),
                 aliases=row.get("method_aliases"),
                 description=row.get("method_description"),
+                metadata=method_metadata,
             )
+        dataset_metadata = row.get("dataset_metadata")
         if dataset_id:
             _build_node_detail(
                 node_details,
@@ -354,7 +577,9 @@ def _aggregate_edges(
                 name=row.get("dataset_name"),
                 aliases=row.get("dataset_aliases"),
                 description=row.get("dataset_description"),
+                metadata=dataset_metadata,
             )
+        metric_metadata = row.get("metric_metadata")
         if metric_id:
             _build_node_detail(
                 node_details,
@@ -363,8 +588,9 @@ def _aggregate_edges(
                 name=row.get("metric_name"),
                 aliases=row.get("metric_aliases"),
                 description=row.get("metric_description"),
-                metadata={"unit": row.get("metric_unit")},
+                metadata={"unit": row.get("metric_unit")} | (metric_metadata or {}),
             )
+        task_metadata = row.get("task_metadata")
         if task_id:
             _build_node_detail(
                 node_details,
@@ -373,6 +599,7 @@ def _aggregate_edges(
                 name=row.get("task_name"),
                 aliases=row.get("task_aliases"),
                 description=row.get("task_description"),
+                metadata=task_metadata,
             )
 
         dataset_label = node_details.get(("dataset", dataset_id)).label if dataset_id and ("dataset", dataset_id) in node_details else None
@@ -763,11 +990,11 @@ async def get_graph_overview(
 
     pool = get_pool()
     async with pool.acquire() as conn:
-        rows = await _fetch_results(conn)
-
-    node_details: dict[tuple[NodeType, UUID], NodeDetail] = {}
-    aggregated_edges = _aggregate_edges(rows, allowed_types, allowed_relations, min_conf, node_details)
-    return _build_graph_response(
+        records = await _fetch_results(conn)
+        rows = [dict(record) for record in records]
+        node_details: dict[tuple[NodeType, UUID], NodeDetail] = {}
+        aggregated_edges = _aggregate_edges(rows, allowed_types, allowed_relations, min_conf, node_details)
+    response = _build_graph_response(
         aggregated_edges,
         node_details,
         limit=normalized_limit,
@@ -775,6 +1002,31 @@ async def get_graph_overview(
         allowed_relations=allowed_relations,
         min_conf=min_conf,
     )
+
+    if response.nodes or response.edges:
+        return response
+
+    async with pool.acquire() as conn:
+        fallback_rows = await _fetch_concept_fallback_rows(conn)
+
+    if not fallback_rows:
+        return response
+
+    combined_rows = fallback_rows + rows
+    node_details = {}
+    fallback_edges = _aggregate_edges(combined_rows, allowed_types, allowed_relations, min_conf, node_details)
+    fallback_response = _build_graph_response(
+        fallback_edges,
+        node_details,
+        limit=normalized_limit,
+        allowed_types=allowed_types,
+        allowed_relations=allowed_relations,
+        min_conf=min_conf,
+    )
+
+    if fallback_response.nodes or fallback_response.edges:
+        return fallback_response
+    return response
 
 
 async def get_graph_neighborhood(
@@ -796,14 +1048,14 @@ async def get_graph_neighborhood(
             raise GraphEntityNotFoundError(f"Graph node {node_id} was not found")
 
         paper_ids = await _fetch_related_papers(conn, center_detail)
-        rows = await _fetch_results(conn, paper_ids=paper_ids)
+        records = await _fetch_results(conn, paper_ids=paper_ids)
+        rows = [dict(record) for record in records]
 
     allowed_types.add(center_detail.type)
 
     node_details: dict[tuple[NodeType, UUID], NodeDetail] = {(_node_key(center_detail.type, center_detail.id)): center_detail}
     aggregated_edges = _aggregate_edges(rows, allowed_types, allowed_relations, min_conf, node_details)
-
-    return _build_graph_response(
+    response = _build_graph_response(
         aggregated_edges,
         node_details,
         limit=normalized_limit,
@@ -812,4 +1064,34 @@ async def get_graph_neighborhood(
         min_conf=min_conf,
         center_key=_node_key(center_detail.type, center_detail.id),
     )
+
+    if response.nodes or response.edges:
+        return response
+
+    if not paper_ids:
+        return response
+
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        fallback_rows = await _fetch_concept_fallback_rows(conn, paper_ids=paper_ids)
+
+    if not fallback_rows:
+        return response
+
+    combined_rows = fallback_rows + rows
+    node_details = {(_node_key(center_detail.type, center_detail.id)): center_detail}
+    fallback_edges = _aggregate_edges(combined_rows, allowed_types, allowed_relations, min_conf, node_details)
+    fallback_response = _build_graph_response(
+        fallback_edges,
+        node_details,
+        limit=normalized_limit,
+        allowed_types=allowed_types,
+        allowed_relations=allowed_relations,
+        min_conf=min_conf,
+        center_key=_node_key(center_detail.type, center_detail.id),
+    )
+
+    if fallback_response.nodes or fallback_response.edges:
+        return fallback_response
+    return response
 

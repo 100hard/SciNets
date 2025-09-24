@@ -27,7 +27,14 @@ from app.services.ontology_store import (
 )
 from app.services.papers import get_paper
 from app.services.sections import list_sections
-from app.schemas.tier2 import Tier2LLMPayload
+from app.schemas.tier2 import (
+    ClaimPayload,
+    EvidenceSpan,
+    MethodPayload,
+    ResultPayload,
+    Tier2LLMPayload,
+)
+from app.services.concept_extraction import extract_concepts_from_sections
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +44,8 @@ _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
 TRANSIENT_STATUS_CODES = {429, 500, 502, 503, 504}
 LLM_RETRY_DELAYS = (0.5, 1.0, 2.0)
+
+_tier2_disabled_reason: str | None = None
 
 
 class Tier2ValidationError(RuntimeError):
@@ -55,6 +64,19 @@ class _Caches:
     datasets: dict[str, Any]
     metrics: dict[str, Any]
     tasks: dict[str, Any]
+
+
+def _mark_tier2_disabled(reason: str) -> None:
+    """Disable Tier-2 calls for the lifetime of the process."""
+
+    global _tier2_disabled_reason
+    if _tier2_disabled_reason is None:
+        _tier2_disabled_reason = reason
+        logger.warning("[tier2] disabling structurer for this process: %s", reason)
+
+
+def _is_tier2_disabled() -> bool:
+    return _tier2_disabled_reason is not None
 
 
 def _summary_list(summary: dict[str, Any], key: str) -> list[Any]:
@@ -117,12 +139,16 @@ def _coerce_tier2_payload(
             sections=section_records,
         )
     except RuntimeError as exc:
-        raw_repr = _truncate_for_log(_stringify_for_log(raw_payload))
-        detail = f"{exc} ({exc.__cause__})" if exc.__cause__ else str(exc)
-        logger.error(
-            "[tier2] failed to normalise payload paper=%s sections=%s error=%s raw=%s",
-            paper_id, section_descriptor, detail, raw_repr,
-        )
+        message = str(exc)
+        lowered = message.lower()
+        if "environment variable" in lowered or "openai" in lowered:
+            _mark_tier2_disabled(message)
+        else:
+            logger.warning(
+                "[tier2] skipping structurer call for paper %s: %s",
+                paper_id,
+                message,
+            )
         return Tier2LLMPayload()
 
     try:
@@ -144,6 +170,16 @@ async def run_tier2_structurer(
     sections: Optional[Sequence[Section]] = None,
 ) -> dict[str, Any]:
     """Execute the Tier-2 LLM structurer for the given paper."""
+    heuristic_mode = False
+    if _is_tier2_disabled():
+        reason = _tier2_disabled_reason or "unavailable"
+        logger.info(
+            "[tier2] using heuristic fallback for paper %s: %s",
+            paper_id,
+            reason,
+        )
+        heuristic_mode = True
+
     paper = await get_paper(paper_id)
     if paper is None:
         raise ValueError(f"Paper {paper_id} does not exist")
@@ -162,7 +198,9 @@ async def run_tier2_structurer(
         for section in sections
     ]
 
-    if llm_response is None:
+    if heuristic_mode:
+        payload = Tier2LLMPayload()
+    elif llm_response is None:
         payload = await call_structurer_llm(
             paper_id=paper_id,
             paper_title=paper.title,
@@ -179,6 +217,21 @@ async def run_tier2_structurer(
     caches = _Caches(methods={}, datasets={}, metrics={}, tasks={})
 
     summary = base_summary or {"paper_id": str(paper_id)}
+
+    if (
+        heuristic_mode
+        or (
+            not payload.methods
+            and not payload.datasets
+            and not payload.metrics
+            and not payload.results
+        )
+    ):
+        payload = _payload_from_summary(
+            paper_title=paper.title,
+            summary=summary,
+            sections=sections,
+        )
     
     existing_result_models = await _convert_summary_results(paper_id, summary, caches)
     existing_claim_models = await _convert_summary_claims(paper_id, summary)
@@ -239,6 +292,14 @@ async def call_structurer_llm(
     sections: Optional[Sequence[dict[str, Any]]],
 ) -> Tier2LLMPayload:
     """Invoke the Tier-2 structuring LLM and return a validated payload."""
+    if _is_tier2_disabled():
+        logger.info(
+            "[tier2] skipping remote LLM invocation for paper %s: %s",
+            paper_id,
+            _tier2_disabled_reason or "unavailable",
+        )
+        return Tier2LLMPayload()
+
     section_descriptor = _describe_sections(sections)
     section_records = list(sections or [])
 
@@ -253,11 +314,32 @@ async def call_structurer_llm(
                 paper_title=paper_title,
                 sections=section_records,
             )
+        except RuntimeError as exc:
+            message = str(exc)
+            lowered = message.lower()
+            if "environment variable" in lowered or "openai" in lowered:
+                _mark_tier2_disabled(message)
+            else:
+                logger.warning(
+                    "[tier2] skipping structurer call for paper %s: %s",
+                    paper_id,
+                    message,
+                )
+            return Tier2LLMPayload()
         except TransientLLMError as exc:
+            message_text = str(exc)
+            lowered = message_text.lower()
+            if "network" in lowered or "timeout" in lowered:
+                _mark_tier2_disabled(message_text)
+                return Tier2LLMPayload()
             last_transient = exc
             logger.warning(
                 "[tier2] transient LLM error attempt=%s/%s paper=%s sections=%s error=%s",
-                index, attempts, paper_id, section_descriptor, exc,
+                index,
+                attempts,
+                paper_id,
+                section_descriptor,
+                exc,
             )
             continue
         except ParseLLMError as exc:
@@ -562,6 +644,189 @@ def _coerce_result_value(value: Any) -> Optional[float | int | str]:
     if isinstance(value, str):
         return value.strip() or None
     return None
+
+
+def _payload_from_summary(
+    *,
+    paper_title: str,
+    summary: dict[str, Any],
+    sections: Optional[Sequence[Section]] = None,
+) -> Tier2LLMPayload:
+    method_payloads: list[MethodPayload] = []
+    method_seen: set[str] = set()
+
+    for method in summary.get("methods", []) or []:
+        if not isinstance(method, dict):
+            continue
+        name = method.get("name")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        normalized = name.strip().lower()
+        if normalized in method_seen:
+            continue
+        method_seen.add(normalized)
+        aliases: list[str] = []
+        raw_aliases = method.get("aliases")
+        if isinstance(raw_aliases, (list, tuple)):
+            aliases = [alias for alias in raw_aliases if isinstance(alias, str)]
+        method_payloads.append(MethodPayload(name=name.strip(), aliases=aliases, is_new=None))
+
+    datasets: set[str] = set()
+    metrics: set[str] = set()
+    tasks: set[str] = set()
+
+    def _extract_name(entity: Any) -> Optional[str]:
+        if isinstance(entity, dict):
+            value = entity.get("name")
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        if isinstance(entity, str) and entity.strip():
+            return entity.strip()
+        return None
+
+    for dataset in summary.get("datasets", []) or []:
+        name = _extract_name(dataset)
+        if name:
+            datasets.add(name)
+
+    for metric in summary.get("metrics", []) or []:
+        name = _extract_name(metric)
+        if name:
+            metrics.add(name)
+
+    for task in summary.get("tasks", []) or []:
+        name = _extract_name(task)
+        if name:
+            tasks.add(name)
+
+    results_payload: list[ResultPayload] = []
+    for result in summary.get("results", []) or []:
+        if not isinstance(result, dict):
+            continue
+        method_name = _extract_name(result.get("method"))
+        dataset_name = _extract_name(result.get("dataset"))
+        metric_name = _extract_name(result.get("metric"))
+        if not (method_name and dataset_name and metric_name):
+            continue
+        task_name = _extract_name(result.get("task"))
+        datasets.add(dataset_name)
+        metrics.add(metric_name)
+        if task_name:
+            tasks.add(task_name)
+
+        value_numeric = result.get("value_numeric")
+        value_text = result.get("value_text")
+        value: Optional[float | int | str]
+        if isinstance(value_numeric, (int, float)):
+            value = float(value_numeric)
+        elif isinstance(value_text, (int, float)):
+            value = float(value_text)
+        elif isinstance(value_text, str) and value_text.strip():
+            stripped = value_text.strip()
+            try:
+                value = float(stripped.split()[0])
+            except ValueError:
+                value = stripped
+        else:
+            value = None
+
+        evidence_span = None
+        evidence_items = result.get("evidence")
+        if isinstance(evidence_items, list) and evidence_items:
+            first = evidence_items[0]
+            if isinstance(first, dict):
+                section_id = first.get("section_id")
+                char_range = first.get("range") or first.get("char_range")
+                start = end = None
+                if isinstance(char_range, (list, tuple)) and len(char_range) >= 2:
+                    start = int(char_range[0]) if char_range[0] is not None else None
+                    end = int(char_range[1]) if char_range[1] is not None else None
+                evidence_span = EvidenceSpan(
+                    section_id=str(section_id) if section_id else None,
+                    start=start,
+                    end=end,
+                )
+
+        results_payload.append(
+            ResultPayload(
+                method=method_name,
+                dataset=dataset_name,
+                metric=metric_name,
+                value=value,
+                split=result.get("split") if isinstance(result.get("split"), str) else None,
+                task=task_name,
+                evidence_span=evidence_span,
+            )
+        )
+
+    claims_payload: list[ClaimPayload] = []
+    for claim in summary.get("claims", []) or []:
+        if not isinstance(claim, dict):
+            continue
+        text = claim.get("text")
+        if not isinstance(text, str) or not text.strip():
+            continue
+        category = claim.get("category")
+        if not isinstance(category, str) or not category.strip():
+            category = "other"
+        evidence_span = None
+        evidence_items = claim.get("evidence")
+        if isinstance(evidence_items, list) and evidence_items:
+            first = evidence_items[0]
+            if isinstance(first, dict):
+                section_id = first.get("section_id")
+                char_range = first.get("range") or first.get("char_range")
+                start = end = None
+                if isinstance(char_range, (list, tuple)) and len(char_range) >= 2:
+                    start = int(char_range[0]) if char_range[0] is not None else None
+                    end = int(char_range[1]) if char_range[1] is not None else None
+                evidence_span = EvidenceSpan(
+                    section_id=str(section_id) if section_id else None,
+                    start=start,
+                    end=end,
+                )
+        claims_payload.append(
+            ClaimPayload(
+                category=category,
+                text=text.strip(),
+                evidence_span=evidence_span,
+            )
+        )
+
+    if sections and (
+        not method_payloads
+        or not datasets
+        or not metrics
+        or (not tasks and results_payload)
+    ):
+        try:
+            concepts = extract_concepts_from_sections(sections)
+        except Exception:
+            concepts = []
+        for concept in concepts:
+            name = (concept.name or "").strip()
+            if not name:
+                continue
+            lowered = name.lower()
+            if concept.type == "method" and lowered not in method_seen:
+                method_seen.add(lowered)
+                method_payloads.append(MethodPayload(name=name, aliases=[], is_new=None))
+            elif concept.type == "dataset":
+                datasets.add(name)
+            elif concept.type == "metric":
+                metrics.add(name)
+            elif concept.type == "task":
+                tasks.add(name)
+
+    return Tier2LLMPayload(
+        paper_title=paper_title,
+        methods=method_payloads,
+        tasks=sorted(tasks),
+        datasets=sorted(datasets),
+        metrics=sorted(metrics),
+        results=results_payload,
+        claims=claims_payload,
+    )
 
 
 def _coerce_int(value: Any, *, minimum: int = 0) -> Optional[int]:

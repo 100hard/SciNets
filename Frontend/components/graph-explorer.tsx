@@ -129,6 +129,13 @@ const EDGE_COLORS: Record<RelationType, string> = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
+const isPlaceholderMetadata = (metadata?: Record<string, unknown> | null): boolean => {
+  if (!metadata || typeof metadata !== "object") {
+    return false;
+  }
+  return (metadata as Record<string, unknown>).placeholder === true;
+};
+
 const formatMetadataValue = (value: unknown): string => {
   if (value === null || value === undefined) {
     return "—";
@@ -176,49 +183,130 @@ const formatRelationLabel = (relation: RelationType) => {
   }
 };
 
-const computeLayout = (nodes: GraphNodeData[], dimensions: LayoutDimensions): LayoutPositions => {
+const MAX_FORCE_ITERATIONS = 320;
+const MIN_FORCE_ITERATIONS = 120;
+const REPULSION_BASE = 1600;
+const SPRING_LENGTH = 160;
+const SPRING_STRENGTH = 0.015;
+const DAMPING = 0.82;
+const CENTER_STRENGTH = 0.0065;
+
+const computeLayout = (
+  nodes: GraphNodeData[],
+  edges: GraphEdgeData[],
+  dimensions: LayoutDimensions,
+  previousPositions: LayoutPositions,
+): LayoutPositions => {
+  if (!nodes.length) {
+    return {};
+  }
+
   const width = Math.max(dimensions.width, DEFAULT_DIMENSIONS.width);
   const height = Math.max(dimensions.height, DEFAULT_DIMENSIONS.height);
-  const marginX = Math.max(90, width * 0.08);
-  const marginY = Math.max(90, height * 0.08);
-  const availableWidth = Math.max(200, width - marginX * 2);
-  const availableHeight = Math.max(260, height - marginY * 2);
+  const centerX = width / 2;
+  const centerY = height / 2;
 
   const positions: LayoutPositions = {};
-  const columnSpacing = ALL_TYPES.length > 1 ? availableWidth / (ALL_TYPES.length - 1) : 0;
+  const velocities: Record<string, { x: number; y: number }> = {};
 
-  ALL_TYPES.forEach((type, index) => {
-    const columnNodes = nodes.filter((node) => node.type === type);
-    if (columnNodes.length === 0) {
-      return;
-    }
-    const columnX = marginX + columnSpacing * index;
-    const rowSpacing = columnNodes.length > 1 ? Math.min(availableHeight / (columnNodes.length - 1), 180) : 0;
-
-    columnNodes.forEach((node, nodeIndex) => {
-      const y = columnNodes.length > 1 ? marginY + rowSpacing * nodeIndex : height / 2;
-      positions[node.id] = {
-        x: columnX,
-        y,
-      };
-    });
+  nodes.forEach((node, index) => {
+    const previous = previousPositions[node.id];
+    const angle = (2 * Math.PI * index) / nodes.length;
+    positions[node.id] = previous
+      ? { ...previous }
+      : {
+          x: centerX + Math.cos(angle) * (width * 0.25),
+          y: centerY + Math.sin(angle) * (height * 0.25),
+        };
+    velocities[node.id] = { x: 0, y: 0 };
   });
 
-  if (Object.keys(positions).length !== nodes.length) {
-    const fallbackRadius = Math.min(width, height) / 3;
-    nodes.forEach((node, index) => {
-      if (positions[node.id]) {
+  const nodeCount = nodes.length;
+  const iterations = Math.min(
+    MAX_FORCE_ITERATIONS,
+    Math.max(MIN_FORCE_ITERATIONS, nodeCount * 4),
+  );
+  const repulsionStrength = REPULSION_BASE + nodeCount * 35;
+
+  const forcesTemplate: Record<string, { x: number; y: number }> = {};
+  nodes.forEach((node) => {
+    forcesTemplate[node.id] = { x: 0, y: 0 };
+  });
+
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    const forces: Record<string, { x: number; y: number }> = {};
+    nodes.forEach((node) => {
+      forces[node.id] = { x: 0, y: 0 };
+    });
+
+    for (let i = 0; i < nodeCount; i += 1) {
+      const source = nodes[i];
+      const sourcePos = positions[source.id];
+      for (let j = i + 1; j < nodeCount; j += 1) {
+        const target = nodes[j];
+        const targetPos = positions[target.id];
+        const dx = sourcePos.x - targetPos.x;
+        const dy = sourcePos.y - targetPos.y;
+        const distanceSq = dx * dx + dy * dy + 0.01;
+        const distance = Math.sqrt(distanceSq);
+        const force = repulsionStrength / distanceSq;
+        const fx = (dx / distance) * force;
+        const fy = (dy / distance) * force;
+        forces[source.id].x += fx;
+        forces[source.id].y += fy;
+        forces[target.id].x -= fx;
+        forces[target.id].y -= fy;
+      }
+    }
+
+    edges.forEach((edge) => {
+      const source = positions[edge.source];
+      const target = positions[edge.target];
+      if (!source || !target) {
         return;
       }
-      const angle = (2 * Math.PI * index) / nodes.length;
-      positions[node.id] = {
-        x: width / 2 + fallbackRadius * Math.cos(angle),
-        y: height / 2 + fallbackRadius * Math.sin(angle),
-      };
+      const dx = source.x - target.x;
+      const dy = source.y - target.y;
+      const distance = Math.sqrt(dx * dx + dy * dy) || 0.01;
+      const force = SPRING_STRENGTH * (distance - SPRING_LENGTH);
+      const fx = (dx / distance) * force;
+      const fy = (dy / distance) * force;
+      forces[edge.source].x -= fx;
+      forces[edge.source].y -= fy;
+      forces[edge.target].x += fx;
+      forces[edge.target].y += fy;
+    });
+
+    nodes.forEach((node) => {
+      const pos = positions[node.id];
+      const centerFx = (centerX - pos.x) * CENTER_STRENGTH;
+      const centerFy = (centerY - pos.y) * CENTER_STRENGTH;
+      forces[node.id].x += centerFx;
+      forces[node.id].y += centerFy;
+    });
+
+    nodes.forEach((node) => {
+      const velocity = velocities[node.id];
+      const force = forces[node.id];
+      velocity.x = (velocity.x + force.x) * DAMPING;
+      velocity.y = (velocity.y + force.y) * DAMPING;
+      const pos = positions[node.id];
+      pos.x += velocity.x;
+      pos.y += velocity.y;
     });
   }
 
-  return positions;
+  const margin = 60;
+  const clampedPositions: LayoutPositions = {};
+  nodes.forEach((node) => {
+    const pos = positions[node.id];
+    clampedPositions[node.id] = {
+      x: clamp(pos.x, margin, width - margin),
+      y: clamp(pos.y, margin, height - margin),
+    };
+  });
+
+  return clampedPositions;
 };
 
 const getErrorMessage = (error: unknown): string => {
@@ -251,6 +339,7 @@ const GraphExplorer = () => {
   const [selectedRelations, setSelectedRelations] = useState<RelationType[]>(ALL_RELATIONS);
   const [minConfidence, setMinConfidence] = useState<number>(0.6);
   const [showEvidence, setShowEvidence] = useState<boolean>(false);
+  const previousPositionsRef = useRef<LayoutPositions>({});
 
   useEffect(() => {
     const element = containerRef.current;
@@ -374,6 +463,10 @@ const GraphExplorer = () => {
         return;
       }
 
+      if (isPlaceholderMetadata(node.metadata)) {
+        return;
+      }
+
       setExpandingNodeId(nodeId);
       try {
         const params = { limit: NEIGHBORHOOD_LIMIT, ...buildFilterParams() };
@@ -405,7 +498,14 @@ const GraphExplorer = () => {
   const nodes = useMemo(() => Object.values(graph.nodes), [graph.nodes]);
   const edges = useMemo(() => Object.values(graph.edges), [graph.edges]);
 
-  const positions = useMemo(() => computeLayout(nodes, dimensions), [nodes, dimensions]);
+  const positions = useMemo(
+    () => computeLayout(nodes, edges, dimensions, previousPositionsRef.current),
+    [nodes, edges, dimensions]
+  );
+
+  useEffect(() => {
+    previousPositionsRef.current = positions;
+  }, [positions]);
 
   const nodesWithPositions = useMemo(
     () =>
@@ -418,6 +518,7 @@ const GraphExplorer = () => {
   );
 
   const selectedNode = selectedNodeId ? graph.nodes[selectedNodeId] : undefined;
+  const selectedNodeIsPlaceholder = selectedNode ? isPlaceholderMetadata(selectedNode.metadata ?? undefined) : false;
 
   const neighborSet = useMemo(() => {
     if (!selectedNodeId) {
@@ -617,7 +718,7 @@ const GraphExplorer = () => {
               <button
                 type="button"
                 onClick={handleExpandSelected}
-                disabled={!selectedNodeId || expandingNodeId === selectedNodeId}
+                disabled={!selectedNodeId || expandingNodeId === selectedNodeId || selectedNodeIsPlaceholder}
                 className="inline-flex items-center gap-2 rounded-md border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <ArrowUpRight className="h-4 w-4" />
@@ -673,6 +774,7 @@ const GraphExplorer = () => {
                 {nodesWithPositions.map((node) => {
                   const isSelected = node.id === selectedNodeId;
                   const isNeighbor = neighborSet.has(node.id);
+                  const placeholder = isPlaceholderMetadata(node.metadata ?? undefined);
                   const color = NODE_COLORS[node.type];
                   const radius = isSelected ? 18 : 14;
                   return (
@@ -680,18 +782,22 @@ const GraphExplorer = () => {
                       <circle
                         r={radius}
                         fill={color}
-                        fillOpacity={isSelected ? 1 : isNeighbor ? 0.9 : 0.75}
-                        stroke={isSelected ? "#1f2937" : "#0f172a"}
+                        fillOpacity={placeholder ? 0.45 : isSelected ? 1 : isNeighbor ? 0.9 : 0.75}
+                        stroke={placeholder ? "#94a3b8" : isSelected ? "#1f2937" : "#0f172a"}
                         strokeWidth={isSelected ? 3 : 2}
                         filter="url(#node-shadow)"
-                        className="cursor-pointer transition-opacity"
-                        onClick={() => handleNodeSelect(node.id)}
+                        className={`${placeholder ? "cursor-default" : "cursor-pointer"} transition-opacity`}
+                        onClick={() => {
+                          if (!placeholder) {
+                            handleNodeSelect(node.id);
+                          }
+                        }}
                       />
                       <text
                         x={0}
                         y={radius + 18}
                         textAnchor="middle"
-                        className="select-none font-semibold text-slate-900"
+                        className={`select-none font-semibold ${placeholder ? "text-slate-500" : "text-slate-900"}`}
                         style={{ fontSize: "12px" }}
                       >
                         {node.label}
