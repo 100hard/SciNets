@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
+from typing import Optional
 class RelationBase(BaseModel):
     relation_type: str = Field(..., min_length=1)
     description: Optional[str] = None
@@ -27,4 +27,3 @@ class Relation(RelationBase):
 
     class Config:
         from_attributes = True
-

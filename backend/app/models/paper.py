@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
+from typing import Optional
 class PaperBase(BaseModel):
     title: str = Field(..., min_length=1)
     authors: Optional[str] = None
@@ -30,4 +30,3 @@ class Paper(PaperBase):
 
     class Config:
         from_attributes = True
-

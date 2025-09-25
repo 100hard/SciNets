@@ -56,4 +56,3 @@ def _iter_migration_files(path: Path) -> Iterable[Path]:
 
 def apply_migrations_sync() -> None:
     asyncio.get_event_loop().run_until_complete(apply_migrations())
-

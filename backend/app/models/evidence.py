@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
+from typing import Optional
 class EvidenceBase(BaseModel):
     snippet: str = Field(..., min_length=1)
     section_id: Optional[UUID] = None
@@ -46,4 +47,3 @@ class Evidence(EvidenceBase):
 
     class Config:
         from_attributes = True
-

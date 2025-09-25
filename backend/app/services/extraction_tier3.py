@@ -14,12 +14,13 @@ from app.services.papers import get_paper
 from app.services.sections import list_sections
 
 
+from typing import Optional
 TIER_NAME = "tier3_verifier"
 _VALUE_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
 _SPAN_WINDOW = 80
 
 
-@dataclass(slots=True)
+@dataclass
 class _VerificationOutcome:
     result: ResultCreate
     notes: list[str]
@@ -29,8 +30,8 @@ class _VerificationOutcome:
 async def run_tier3_verifier(
     paper_id: UUID,
     *,
-    base_summary: dict[str, Any] | None = None,
-    sections: Sequence[Section] | None = None,
+    base_summary: Optional[dict[str, Any]] = None,
+    sections: Optional[Sequence[Section]] = None,
 ) -> dict[str, Any]:
     """Cross-check stored results against the paper text and annotate verification."""
 
@@ -114,18 +115,60 @@ async def run_tier3_verifier(
     return summary_payload
 
 
+
+
+def _confidence_from_evidence(evidence: Optional[Iterable[dict[str, Any]]]) -> tuple[float, bool, str]:
+    base = 0.5
+    has_ner = False
+    provenance = "baseline heuristics"
+    for entry in evidence or []:
+        tier = str(entry.get("tier") or "")
+        source = str(entry.get("source") or "")
+        lowered_source = source.lower()
+        lowered_tier = tier.lower()
+        if lowered_source == "table":
+            if base < 0.7:
+                base = 0.7
+                provenance = "table evidence"
+        elif lowered_source:
+            if base < 0.6:
+                base = 0.6
+                provenance = f"{lowered_source} evidence"
+        if lowered_tier:
+            if "tier1" in lowered_tier and base < 0.6:
+                base = 0.6
+                provenance = f"{tier} evidence"
+            if lowered_tier == "spacy_structurer":
+                if base < 0.55:
+                    base = 0.55
+                    provenance = "spaCy/SciSpaCy evidence"
+                has_ner = True
+    return base, has_ner, provenance
 def _verify_result(
     model: ResultCreate,
     *,
-    metric_payload: dict[str, Any] | None,
+    metric_payload: Optional[dict[str, Any]],
     sections: dict[str, Section],
 ) -> _VerificationOutcome:
     notes: list[str] = []
     matched_span = False
 
+    base_confidence, has_ner, provenance = _confidence_from_evidence(model.evidence)
+    confidence = base_confidence
+    if model.confidence is not None:
+        try:
+            confidence = max(confidence, float(model.confidence))
+        except (TypeError, ValueError):
+            pass
+
+    notes.append(f"confidence baseline derived from {provenance}")
+
+    if has_ner:
+        confidence = min(confidence + 0.05, 1.0)
+        notes.append("spaCy/SciSpaCy evidence corroborates extraction")
+
     numeric_value = model.value_numeric
     text_value = model.value_text.strip() if model.value_text else None
-    confidence = float(model.confidence) if model.confidence is not None else 0.5
 
     normalized_numeric, normalized_text, normalization_notes = _normalize_value(
         numeric_value,
@@ -158,10 +201,11 @@ def _verify_result(
         if span_note:
             notes.append(span_note)
         if matched_span:
-            confidence = min(confidence + 0.1, 1.0)
+            confidence = min(confidence + 0.05, 1.0)
         else:
-            confidence = max(confidence - 0.2, 0.0)
+            confidence = max(confidence - 0.05, 0.0)
             verified = False
+            notes.append("metric value not confirmed near evidence span")
 
     verifier_notes = _combine_notes(notes)
 
@@ -185,10 +229,10 @@ def _verify_result(
 
 
 def _normalize_value(
-    numeric_value: Decimal | None,
-    text_value: str | None,
-    metric_payload: dict[str, Any] | None,
-) -> tuple[Decimal | None, str | None, list[str]]:
+    numeric_value: Optional[Decimal],
+    text_value: Optional[str],
+    metric_payload: Optional[dict[str, Any]],
+) -> tuple[Optional[Decimal], Optional[str], list[str]]:
     notes: list[str] = []
     sanitized_text = text_value.strip() if text_value else None
 
@@ -224,12 +268,12 @@ def _normalize_value(
 
 
 def _match_value_in_evidence(
-    numeric_value: Decimal | None,
-    text_value: str | None,
+    numeric_value: Optional[Decimal],
+    text_value: Optional[str],
     evidence: Iterable[dict[str, Any]],
     sections: dict[str, Section],
-    metric_payload: dict[str, Any] | None,
-) -> tuple[bool, str | None]:
+    metric_payload: Optional[dict[str, Any]],
+) -> tuple[bool, Optional[str]]:
     tokens = _generate_value_tokens(numeric_value, text_value, metric_payload)
     if not tokens:
         return False, "no numeric tokens available for verification"
@@ -252,9 +296,9 @@ def _match_value_in_evidence(
 
 
 def _detect_outlier(
-    numeric_value: Decimal | None,
-    metric_payload: dict[str, Any] | None,
-) -> tuple[bool, str | None]:
+    numeric_value: Optional[Decimal],
+    metric_payload: Optional[dict[str, Any]],
+) -> tuple[bool, Optional[str]]:
     if numeric_value is None:
         return False, None
 
@@ -271,9 +315,9 @@ def _detect_outlier(
 
 
 def _generate_value_tokens(
-    numeric_value: Decimal | None,
-    text_value: str | None,
-    metric_payload: dict[str, Any] | None,
+    numeric_value: Optional[Decimal],
+    text_value: Optional[str],
+    metric_payload: Optional[dict[str, Any]],
 ) -> set[str]:
     tokens: set[str] = set()
     if text_value:
@@ -302,7 +346,7 @@ def _generate_value_tokens(
     return tokens
 
 
-def _extract_decimal(text_value: str | None) -> Decimal | None:
+def _extract_decimal(text_value: Optional[str]) -> Optional[Decimal]:
     if not text_value:
         return None
     cleaned = text_value.replace(",", "")
@@ -316,8 +360,8 @@ def _extract_decimal(text_value: str | None) -> Decimal | None:
 
 
 def _is_percent_metric(
-    metric_payload: dict[str, Any] | None,
-    text_value: str | None,
+    metric_payload: Optional[dict[str, Any]],
+    text_value: Optional[str],
 ) -> bool:
     if metric_payload and metric_payload.get("unit"):
         unit = metric_payload["unit"].strip().lower()
@@ -394,7 +438,7 @@ def _build_entity_lookup(items: Iterable[dict[str, Any]]) -> dict[UUID, dict[str
     return lookup
 
 
-def _clone_entity(entity: dict[str, Any] | None) -> dict[str, Any] | None:
+def _clone_entity(entity: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
     if entity is None:
         return None
     return copy.deepcopy(entity)
@@ -402,8 +446,8 @@ def _clone_entity(entity: dict[str, Any] | None) -> dict[str, Any] | None:
 
 def _lookup_name(
     lookup: dict[UUID, dict[str, Any]],
-    identifier: UUID | None,
-) -> str | None:
+    identifier: Optional[UUID],
+) -> Optional[str]:
     if identifier is None:
         return None
     entity = lookup.get(identifier)
@@ -412,7 +456,7 @@ def _lookup_name(
     return entity.get("name")
 
 
-def _parse_uuid(value: Any) -> UUID | None:
+def _parse_uuid(value: Any) -> Optional[UUID]:
     if value is None:
         return None
     if isinstance(value, UUID):
@@ -423,7 +467,7 @@ def _parse_uuid(value: Any) -> UUID | None:
         return None
 
 
-def _merge_tiers(existing: Sequence[int] | Sequence[str], new: Sequence[int]) -> list[int]:
+def _merge_tiers(existing: Union[Sequence[int], Sequence[str]], new: Sequence[int]) -> list[int]:
     tier_set: set[int] = set()
     for tier in existing:
         try:
@@ -434,7 +478,7 @@ def _merge_tiers(existing: Sequence[int] | Sequence[str], new: Sequence[int]) ->
     return sorted(tier_set)
 
 
-def _combine_notes(notes: Iterable[str]) -> str | None:
+def _combine_notes(notes: Iterable[str]) -> Optional[str]:
     cleaned = [note for note in notes if note]
     if not cleaned:
         return None
@@ -450,4 +494,3 @@ def _combine_notes(notes: Iterable[str]) -> str | None:
 
 
 __all__ = ["run_tier3_verifier", "TIER_NAME"]
-

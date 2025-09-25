@@ -32,6 +32,7 @@ from app.services.sections import list_sections
 from app.services.storage import download_pdf_from_storage
 from app.utils.text_sanitize import sanitize_text
 
+from typing import Optional
 try:  # pragma: no cover - optional dependency
     import pdfplumber  # type: ignore[import]
 except ImportError:  # pragma: no cover - optional dependency
@@ -67,8 +68,8 @@ _NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
 class LexiconEntry:
     name: str
     aliases: tuple[str, ...] = ()
-    description: str | None = None
-    unit: str | None = None
+    description: Optional[str] = None
+    unit: Optional[str] = None
     patterns: tuple[re.Pattern[str], ...] = field(default_factory=tuple)
 
     @property
@@ -101,8 +102,8 @@ class LexiconEntry:
 class DetectedEntity:
     name: str
     aliases: list[str] = field(default_factory=list)
-    unit: str | None = None
-    description: str | None = None
+    unit: Optional[str] = None
+    description: Optional[str] = None
     evidence: list[dict[str, Any]] = field(default_factory=list)
 
     def add_evidence(self, evidence: dict[str, Any]) -> None:
@@ -113,15 +114,15 @@ class DetectedEntity:
 class DetectedResult:
     metric_name: str
     metric_aliases: list[str] = field(default_factory=list)
-    metric_unit: str | None = None
-    dataset_name: str | None = None
+    metric_unit: Optional[str] = None
+    dataset_name: Optional[str] = None
     dataset_aliases: list[str] = field(default_factory=list)
-    method_name: str | None = None
+    method_name: Optional[str] = None
     method_aliases: list[str] = field(default_factory=list)
-    task_name: str | None = None
+    task_name: Optional[str] = None
     value_text: str = ""
-    value_numeric: float | None = None
-    split: str | None = None
+    value_numeric: Optional[float] = None
+    split: Optional[str] = None
     is_sota: bool = False
     confidence: float = DEFAULT_CONFIDENCE
     evidence: list[dict[str, Any]] = field(default_factory=list)
@@ -144,7 +145,7 @@ class Tier1Lexicon:
         datasets: Sequence[LexiconEntry],
         metrics: Sequence[LexiconEntry],
         tasks: Sequence[LexiconEntry],
-        domain: str | None = None,
+        domain: Optional[str] = None,
     ) -> None:
         self.domain = domain
         self.methods = tuple(methods)
@@ -171,32 +172,32 @@ class Tier1Lexicon:
             domain=payload.get("domain"),
         )
 
-    def lookup_method(self, phrase: str) -> LexiconEntry | None:
+    def lookup_method(self, phrase: str) ->Optional[LexiconEntry]:
         return self._method_lookup.get(_normalize_text(phrase))
 
-    def lookup_dataset(self, phrase: str) -> LexiconEntry | None:
+    def lookup_dataset(self, phrase: str) ->Optional[LexiconEntry]:
         return self._dataset_lookup.get(_normalize_text(phrase))
 
-    def lookup_metric(self, phrase: str) -> LexiconEntry | None:
+    def lookup_metric(self, phrase: str) ->Optional[LexiconEntry]:
         return self._metric_lookup.get(_normalize_text(phrase))
 
-    def lookup_task(self, phrase: str) -> LexiconEntry | None:
+    def lookup_task(self, phrase: str) ->Optional[LexiconEntry]:
         return self._task_lookup.get(_normalize_text(phrase))
 
-    def find_method_in_text(self, text: str) -> LexiconEntry | None:
+    def find_method_in_text(self, text: str) ->Optional[LexiconEntry]:
         return _find_best_match(self._method_lookup, text)
 
-    def find_dataset_in_text(self, text: str) -> LexiconEntry | None:
+    def find_dataset_in_text(self, text: str) ->Optional[LexiconEntry]:
         return _find_best_match(self._dataset_lookup, text)
 
-    def find_metric_in_text(self, text: str) -> LexiconEntry | None:
+    def find_metric_in_text(self, text: str) ->Optional[LexiconEntry]:
         return _find_best_match(self._metric_lookup, text)
 
-    def find_task_in_text(self, text: str) -> LexiconEntry | None:
+    def find_task_in_text(self, text: str) ->Optional[LexiconEntry]:
         return _find_best_match(self._task_lookup, text)
 
 
-_MT_LEXICON: Tier1Lexicon | None = None
+_MT_LEXICON: Optional[Tier1Lexicon] = None
 
 
 def load_mt_lexicon() -> Tier1Lexicon:
@@ -212,13 +213,13 @@ def load_mt_lexicon() -> Tier1Lexicon:
 def extract_signals(
     sections: Sequence[Section],
     *,
-    lexicon: Tier1Lexicon | None = None,
-    table_texts: Sequence[str] | None = None,
+    lexicon: Optional[Tier1Lexicon] = None,
+    table_texts: Optional[Sequence[str]] = None,
 ) -> Tier1Artifacts:
     lexicon = lexicon or load_mt_lexicon()
     artifacts = Tier1Artifacts()
 
-    text_sources: list[tuple[Section | None, str, str]] = [
+    text_sources: Optional[list[tuple[Section], str, str]] = [
         (section, section.content, "section") for section in sections if section.content
     ]
     for text in table_texts or []:
@@ -252,8 +253,8 @@ def extract_signals(
 async def run_tier1_extraction(
     paper_id: UUID,
     *,
-    lexicon: Tier1Lexicon | None = None,
-    table_texts: Sequence[str] | None = None,
+    lexicon: Optional[Tier1Lexicon] = None,
+    table_texts: Optional[Sequence[str]] = None,
 ) -> dict[str, Any]:
     lexicon = lexicon or load_mt_lexicon()
 
@@ -481,7 +482,7 @@ async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[
 def _collect_lexicon_mentions(
     target: dict[str, DetectedEntity],
     entries: Sequence[LexiconEntry],
-    section: Section | None,
+    section: Optional[Section],
     text: str,
     source: str,
 ) -> None:
@@ -505,7 +506,7 @@ def _collect_lexicon_mentions(
 def _collect_dataset_patterns(
     target: dict[str, DetectedEntity],
     lexicon: Tier1Lexicon,
-    section: Section | None,
+    section: Optional[Section],
     text: str,
     source: str,
 ) -> None:
@@ -535,7 +536,7 @@ def _collect_dataset_patterns(
 def _collect_method_patterns(
     target: dict[str, DetectedEntity],
     lexicon: Tier1Lexicon,
-    section: Section | None,
+    section: Optional[Section],
     text: str,
     source: str,
 ) -> None:
@@ -566,7 +567,7 @@ def _extract_results_from_text(
     text: str,
     *,
     lexicon: Tier1Lexicon,
-    section: Section | None,
+    section: Optional[Section],
     source: str,
     artifacts: Tier1Artifacts,
 ) -> list[DetectedResult]:
@@ -757,9 +758,9 @@ def _record_entity(
     *,
     name: str,
     aliases: Iterable[str],
-    unit: str | None,
-    description: str | None,
-    section: Section | None,
+    unit: Optional[str],
+    description: Optional[str],
+    section: Optional[Section],
     text: str,
     start: int,
     end: int,
@@ -787,7 +788,7 @@ def _record_entity(
 
 def _build_evidence(
     *,
-    section: Section | None,
+    section: Optional[Section],
     text: str,
     start: int,
     end: int,
@@ -868,9 +869,9 @@ def _build_lookup(entries: Sequence[LexiconEntry]) -> dict[str, LexiconEntry]:
     return lookup
 
 
-def _find_best_match(lookup: dict[str, LexiconEntry], text: str) -> LexiconEntry | None:
+def _find_best_match(lookup: dict[str, LexiconEntry], text: str) ->Optional[LexiconEntry]:
     normalized = _normalize_text(text)
-    best: LexiconEntry | None = None
+    best: Optional[LexiconEntry] = None
     best_length = 0
     for key, entry in lookup.items():
         if len(key) < 3:
@@ -881,7 +882,7 @@ def _find_best_match(lookup: dict[str, LexiconEntry], text: str) -> LexiconEntry
     return best
 
 
-def _infer_split(snippet: str) -> str | None:
+def _infer_split(snippet: str) ->Optional[str]:
     lowered = snippet.lower()
     if "test" in lowered:
         return "test"
@@ -897,7 +898,7 @@ def _locate_pattern(
     text: str,
     start: int,
     end: int,
-) -> tuple[int, int] | None:
+) ->Optional[tuple[int, int]]:
     for pattern in patterns:
         match = pattern.search(text, start, end)
         if match:
@@ -908,7 +909,7 @@ def _locate_pattern(
 def _find_entity_with_source(
     entities: dict[str, DetectedEntity],
     source: str,
-) -> DetectedEntity | None:
+) ->Optional[DetectedEntity]:
     for entity in entities.values():
         for ev in entity.evidence:
             if ev.get("source") == source:
@@ -918,11 +919,11 @@ def _find_entity_with_source(
 
 def _find_entity_near_span(
     entities: dict[str, DetectedEntity],
-    section: Section | None,
+    section: Optional[Section],
     position: int,
     *,
     window: int = 160,
-) -> DetectedEntity | None:
+) ->Optional[DetectedEntity]:
     if section is None:
         return None
     section_id = str(section.id)
@@ -1026,4 +1027,3 @@ def _serialize_claim(claim: Claim) -> dict[str, Any]:
         "created_at": claim.created_at.isoformat(),
         "updated_at": claim.updated_at.isoformat(),
     }
-

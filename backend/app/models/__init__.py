@@ -80,4 +80,3 @@ __all__ = [
     "ConceptResolutionCreate",
     "ConceptResolutionType",
 ]
-

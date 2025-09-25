@@ -16,6 +16,7 @@ from app.services.evidence import create_evidence, delete_evidence_for_paper
 from app.services.sections import list_sections
 from app.utils.text_sanitize import sanitize_text
 
+from typing import Optional
 try:  # pragma: no cover - optional dependency
     from sentence_transformers import SentenceTransformer  # type: ignore[import]
 except ImportError:  # pragma: no cover - optional dependency
@@ -96,7 +97,7 @@ class SentenceTransformerBackend(EmbeddingBackend):
         if SentenceTransformer is None:  # pragma: no cover - safety guard
             raise RuntimeError("sentence-transformers is not installed")
         self._model_name = model_name
-        self._model: SentenceTransformer | None = None  # type: ignore[valid-type]
+        self._model: Optional[SentenceTransformer] = None  # type: ignore[valid-type]
         self._lock = threading.Lock()
 
     def _load_model(self) -> SentenceTransformer:  # type: ignore[override]
@@ -180,7 +181,7 @@ class VectorStore:
     def __init__(self, collection_name: str, dimension: int) -> None:
         self._collection_name = collection_name
         self._dimension = dimension
-        self._client: QdrantClient | None = None  # type: ignore[valid-type]
+        self._client: Optional[QdrantClient] = None  # type: ignore[valid-type]
         self._collection_ready = False
         self._lock = threading.Lock()
 
@@ -308,7 +309,7 @@ class VectorStore:
         self._collection_ready = True
 
 
-_service: EmbeddingService | None = None
+_service: Optional[EmbeddingService] = None
 _service_lock = threading.Lock()
 
 
@@ -316,12 +317,12 @@ class EmbeddingService:
     def __init__(
         self,
         *,
-        backend: EmbeddingBackend | None = None,
-        cache: EmbeddingCacheRepository | None = None,
-        vector_store: VectorStore | None = None,
-        sections_fetcher: Callable[..., Awaitable[List[Section]]] | None = None,
-        create_evidence_fn: Callable[[EvidenceCreate], Awaitable[Any]] | None = None,
-        delete_evidence_fn: Callable[[UUID], Awaitable[None]] | None = None,
+        backend: Optional[EmbeddingBackend] = None,
+        cache: Optional[EmbeddingCacheRepository] = None,
+        vector_store: Optional[VectorStore] = None,
+        sections_fetcher: Optional[Callable[..., Awaitable[List[Section]]]] = None,
+        create_evidence_fn: Optional[Callable[[EvidenceCreate], Awaitable[Any]]] = None,
+        delete_evidence_fn: Optional[Callable[[UUID], Awaitable[None]]] = None,
     ) -> None:
         self._model_name = settings.embedding_model_name
         self._dimension = max(1, settings.embedding_dimension)

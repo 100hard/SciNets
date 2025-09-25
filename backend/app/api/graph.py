@@ -13,6 +13,7 @@ from app.services.graph import (
 )
 
 
+from typing import Optional
 router = APIRouter(prefix="/graph", tags=["graph"])
 
 

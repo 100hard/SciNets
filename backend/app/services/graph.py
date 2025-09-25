@@ -21,6 +21,7 @@ from app.models.graph import (
 )
 
 
+from typing import Optional
 MAX_GRAPH_LIMIT = 500
 _DEFAULT_TYPES: tuple[NodeType, ...] = ("method", "dataset", "metric", "task")
 _ALLOWED_TYPES = set(_DEFAULT_TYPES)
@@ -70,47 +71,47 @@ class GraphEntityNotFoundError(RuntimeError):
     """Raised when the requested graph node cannot be located."""
 
 
-@dataclass(slots=True)
+@dataclass
 class NodeDetail:
     id: UUID
     type: NodeType
     label: str
     aliases: tuple[str, ...]
-    description: str | None
+    description: Optional[str]
     metadata: Dict[str, Any]
 
 
-@dataclass(slots=True)
+@dataclass
 class EdgeInstance:
     paper_id: UUID
-    paper_title: str | None
+    paper_title: Optional[str]
     confidence: float
     evidence: list[dict[str, Any]]
-    dataset_id: UUID | None
-    dataset_label: str | None
-    metric_id: UUID | None
-    metric_label: str | None
-    task_id: UUID | None
-    task_label: str | None
+    dataset_id: Optional[UUID]
+    dataset_label: Optional[str]
+    metric_id: Optional[UUID]
+    metric_label: Optional[str]
+    task_id: Optional[UUID]
+    task_label: Optional[str]
 
 
-@dataclass(slots=True)
+@dataclass
 class MethodContext:
     method_id: UUID
     method_label: str
     confidence: float
     evidence: list[dict[str, Any]]
     paper_id: UUID
-    paper_title: str | None
-    dataset_id: UUID | None
-    dataset_label: str | None
-    metric_id: UUID | None
-    metric_label: str | None
-    task_id: UUID | None
-    task_label: str | None
+    paper_title: Optional[str]
+    dataset_id: Optional[UUID]
+    dataset_label: Optional[str]
+    metric_id: Optional[UUID]
+    metric_label: Optional[str]
+    task_id: Optional[UUID]
+    task_label: Optional[str]
 
 
-@dataclass(slots=True)
+@dataclass
 class AggregatedEdge:
     relation: RelationType
     source_key: tuple[NodeType, UUID]
@@ -204,7 +205,7 @@ def _clean_metadata(payload: Mapping[str, Any]) -> Dict[str, Any]:
 async def _fetch_results(
     conn: Any,
     *,
-    paper_ids: Sequence[UUID] | None = None,
+    paper_ids: Optional[Sequence[UUID]] = None,
 ) -> Sequence[Mapping[str, Any]]:
     if paper_ids:
         return await conn.fetch(
@@ -217,7 +218,7 @@ async def _fetch_results(
 async def _fetch_concept_fallback_rows(
     conn: Any,
     *,
-    paper_ids: Sequence[UUID] | None = None,
+    paper_ids: Optional[Sequence[UUID]] = None,
 ) -> list[Mapping[str, Any]]:
     concept_types = _CONCEPT_TYPES
     if not concept_types:
@@ -284,8 +285,8 @@ async def _fetch_concept_fallback_rows(
         tasks = payload.get("task", [])[:3]
         paper_title = payload.get("paper_title")
 
-        placeholder_dataset: Mapping[str, Any] | None = None
-        placeholder_metric: Mapping[str, Any] | None = None
+        placeholder_dataset: Optional[Mapping[str, Any]] = None
+        placeholder_metric: Optional[Mapping[str, Any]] = None
 
         if not datasets:
             placeholder_dataset = {
@@ -308,9 +309,9 @@ async def _fetch_concept_fallback_rows(
         def _append_row(
             *,
             method: Mapping[str, Any],
-            dataset: Mapping[str, Any] | None,
-            metric: Mapping[str, Any] | None,
-            task: Mapping[str, Any] | None,
+            dataset: Optional[Mapping[str, Any]],
+            metric: Optional[Mapping[str, Any]],
+            task: Optional[Mapping[str, Any]],
         ) -> None:
             fallback_rows.append(
                 {
@@ -399,7 +400,7 @@ async def _fetch_concept_fallback_rows(
     return fallback_rows
 
 
-async def _resolve_entity(conn: Any, entity_id: UUID) -> NodeDetail | None:
+async def _resolve_entity(conn: Any, entity_id: UUID) ->Optional[NodeDetail]:
     row = await conn.fetchrow(
         "SELECT id, name, aliases, description FROM methods WHERE id = $1",
         entity_id,
@@ -514,7 +515,7 @@ def _build_node_detail(
     name: Any,
     aliases: Any,
     description: Any,
-    metadata: Mapping[str, Any] | None = None,
+    metadata: Optional[Mapping[str, Any]] = None,
 ) -> None:
     key = _node_key(node_type, entity_id)
     if key in node_details:
@@ -552,10 +553,10 @@ def _aggregate_edges(
         confidence = _confidence_value(row.get("confidence"))
         evidence = list(row.get("evidence") or [])
 
-        method_id: UUID | None = row.get("method_id")
-        dataset_id: UUID | None = row.get("dataset_id")
-        metric_id: UUID | None = row.get("metric_id")
-        task_id: UUID | None = row.get("task_id")
+        method_id: Optional[UUID] = row.get("method_id")
+        dataset_id: Optional[UUID] = row.get("dataset_id")
+        metric_id: Optional[UUID] = row.get("metric_id")
+        task_id: Optional[UUID] = row.get("task_id")
 
         method_metadata = row.get("method_metadata")
         if method_id:
@@ -711,8 +712,8 @@ def _aggregate_edges(
             continue
 
         paper_confidences: dict[UUID, list[float]] = defaultdict(list)
-        paper_titles: dict[UUID, str | None] = {}
-        contexts_map: dict[tuple[UUID, UUID | None, UUID | None, UUID | None], dict[str, Any]] = {}
+        paper_titles: dict[UUID, str] = {}
+        contexts_map: dict[tuple[UUID, Optional[UUID], Optional[UUID], Optional[UUID]], dict[str, Any]] = {}
         evidence_items: list[dict[str, Any]] = []
 
         for instance in instances:
@@ -801,7 +802,7 @@ def _build_graph_response(
     allowed_types: set[str],
     allowed_relations: set[str],
     min_conf: float,
-    center_key: tuple[NodeType, UUID] | None = None,
+    center_key: Optional[tuple[NodeType, UUID]] = None,
 ) -> GraphResponse:
     node_papers: dict[tuple[NodeType, UUID], set[UUID]] = defaultdict(set)
     node_edges: dict[tuple[NodeType, UUID], list[AggregatedEdge]] = defaultdict(list)
@@ -1094,4 +1095,3 @@ async def get_graph_neighborhood(
     if fallback_response.nodes or fallback_response.edges:
         return fallback_response
     return response
-

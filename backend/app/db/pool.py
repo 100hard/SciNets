@@ -5,7 +5,8 @@ import asyncpg
 from app.core.config import settings
 
 
-_pool: asyncpg.Pool | None = None
+from typing import Optional
+_pool: Optional[asyncpg.Pool] = None
 
 
 async def init_pool() -> None:
@@ -37,4 +38,3 @@ def get_pool() -> asyncpg.Pool:
     if _pool is None:
         raise RuntimeError("Database pool not initialized. Call init_pool() first.")
     return _pool
-

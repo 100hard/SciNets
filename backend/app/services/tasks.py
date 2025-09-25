@@ -10,6 +10,7 @@ from uuid import UUID
 
 import fitz  # type: ignore[import]
 
+from typing import Optional
 try:  # pragma: no cover - optional dependency
     from PIL import Image
 except ImportError:  # pragma: no cover - optional dependency
@@ -168,7 +169,7 @@ async def parse_pdf_task(paper_id: UUID) -> None:
                 f"[parse_pdf_task] Failed to generate embeddings for paper {paper_id}: {exc}"
             )
 
-        extraction_summary: dict[str, Any] | None = None
+        extraction_summary: Optional[dict[str, Any]] = None
         try:
             extraction_summary = await run_tier1_extraction(paper_id)
         except Exception as exc:

@@ -15,6 +15,7 @@ from app.services.embeddings import (
     build_embedding_backend,
 )
 
+from typing import Optional
 _TOKEN_PATTERN = re.compile(r"[A-Za-z0-9]+")
 _DEFAULT_MAX_LIMIT = 20
 
@@ -49,8 +50,8 @@ class SemanticSearchService:
     def __init__(
         self,
         *,
-        backend: EmbeddingBackend | None = None,
-        vector_store: VectorStore | None = None,
+        backend: Optional[EmbeddingBackend] = None,
+        vector_store: Optional[VectorStore] = None,
         rerank_top_k: int = 3,
         lexical_weight: float = 0.3,
         max_limit: int = _DEFAULT_MAX_LIMIT,
@@ -144,7 +145,7 @@ class SemanticSearchService:
                 return cleaned
         return ""
 
-    def _build_result(self, match: _RankedMatch) -> SearchResult | None:
+    def _build_result(self, match: _RankedMatch) ->Optional[SearchResult]:
         paper_id = match.payload.get("paper_id")
         snippet = self._extract_snippet(match.payload)
         if not snippet or not paper_id:
@@ -164,7 +165,7 @@ class SemanticSearchService:
         )
 
 
-_service: SemanticSearchService | None = None
+_service: Optional[SemanticSearchService] = None
 _service_lock = threading.Lock()
 
 

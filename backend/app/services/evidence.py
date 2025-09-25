@@ -9,6 +9,7 @@ from app.models.evidence import Evidence, EvidenceCreate
 from app.utils.text_sanitize import sanitize_text
 
 
+from typing import Optional
 def _encode_metadata(metadata: Optional[dict[str, Any]]) -> Optional[str]:
     if metadata is None:
         return None
@@ -139,4 +140,3 @@ async def get_evidence(evidence_id: UUID) -> Optional[Evidence]:
     payload = dict(row)
     payload["metadata"] = _decode_metadata(payload.get("metadata"))
     return Evidence(**payload)
-

@@ -9,6 +9,7 @@ from app.models.relation import Relation, RelationCreate
 from app.services.relations import create_relation, get_relation, list_relations
 
 
+from typing import Optional
 router = APIRouter(prefix="/relations", tags=["relations"])
 
 
@@ -40,4 +41,3 @@ async def api_get_relation(relation_id: UUID) -> Relation:
     if not relation:
         raise HTTPException(status_code=404, detail="Relation not found")
     return relation
-

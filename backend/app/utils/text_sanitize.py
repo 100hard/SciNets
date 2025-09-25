@@ -1,9 +1,9 @@
 """Utilities for cleaning extracted text before persistence."""
 
 from __future__ import annotations
+from typing import Optional
 
 import re
-from typing import Optional
 
 NULL_BYTE_RE = re.compile(r"\x00")
 _ALLOWED_CONTROL_CHARS = {"\n", "\t"}

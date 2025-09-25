@@ -8,6 +8,7 @@ from app.models.section import Section, SectionCreate
 from app.utils.text_sanitize import sanitize_text
 
 
+from typing import Optional
 def _sanitize_content(value: Optional[str]) -> str:
     cleaned = sanitize_text(value)
     if not cleaned:
@@ -103,4 +104,3 @@ async def replace_sections(paper_id: UUID, sections: Sequence[SectionCreate]) ->
                     """,
                     values,
                 )
-

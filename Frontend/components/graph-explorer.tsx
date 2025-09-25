@@ -8,6 +8,7 @@ import {
   Loader2,
   RefreshCw,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -336,6 +337,7 @@ const GraphExplorer = () => {
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
   const [expandingNodeId, setExpandingNodeId] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<NodeType[]>(ALL_TYPES);
+  const [isGraphCleared, setIsGraphCleared] = useState<boolean>(false);
   const [selectedRelations, setSelectedRelations] = useState<RelationType[]>(ALL_RELATIONS);
   const [minConfidence, setMinConfidence] = useState<number>(0.6);
   const [showEvidence, setShowEvidence] = useState<boolean>(false);
@@ -416,6 +418,7 @@ const GraphExplorer = () => {
   }, [minConfidence, selectedRelations, selectedTypes]);
 
   const loadOverview = useCallback(async () => {
+    setIsGraphCleared(false);
     setIsInitialLoading(true);
     setError(null);
     setExpandedNodes({});
@@ -434,8 +437,11 @@ const GraphExplorer = () => {
   }, [buildFilterParams, mergeGraphData]);
 
   useEffect(() => {
+    if (isGraphCleared) {
+      return;
+    }
     void loadOverview();
-  }, [loadOverview]);
+  }, [loadOverview, isGraphCleared]);
 
   useEffect(() => {
     if (selectedNodeId && !graph.nodes[selectedNodeId]) {
@@ -578,7 +584,21 @@ const GraphExplorer = () => {
   }, [meta]);
 
   const handleRefresh = () => {
+    setIsGraphCleared(false);
     void loadOverview();
+  };
+
+  const handleClearGraph = () => {
+    setIsGraphCleared(true);
+    previousPositionsRef.current = {};
+    setGraph({ nodes: {}, edges: {} });
+    setMeta(null);
+    setSelectedNodeId(null);
+    setExpandedNodes({});
+    setError(null);
+    setShowEvidence(false);
+    setExpandingNodeId(null);
+    setIsInitialLoading(false);
   };
 
   const handleExpandSelected = () => {
@@ -707,6 +727,15 @@ const GraphExplorer = () => {
               <p className="text-xs text-muted-foreground">Explore typed research entities and their structured relationships.</p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleClearGraph}
+                disabled={!hasGraphData && !isInitialLoading}
+                className="inline-flex items-center gap-2 rounded-md border border-red-500/70 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 shadow-sm transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" />
+                Clear graph
+              </button>
               <button
                 type="button"
                 onClick={handleRefresh}

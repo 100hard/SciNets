@@ -21,4 +21,3 @@ async def test_postgres_connection() -> None:
 
 def test_postgres_connection_sync() -> None:
     asyncio.get_event_loop().run_until_complete(test_postgres_connection())
-

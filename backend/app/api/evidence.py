@@ -9,6 +9,7 @@ from app.models.evidence import Evidence, EvidenceCreate
 from app.services.evidence import create_evidence, get_evidence, list_evidence
 
 
+from typing import Optional
 router = APIRouter(prefix="/evidence", tags=["evidence"])
 
 
@@ -44,4 +45,3 @@ async def api_get_evidence(evidence_id: UUID) -> Evidence:
     if not evidence:
         raise HTTPException(status_code=404, detail="Evidence not found")
     return evidence
-

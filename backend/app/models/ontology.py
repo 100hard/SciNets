@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+from typing import Optional
 EvidencePayload = list[dict[str, Any]]
 
 
@@ -220,4 +221,3 @@ class CanonicalizationTypeReport(BaseModel):
 
 class CanonicalizationReport(BaseModel):
     summary: list[CanonicalizationTypeReport] = Field(default_factory=list)
-

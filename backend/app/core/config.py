@@ -1,7 +1,9 @@
+from __future__ import annotations
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
+from typing import Optional
 class Settings(BaseSettings):
     # App
     app_name: str = "Scinets API"
@@ -27,7 +29,7 @@ class Settings(BaseSettings):
 
     # Qdrant
     qdrant_url: str = Field(default="http://qdrant:6333")
-    qdrant_api_key: str | None = None
+    qdrant_api_key: Optional[str] = None
 
     # Embeddings
     embedding_model_name: str = Field(default="all-MiniLM-L6-v2")
@@ -36,12 +38,20 @@ class Settings(BaseSettings):
     qdrant_collection_name: str = Field(default="paper_sections")
     qdrant_upsert_batch_size: int = Field(default=256)
 
+    # NLP Pipelines
+    nlp_pipeline_spec: str = Field(default="spacy:en_core_web_trf,scispacy:en_core_sci_lg")
+    nlp_cache_dir: str = Field(default="/tmp/scinets/nlp_cache")
+    nlp_max_workers: int = Field(default=0)  # 0 auto-detect
+    nlp_min_span_score: float = Field(default=0.25)
+    nlp_min_span_char_length: int = Field(default=3)
+    nlp_overlap_score_margin: float = Field(default=0.05)
+
     # Tier-2 LLM
-    openai_api_key: str | None = Field(default=None)
-    openai_organization: str | None = Field(default=None)
-    tier2_llm_model: str | None = Field(default=None)
-    tier2_llm_base_url: str | None = Field(default=None)
-    tier2_llm_completion_path: str | None = Field(default=None)
+    openai_api_key: Optional[str] = Field(default=None)
+    openai_organization: Optional[str] = Field(default=None)
+    tier2_llm_model: Optional[str] = Field(default=None)
+    tier2_llm_base_url: Optional[str] = Field(default=None)
+    tier2_llm_completion_path: Optional[str] = Field(default=None)
     tier2_llm_temperature: float = Field(default=0.1)
     tier2_llm_top_p: float = Field(default=1.0)
     tier2_llm_timeout_seconds: float = Field(default=120.0)

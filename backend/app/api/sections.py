@@ -34,4 +34,3 @@ async def api_get_section(section_id: UUID) -> Section:
     if not section:
         raise HTTPException(status_code=404, detail="Section not found")
     return section
-

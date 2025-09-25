@@ -19,6 +19,7 @@ from app.models.ontology import (
 from app.services.embeddings import EmbeddingBackend, build_embedding_backend
 
 
+from typing import Optional
 @dataclass
 class _OntologyRecord:
     id: UUID
@@ -96,10 +97,10 @@ class _CanonicalizationComputation:
     examples: list[CanonicalizationExample]
 
 
-_embedding_backend: EmbeddingBackend | None = None
+_embedding_backend: Optional[EmbeddingBackend] = None
 
 
-def _prepare_text(value: str | None) -> str:
+def _prepare_text(value: Optional[str]) -> str:
     if not value:
         return ""
     return " ".join(value.strip().split())
@@ -130,7 +131,7 @@ def get_embedding_backend() -> EmbeddingBackend:
 
 
 async def canonicalize(
-    types: Sequence[ConceptResolutionType] | None = None,
+    types: Optional[Sequence[ConceptResolutionType]] = None,
 ) -> CanonicalizationReport:
     selected = list(types) if types else list(_TYPE_CONFIG.keys())
     pool = get_pool()
@@ -408,8 +409,8 @@ def _compute_similarity(
 
 
 def _cosine_similarity(
-    left: Sequence[float] | None,
-    right: Sequence[float] | None,
+    left: Optional[Sequence[float]],
+    right: Optional[Sequence[float]],
 ) -> float:
     if left is None or right is None:
         return 0.0

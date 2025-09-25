@@ -17,6 +17,7 @@ from urllib3.exceptions import HTTPError as Urllib3HTTPError
 from app.core.config import settings
 
 
+from typing import Optional
 PDF_CONTENT_TYPES: Final[set[str]] = {"application/pdf"}
 MAX_FILE_SIZE_BYTES: Final[int] = 50 * 1024 * 1024  # 50 MB limit for MVP
 
@@ -47,7 +48,7 @@ async def ensure_bucket_exists(bucket_name: str) -> None:
     initial_delay = max(settings.minio_connect_initial_delay_seconds, 0.1)
     max_delay = max(settings.minio_connect_max_delay_seconds, initial_delay)
 
-    last_connection_error: Exception | None = None
+    last_connection_error: Optional[Exception] = None
     delay = initial_delay
 
     for attempt in range(1, max_attempts + 1):

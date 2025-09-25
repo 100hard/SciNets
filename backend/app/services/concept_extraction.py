@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 from uuid import UUID
 
 from app.models.concept import Concept, ConceptCreate
@@ -149,7 +149,7 @@ SCISPACY_MODEL_NAMES = (
     "en_core_web_sm",
 )
 
-_SCISPACY_MODEL: Optional[Language] | bool = None
+_SCISPACY_MODEL: Union[Language, bool, None] = None
 
 FILLER_PREFIXES = {
     "baseline",

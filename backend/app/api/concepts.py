@@ -34,4 +34,3 @@ async def api_get_concept(concept_id: UUID) -> Concept:
     if not concept:
         raise HTTPException(status_code=404, detail="Concept not found")
     return concept
-

@@ -6,6 +6,7 @@ from uuid import UUID
 from app.db.pool import get_pool
 from app.models.relation import Relation, RelationCreate
 
+from typing import Optional
 if TYPE_CHECKING:  # pragma: no cover - used for typing only
     from app.models.concept import Concept
 
@@ -107,4 +108,3 @@ async def replace_paper_concept_relations(
                 """,
                 records,
             )
-

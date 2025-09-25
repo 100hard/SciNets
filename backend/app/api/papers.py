@@ -12,6 +12,7 @@ from app.services.storage import create_presigned_download_url, upload_pdf_to_st
 from app.services.tasks import parse_pdf_task
 
 
+from typing import Optional
 router = APIRouter(prefix="/papers", tags=["papers"])
 
 
@@ -100,4 +101,3 @@ async def api_download_paper(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return {"download_url": download_url, "expires_in": expires_in}
-

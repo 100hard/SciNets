@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Sequence
-from typing import Any
+from typing import Any, Optional, Union
 from uuid import UUID
 
 import asyncpg
@@ -19,17 +19,16 @@ from app.models.ontology import (
     Task,
 )
 
-
 _METHOD_COLUMNS = "id, name, aliases, description, created_at, updated_at"
 _DATASET_COLUMNS = "id, name, aliases, description, created_at, updated_at"
 _METRIC_COLUMNS = "id, name, unit, aliases, description, created_at, updated_at"
 _TASK_COLUMNS = "id, name, aliases, description, created_at, updated_at"
 
 
-_RESULTS_VERIFICATION_SUPPORTED: bool | None = None
+_RESULTS_VERIFICATION_SUPPORTED: Optional[bool] = None
 
 
-def _clean_aliases(raw_aliases: Iterable[str] | str | None) -> list[str]:
+def _clean_aliases(raw_aliases: Optional[Union[Iterable[str], str]]) -> list[str]:
     if raw_aliases is None:
         candidates: list[Any] = []
     elif isinstance(raw_aliases, str):
@@ -165,8 +164,8 @@ async def _results_supports_verification(conn: Any) -> bool:
 async def ensure_method(
     name: str,
     *,
-    aliases: Iterable[str] | None = None,
-    description: str | None = None,
+    aliases: Optional[Iterable[str]] = None,
+    description: Optional[str] = None,
 ) -> Method:
     cleaned = name.strip()
     if not cleaned:
@@ -199,8 +198,8 @@ async def ensure_method(
 async def ensure_dataset(
     name: str,
     *,
-    aliases: Iterable[str] | None = None,
-    description: str | None = None,
+    aliases: Optional[Iterable[str]] = None,
+    description: Optional[str] = None,
 ) -> Dataset:
     cleaned = name.strip()
     if not cleaned:
@@ -233,9 +232,9 @@ async def ensure_dataset(
 async def ensure_metric(
     name: str,
     *,
-    unit: str | None = None,
-    aliases: Iterable[str] | None = None,
-    description: str | None = None,
+    unit: Optional[str] = None,
+    aliases: Optional[Iterable[str]] = None,
+    description: Optional[str] = None,
 ) -> Metric:
     cleaned = name.strip()
     if not cleaned:
@@ -269,8 +268,8 @@ async def ensure_metric(
 async def ensure_task(
     name: str,
     *,
-    aliases: Iterable[str] | None = None,
-    description: str | None = None,
+    aliases: Optional[Iterable[str]] = None,
+    description: Optional[str] = None,
 ) -> Task:
     cleaned = name.strip()
     if not cleaned:
@@ -389,4 +388,5 @@ async def replace_claims(
                 payload = dict(row)
                 payload["evidence"] = _clean_evidence(payload.get("evidence"))
                 inserted.append(Claim(**payload))
+            return inserted
 

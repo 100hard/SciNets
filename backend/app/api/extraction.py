@@ -9,6 +9,7 @@ from app.services.extraction_tier2 import Tier2ValidationError, run_tier2_struct
 from app.services.extraction_tier3 import run_tier3_verifier
 
 
+from typing import Optional
 router = APIRouter(prefix="/extract", tags=["extraction"])
 
 
@@ -37,7 +38,7 @@ async def api_run_extraction(
             ),
         )
 
-    summary: dict | None = None
+    summary: Optional[dict] = None
     try:
         if "1" in requested:
             summary = await run_tier1_extraction(paper_id)
@@ -56,4 +57,3 @@ async def api_run_extraction(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return summary
-

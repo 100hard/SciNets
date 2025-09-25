@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+from typing import Optional
 NodeType = Literal["method", "dataset", "metric", "task"]
 RelationType = Literal["proposes", "evaluates_on", "reports", "compares"]
 

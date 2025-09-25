@@ -201,9 +201,9 @@ Results show context + source.
 
 Day 10: Concept Extraction (Tiered)
 
-Default: scispaCy NER for scientific entities.
+Default: run registered spaCy and SciSpaCy pipelines (en_core_web_trf and en_core_sci_lg) for broad coverage.
 
-Fallback: small LLM (GPT-4o-mini) with structured JSON output.
+Fallback: rely on Tier-1 lexicons and heuristics; log missed spans for curator review (no LLM dependency).
 
 Dedup + normalize concept names.
 
@@ -260,7 +260,7 @@ Move from generic “Concept” nodes to a small research ontology: Method/Model
 
 All edges are typed and carry evidence (paper id, section id, char offsets, page, snippet, confidence).
 
-Add a 3-tier extraction pipeline (rules/lexicons → LLM structurer → verifier).
+Add a 3-tier extraction pipeline (rules/lexicons → spaCy/SciSpaCy structurer → deterministic verifier).
 
 Add canonicalization (merge duplicates) and cross-paper linking.
 
@@ -343,53 +343,47 @@ Endpoint POST /api/extract/{paper_id}?tiers=1 populates method/dataset/metric/re
 
 Unit tests on 3–5 papers; inspect evidence and values.
 
-Day 15: Tier-2 LLM Structurer (Strict JSON) + Pydantic Validation
+Day 15: Tier-2 spaCy/SciSpaCy Pipeline + Arbitration
 
 Backend
 
-For sections with poor/no Tier-1 signals, call LLM with a strict schema:
+Register dual NLP pipelines via settings (e.g., spaCy en_core_web_trf, SciSpaCy en_core_sci_lg) with lazy loading.
 
-{
-  "paper_title": "...",
-  "methods":[{"name":"...","is_new":true,"aliases":["..."]}],
-  "tasks":["..."],
-  "datasets":["..."],
-  "metrics":["..."],
-  "results":[
-    {"method":"...","dataset":"...","metric":"...","value":41.8,"split":"test",
-     "evidence_span":{"section_id":123,"start":100,"end":180}}
-  ],
-  "claims":[{"category":"limitation","text":"...","evidence_span":{"section_id":123,"start":..., "end":...}}]
-}
+Add SciSpaCy abbreviation detector to the scientific pipeline and share a preprocessing component for normalization and citation stripping.
 
+Implement Doc caching keyed by content hash so repeated uploads reuse parsed documents.
 
-Validate with Pydantic; annotate each extraction with tier="llm_structurer", confidence baseline 0.7.
+Run both pipelines with nlp.pipe (n_process tuned to CPUs); collect entity spans with text/start/end/label/score/model metadata.
 
-Store exact evidence spans provided by the model.
+Apply arbitration rules: prefer Tier-1 lexicon hits, resolve overlapping spans by higher score plus longer span, drop low-confidence or noise tokens.
+
+Map surviving spans into ontology types through the mapper and record provenance tier='spacy_structurer'.
+
+Use spaCy DependencyMatcher patterns to emit proposes/evaluates_on/reports relations with sentence-level evidence offsets.
 
 Deliverables
 
-POST /api/extract/{paper_id}?tiers=1,2 augments Tier-1 output; JSON validation errors handled.
+POST /api/extract/{paper_id}?tiers=1,2 merges Tier-1 and Tier-2 outputs; cached docs keep re-runs fast.
 
-Measurable coverage increase vs Tier-1 alone.
+Captured spans expose model and confidence; relations include evidence snippets ready for the verifier.
 
-Day 16: Tier-3 Verifier (Cross-checks & Sanity)
+Day 16: Tier-3 Deterministic Verifier & Evidence Scoring
 
 Backend
 
-Cross-check LLM results with raw text:
+Cross-check numeric results against source sentences or table cells; require the value to appear in text or drop and reduce confidence.
 
-If metric value appears verbatim near the span, +0.1 confidence; else −0.2.
+Normalize metrics and units (convert percentages to decimals, handle splits, parse ranges and confidence intervals).
 
-Normalize metrics: convert % to numeric [0–100], F1 strings like 0.87 → 87 if unit is %.
+Flag outliers (e.g., BLEU > 100, accuracy > 1); add verifier_notes for manual review and stash rejected spans for QA.
 
-Outlier checks (e.g., BLEU > 100) are discarded or flagged.
+Compute a confidence recipe based on evidence tier (tables highest, rule hits next, spaCy-only lowest) and store tier='deterministic_verifier' on adjustments.
 
-Mark result.verified=true/false; store verifier_notes.
+Persist rejection logs so analysts can extend lexicons or rules when the verifier strips useful items.
 
 Deliverables
 
-POST /api/extract/{paper_id}?tiers=1,2,3 produces verified results; audit log shows adjustments.
+POST /api/extract/{paper_id}?tiers=1,2,3 outputs verified entities and relations; verifier report lists adjustments and rejections.
 
 Day 17: Canonicalization & Resolver (Dedup Merge)
 
@@ -495,7 +489,7 @@ Query graph / results tables first; fall back to vector search only if needed.
 
 Collect top-k evidence snippets (Evidence jsonb).
 
-LLM synthesizes an answer only from provided snippets; return:
+Answer synthesizer (template today, optional LLM later) builds a response only from provided snippets and returns:
 
 {
   "answer":"...",
@@ -558,7 +552,7 @@ Keyboard nav basics; accessible labels on graph filters.
 
 Backend
 
-Rate-limit LLM calls per minute; batch extraction tasks.
+Rate-limit extraction jobs and spaCy workers; batch pipeline tasks.
 
 Deliverables
 

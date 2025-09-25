@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
+from typing import Optional
 class ConceptBase(BaseModel):
     name: str = Field(..., min_length=1)
     type: Optional[str] = Field(default=None, max_length=128)
@@ -25,4 +25,3 @@ class Concept(ConceptBase):
 
     class Config:
         from_attributes = True
-

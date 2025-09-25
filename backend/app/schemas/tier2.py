@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 class EvidenceSpan(BaseModel):
     """Span of evidence supporting a result or claim."""
@@ -33,7 +32,7 @@ class ResultPayload(BaseModel):
     method: str = Field(..., min_length=1)
     dataset: str = Field(..., min_length=1)
     metric: str = Field(..., min_length=1)
-    value: Optional[float | int | str] = None
+    value: Optional[Union[float, int, str]] = None
     split: Optional[str] = None
     task: Optional[str] = None
     evidence_span: Optional[EvidenceSpan] = None

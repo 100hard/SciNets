@@ -7,6 +7,7 @@ from app.db.pool import get_pool
 from app.models.concept import Concept, ConceptCreate
 
 
+from typing import Optional
 INSERT_CONCEPT_QUERY = """
     INSERT INTO concepts (paper_id, name, type, description)
     VALUES ($1, $2, $3, $4)
@@ -85,4 +86,3 @@ async def replace_concepts(
                 )
                 inserted.append(Concept(**dict(row)))
     return inserted
-

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
+from typing import Optional
 class SectionBase(BaseModel):
     title: Optional[str] = Field(default=None, max_length=512)
     content: str = Field(..., min_length=1)
@@ -28,4 +28,3 @@ class Section(SectionBase):
 
     class Config:
         from_attributes = True
-

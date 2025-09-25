@@ -7,6 +7,7 @@ from app.db.pool import get_pool
 from app.models.paper import Paper, PaperCreate
 
 
+from typing import Optional
 PAPER_COLUMNS = (
     "id, title, authors, venue, year, status, file_path, file_name, file_size, "
     "file_content_type, created_at, updated_at"
@@ -108,4 +109,3 @@ async def update_paper_status(paper_id: UUID, status: str) -> Optional[Paper]:
             status,
         )
     return Paper(**dict(row)) if row else None
-
