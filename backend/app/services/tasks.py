@@ -118,7 +118,7 @@ async def parse_pdf_task(paper_id: UUID) -> None:
         section_models: list[SectionCreate] = []
         nul_removed_total = 0
         dropped_sections = 0
-        for section in parsed_sections:
+        for index, section in enumerate(parsed_sections, start=1):
             nul_removed_total += section.content.count("\x00")
             cleaned_content = sanitize_text(section.content)
             if not cleaned_content:
@@ -126,6 +126,8 @@ async def parse_pdf_task(paper_id: UUID) -> None:
                 continue
 
             cleaned_title = sanitize_text(section.title)
+            if not cleaned_title:
+                cleaned_title = f"Section {index}"
             snippet = _build_snippet(cleaned_content)
             cleaned_snippet = sanitize_text(snippet)
 

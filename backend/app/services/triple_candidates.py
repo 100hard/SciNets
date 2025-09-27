@@ -1,0 +1,80 @@
+from __future__ import annotations
+
+from typing import Sequence
+from uuid import UUID
+
+from app.db.pool import get_pool
+from app.models.triple_candidate import TripleCandidateRecord
+
+
+INSERT_SQL = """
+    INSERT INTO triple_candidates (
+        paper_id,
+        section_id,
+        subject_text,
+        relation_text,
+        object_text,
+        subject_span,
+        object_span,
+        subject_type_guess,
+        relation_type_guess,
+        object_type_guess,
+        evidence_text,
+        triple_conf,
+        schema_match_score,
+        tier
+    )
+    VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+    )
+"""
+
+
+async def replace_triple_candidates(
+    paper_id: UUID,
+    candidates: Sequence[TripleCandidateRecord],
+) -> None:
+    """Replace stored triple candidates for a paper with the latest payload."""
+
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                "DELETE FROM triple_candidates WHERE paper_id = $1",
+                paper_id,
+            )
+            if not candidates:
+                return
+
+            records = []
+            for candidate in candidates:
+                section_uuid = _safe_uuid(candidate.section_id)
+                records.append(
+                    (
+                        candidate.paper_id,
+                        section_uuid,
+                        candidate.subject,
+                        candidate.relation,
+                        candidate.object,
+                        candidate.subject_span,
+                        candidate.object_span,
+                        candidate.subject_type_guess,
+                        candidate.relation_type_guess,
+                        candidate.object_type_guess,
+                        candidate.evidence,
+                        candidate.triple_conf,
+                        candidate.schema_match_score,
+                        candidate.tier,
+                    )
+                )
+
+            await conn.executemany(INSERT_SQL, records)
+
+
+def _safe_uuid(value: str | None) -> UUID | None:
+    if not value:
+        return None
+    try:
+        return UUID(str(value))
+    except (TypeError, ValueError):
+        return None

@@ -3,18 +3,23 @@ from __future__ import annotations
 from typing import Optional, Sequence
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 
 from app.models.graph import GraphResponse
 from app.services.graph import (
     GraphEntityNotFoundError,
+    clear_graph_data,
     get_graph_neighborhood,
     get_graph_overview,
 )
 
 
-from typing import Optional
 router = APIRouter(prefix="/graph", tags=["graph"])
+
+@router.post("/clear", status_code=204)
+async def api_graph_clear() -> Response:
+    await clear_graph_data()
+    return Response(status_code=204)
 
 
 @router.get("/overview", response_model=GraphResponse)

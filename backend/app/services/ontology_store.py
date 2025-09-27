@@ -360,6 +360,121 @@ async def replace_results(
     return inserted
 
 
+async def append_results(
+    paper_id: UUID,
+    results: Sequence[ResultCreate],
+) -> list[Result]:
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        existing_keys = await _fetch_result_keys(conn, paper_id)
+        supports_verification = await _results_supports_verification(conn)
+        if not results:
+            return []
+
+        inserted: list[Result] = []
+        for result in results:
+            key = _result_key_from_create(result)
+            if key in existing_keys:
+                continue
+            existing_keys.add(key)
+
+            evidence_json = json.dumps(result.evidence)
+            if supports_verification:
+                row = await conn.fetchrow(
+                    _RESULT_INSERT_SQL_WITH_VERIFICATION,
+                    result.paper_id,
+                    result.method_id,
+                    result.dataset_id,
+                    result.metric_id,
+                    result.task_id,
+                    result.split,
+                    result.value_numeric,
+                    result.value_text,
+                    result.is_sota,
+                    result.confidence,
+                    evidence_json,
+                    result.verified,
+                    result.verifier_notes,
+                )
+            else:
+                row = await conn.fetchrow(
+                    _RESULT_INSERT_SQL,
+                    result.paper_id,
+                    result.method_id,
+                    result.dataset_id,
+                    result.metric_id,
+                    result.task_id,
+                    result.split,
+                    result.value_numeric,
+                    result.value_text,
+                    result.is_sota,
+                    result.confidence,
+                    evidence_json,
+                )
+            payload = dict(row)
+            payload["evidence"] = _clean_evidence(payload.get("evidence"))
+            inserted.append(Result(**payload))
+        return inserted
+
+
+async def _fetch_result_keys(conn: Any, paper_id: UUID) -> set[tuple[Any, ...]]:
+    rows = await conn.fetch(
+        """
+        SELECT method_id, dataset_id, metric_id, task_id, split, value_text, value_numeric
+        FROM results
+        WHERE paper_id = $1
+        """,
+        paper_id,
+    )
+    return {
+        (
+            row["method_id"],
+            row["dataset_id"],
+            row["metric_id"],
+            row["task_id"],
+            row["split"],
+            (row["value_text"] or "").strip(),
+            str(row["value_numeric"]) if row["value_numeric"] is not None else None,
+        )
+        for row in rows
+    }
+
+
+def _result_key_from_create(result: ResultCreate) -> tuple[Any, ...]:
+    return (
+        result.method_id,
+        result.dataset_id,
+        result.metric_id,
+        result.task_id,
+        result.split,
+        (result.value_text or "").strip(),
+        str(result.value_numeric) if result.value_numeric is not None else None,
+    )
+
+
+async def fetch_results_by_paper(paper_id: UUID) -> list[Result]:
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, paper_id, method_id, dataset_id, metric_id, task_id, split,
+                   value_numeric, value_text, is_sota, confidence, evidence,
+                   created_at, updated_at
+            FROM results
+            WHERE paper_id = $1
+            """,
+            paper_id,
+        )
+        inserted: list[Result] = []
+        for row in rows:
+            payload = dict(row)
+            payload["evidence"] = _clean_evidence(payload.get("evidence"))
+            payload.setdefault("verified", None)
+            payload.setdefault("verifier_notes", None)
+            inserted.append(Result(**payload))
+        return inserted
+
+
 async def replace_claims(
     paper_id: UUID,
     claims: Sequence[ClaimCreate],

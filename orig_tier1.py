@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import hashlib
-import logging
-
 import io
 import json
 import re
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Iterable, Optional, Sequence
+from typing import Any, Iterable, Sequence
 from uuid import UUID
 
 from app.models.ontology import (
@@ -35,6 +32,7 @@ from app.services.sections import list_sections
 from app.services.storage import download_pdf_from_storage
 from app.utils.text_sanitize import sanitize_text
 
+from typing import Optional
 try:  # pragma: no cover - optional dependency
     import pdfplumber  # type: ignore[import]
 except ImportError:  # pragma: no cover - optional dependency
@@ -64,23 +62,6 @@ STATE_OF_THE_ART_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _NON_ALNUM_RE = re.compile(r"[^a-z0-9]+")
-_SPECIAL_TOKEN_PATTERN = re.compile(
-    r"(<pad>|<s>|</s>|<bos>|</bos>|<eos>|</eos>|<unk>|</unk>|\[cls\]|\[sep\]|\[pad\])",
-    re.IGNORECASE,
-)
-_APPENDIX_TITLE_PATTERN = re.compile(r"\b(?:appendix|supplement|supplementary)\b", re.IGNORECASE)
-_ATTENTION_VIZ_PATTERN = re.compile(
-    r"\battention\b.*\b(?:map|maps|weight|weights|head|heads|visualization|visualizations|heatmap|heatmaps)\b",
-    re.IGNORECASE,
-)
-_INPUT_INPUT_PATTERN = re.compile(r"input-?input\s+layer", re.IGNORECASE)
-_CAPTION_LINE_PATTERN = re.compile(r"^(?:fig(?:ure)?|tab(?:le)?|table)\s+[\w-]+(?:[:.].*)?", re.IGNORECASE)
-SENTENCE_RE = re.compile(r"[^.!?]+(?:[.!?]+|$)")
-CITATION_RE = re.compile(r"\[[^\]]+\]")
-DEFINITION_RE = re.compile(r"\b(?:is|are)\s+defined\s+as\b", re.IGNORECASE)
-
-logger = logging.getLogger(__name__)
-
 
 
 @dataclass
@@ -154,9 +135,6 @@ class Tier1Artifacts:
     metrics: dict[str, DetectedEntity] = field(default_factory=dict)
     tasks: dict[str, DetectedEntity] = field(default_factory=dict)
     results: list[DetectedResult] = field(default_factory=list)
-
-TableCell = dict[str, Any]
-TableRecord = dict[str, Any]
 
 
 class Tier1Lexicon:
@@ -232,74 +210,18 @@ def load_mt_lexicon() -> Tier1Lexicon:
     return _MT_LEXICON
 
 
-
-
-def _clean_section_text(section: Section) -> str:
-    content = section.content or ""
-    if not content:
-        return ""
-
-    title_lower = (section.title or "").lower()
-    cleaned_lines: list[str] = []
-    for raw_line in content.splitlines():
-        if not raw_line:
-            continue
-        if _SPECIAL_TOKEN_PATTERN.search(raw_line):
-            continue
-        normalized = sanitize_text(raw_line)
-        if not normalized:
-            continue
-        if _is_noise_line(normalized, title_lower):
-            continue
-        cleaned_lines.append(normalized)
-    return "\n".join(cleaned_lines)
-
-
-def _is_noise_line(line: str, title_lower: str) -> bool:
-    lower_line = line.lower().strip()
-    if not lower_line:
-        return True
-
-    if _CAPTION_LINE_PATTERN.match(lower_line):
-        return True
-
-    if _INPUT_INPUT_PATTERN.search(lower_line):
-        return True
-
-    if _ATTENTION_VIZ_PATTERN.search(lower_line):
-        if "attention" in title_lower or _APPENDIX_TITLE_PATTERN.search(title_lower):
-            return True
-        attention_terms = ("visualization", "heatmap", "matrix", "weights", "head")
-        if any(term in lower_line for term in attention_terms):
-            return True
-        if lower_line.count("attention") > 1:
-            return True
-
-    if _APPENDIX_TITLE_PATTERN.search(title_lower) and _CAPTION_LINE_PATTERN.match(lower_line):
-        return True
-
-    letters = sum(1 for char in line if char.isalpha())
-    digits = sum(1 for char in line if char.isdigit())
-    if letters == 0 and digits > 0:
-        return True
-
-    return False
-
 def extract_signals(
     sections: Sequence[Section],
     *,
     lexicon: Optional[Tier1Lexicon] = None,
-    table_texts: Optional[Sequence[str | TableRecord]] = None,
+    table_texts: Optional[Sequence[str]] = None,
 ) -> Tier1Artifacts:
     lexicon = lexicon or load_mt_lexicon()
     artifacts = Tier1Artifacts()
 
-    text_sources: list[tuple[Optional[Section], str, str]] = []
-    for section in sections:
-        cleaned_text = _clean_section_text(section)
-        if cleaned_text:
-            text_sources.append((section, cleaned_text, "section"))
-
+    text_sources: Optional[list[tuple[Section], str, str]] = [
+        (section, section.content, "section") for section in sections if section.content
+    ]
     for text in table_texts or []:
         cleaned = text.strip()
         if cleaned:
@@ -342,60 +264,18 @@ async def run_tier1_extraction(
 
     sections = await list_sections(paper_id=paper_id, limit=500, offset=0)
 
-    table_records: list[TableRecord] = []
-    table_text_payloads: list[str] = []
-
-    if table_texts:
-        for value in table_texts:
-            if isinstance(value, str):
-                table_text_payloads.append(value)
-            elif isinstance(value, dict):
-                table_records.append(value)
-
-    pdf_bytes: bytes = b""
-    if getattr(paper, "file_path", None):
+    table_payloads = list(table_texts or [])
+    if not table_payloads and getattr(paper, "file_path", None):
         try:
             pdf_bytes = await download_pdf_from_storage(paper.file_path)  # type: ignore[arg-type]
         except Exception:  # pragma: no cover - storage failures should not break extraction
             pdf_bytes = b""
+        if pdf_bytes:
+            table_payloads.extend(extract_text_from_pdf_tables(pdf_bytes))
 
-    if not table_records:
-        table_records = _extract_tables_with_coordinates(pdf_bytes)
-
-    if not table_text_payloads and table_records:
-        table_text_payloads = [
-            _table_cells_to_text(record.get("cells", []))
-            for record in table_records
-            if record.get("cells")
-        ]
-
-    if not table_text_payloads and pdf_bytes:
-        table_text_payloads = extract_text_from_pdf_tables(pdf_bytes)
-
-    artifacts = extract_signals(sections, lexicon=lexicon, table_texts=table_text_payloads)
-    structural_summary = _build_structural_summary(sections, table_records)
-    try:
-        summary = await _persist_artifacts(paper_id, artifacts)
-    except RuntimeError as exc:
-        logger.error("[tier1] failed to persist artifacts for paper %s: %s", paper_id, exc)
-        summary = _build_empty_summary(paper_id)
-        tier1_meta = summary.setdefault("metadata", {}).setdefault("tier1", {})
-        tier1_meta["persistence_error"] = str(exc)
-
-    summary["sections"] = structural_summary["sections"]
-    summary["tables"] = structural_summary["tables"]
-    summary["citations"] = structural_summary["citations"]
-    summary["definition_sentences"] = structural_summary["definition_sentences"]
-
-    metadata = summary.setdefault("metadata", {})
-    for key, value in structural_summary.get("metadata", {}).items():
-        if isinstance(metadata.get(key), dict) and isinstance(value, dict):
-            metadata[key].update(value)
-        else:
-            metadata[key] = value
-
+    artifacts = extract_signals(sections, lexicon=lexicon, table_texts=table_payloads)
+    summary = await _persist_artifacts(paper_id, artifacts)
     return summary
-
 
 
 def extract_text_from_pdf_tables(pdf_bytes: bytes) -> list[str]:
@@ -426,82 +306,6 @@ def extract_text_from_pdf_tables(pdf_bytes: bytes) -> list[str]:
             return texts
     except Exception:
         return []
-
-
-def _extract_tables_with_coordinates(pdf_bytes: bytes) -> list[TableRecord]:
-    if not pdf_bytes or pdfplumber is None:
-        return []
-
-    try:  # pragma: no cover - pdfplumber is optional
-        with pdfplumber.open(io.BytesIO(pdf_bytes)) as document:  # type: ignore[arg-type]
-            tables: list[TableRecord] = []
-            for page_index, page in enumerate(document.pages, start=1):
-                try:
-                    candidates = page.extract_tables() or []
-                except Exception:
-                    continue
-                for table_index, table in enumerate(candidates, start=1):
-                    cells: list[TableCell] = []
-                    for row_index, row in enumerate(table):
-                        if not row:
-                            continue
-                        for column_index, cell_text in enumerate(row):
-                            if not isinstance(cell_text, str):
-                                continue
-                            cleaned = sanitize_text(cell_text)
-                            if not cleaned:
-                                continue
-                            cells.append(
-                                {
-                                    "row": row_index,
-                                    "column": column_index,
-                                    "text": cleaned,
-                                }
-                            )
-                    if not cells:
-                        continue
-                    tables.append(
-                        {
-                            "table_id": f"table_{page_index}_{table_index}",
-                            "page_number": page_index,
-                            "section_id": None,
-                            "cells": cells,
-                        }
-                    )
-            return tables
-    except Exception:
-        return []
-
-
-def _table_cells_to_text(cells: Sequence[TableCell]) -> str:
-    parts: list[str] = []
-    for cell in cells:
-        text = cell.get("text")
-        if isinstance(text, str) and text:
-            parts.append(text)
-    return " ".join(parts)
-
-
-def _build_empty_summary(paper_id: UUID) -> dict[str, Any]:
-    return {
-        "paper_id": str(paper_id),
-        "tiers": [1],
-        "methods": [],
-        "datasets": [],
-        "metrics": [],
-        "tasks": [],
-        "results": [],
-        "claims": [],
-        "metadata": {
-            "tier1": {
-                "result_count": 0,
-                "method_count": 0,
-                "dataset_count": 0,
-                "metric_count": 0,
-                "task_count": 0,
-            }
-        },
-    }
 
 
 async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[str, Any]:
@@ -672,150 +476,7 @@ async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[
             for result in stored_results
         ],
         "claims": [_serialize_claim(claim) for claim in stored_claims],
-        "metadata": {
-            "tier1": {
-                "result_count": len(stored_results),
-                "method_count": len(method_cache),
-                "dataset_count": len(dataset_cache),
-                "metric_count": len(metric_cache),
-                "task_count": len(task_cache),
-            }
-        },
     }
-
-
-def _build_structural_summary(
-    sections: Sequence[Section],
-    tables: Sequence[TableRecord],
-) -> dict[str, Any]:
-    sections_payload: list[dict[str, Any]] = []
-    citations: list[dict[str, Any]] = []
-    definition_sentences: list[dict[str, Any]] = []
-
-    tables_payload = []
-    tables_by_section: dict[str, list[str]] = {}
-    for table in tables:
-        normalized = {
-            "table_id": table.get("table_id"),
-            "page_number": table.get("page_number"),
-            "section_id": table.get("section_id"),
-            "cells": list(table.get("cells", [])),
-        }
-        tables_payload.append(normalized)
-        section_id = normalized.get("section_id")
-        table_id = normalized.get("table_id")
-        if section_id and table_id:
-            section_key = str(section_id)
-            tables_by_section.setdefault(section_key, []).append(str(table_id))
-
-    for section in sections:
-        payload, section_citations, section_definitions = _build_section_payload(
-            section,
-            table_refs=tables_by_section.get(str(section.id), []),
-        )
-        if not payload:
-            continue
-        sections_payload.append(payload)
-        citations.extend(section_citations)
-        definition_sentences.extend(section_definitions)
-
-    return {
-        "sections": sections_payload,
-        "tables": tables_payload,
-        "citations": citations,
-        "definition_sentences": definition_sentences,
-        "metadata": {"section_count": len(sections_payload)},
-    }
-
-
-def _build_section_payload(
-    section: Section,
-    *,
-    table_refs: Optional[Sequence[str]] = None,
-) -> tuple[Optional[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
-    cleaned_text = _clean_section_text(section)
-    if not cleaned_text:
-        return None, [], []
-
-    normalized_text = re.sub(r"\s+", " ", cleaned_text).strip()
-    if not normalized_text:
-        return None, [], []
-
-    section_hash = hashlib.sha1(normalized_text.encode("utf-8")).hexdigest()
-    sentences: list[dict[str, Any]] = []
-    citations: list[dict[str, Any]] = []
-    definition_sentences: list[dict[str, Any]] = []
-
-    for sentence_index, match in enumerate(SENTENCE_RE.finditer(normalized_text)):
-        raw_sentence = match.group().strip()
-        if not raw_sentence:
-            continue
-        start = match.start()
-        end = match.end()
-        sentence_entry = {
-            "sentence_index": sentence_index,
-            "start": start,
-            "end": end,
-            "text": raw_sentence,
-        }
-
-        has_citation = False
-        for citation in CITATION_RE.finditer(raw_sentence):
-            has_citation = True
-            citations.append(
-                {
-                    "section_id": str(section.id),
-                    "sentence_index": sentence_index,
-                    "text": citation.group(),
-                    "start": start + citation.start(),
-                    "end": start + citation.end(),
-                }
-            )
-        if has_citation:
-            sentence_entry["contains_citation"] = True
-
-        if DEFINITION_RE.search(raw_sentence):
-            sentence_entry["is_definition"] = True
-            definition_sentences.append(
-                {
-                    "section_id": str(section.id),
-                    "sentence_index": sentence_index,
-                    "text": raw_sentence,
-                }
-            )
-
-        sentences.append(sentence_entry)
-
-    if not sentences:
-        return None, [], []
-
-    sentence_spans: list[dict[str, Any]] = []
-    for entry in sentences:
-        span = {
-            "sentence_index": entry["sentence_index"],
-            "start": entry["start"],
-            "end": entry["end"],
-            "text": entry["text"],
-        }
-        if entry.get("is_definition"):
-            span["is_definition"] = True
-        if entry.get("contains_citation"):
-            span["contains_citation"] = True
-        sentence_spans.append(span)
-
-    payload = {
-        "section_id": str(section.id),
-        "section_hash": section_hash,
-        "title": section.title,
-        "page_number": section.page_number,
-        "char_start": section.char_start,
-        "char_end": section.char_end,
-        "sentence_spans": sentence_spans,
-        "captions": [],
-        "table_refs": [str(ref) for ref in (table_refs or [])],
-    }
-
-    return payload, citations, definition_sentences
 
 
 def _collect_lexicon_mentions(
@@ -1366,3 +1027,4 @@ def _serialize_claim(claim: Claim) -> dict[str, Any]:
         "created_at": claim.created_at.isoformat(),
         "updated_at": claim.updated_at.isoformat(),
     }
+

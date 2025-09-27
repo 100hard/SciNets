@@ -1,62 +1,61 @@
 from __future__ import annotations
 
-from typing import List, Optional, Union
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-class EvidenceSpan(BaseModel):
-    """Span of evidence supporting a result or claim."""
+TYPE_GUESS_VALUES: tuple[str, ...] = (
+    "Method",
+    "Task",
+    "Dataset",
+    "Metric",
+    "Concept",
+    "Material",
+    "Organism",
+    "Unknown",
+)
+RELATION_GUESS_VALUES: tuple[str, ...] = (
+    "IS_A",
+    "USES",
+    "EVALUATED_ON",
+    "COMPARED_TO",
+    "OUTPERFORMS",
+    "MEASURES",
+    "PART_OF",
+    "CAUSES",
+    "ASSUMES",
+    "OTHER",
+)
+
+TypeGuess = Literal["Method", "Task", "Dataset", "Metric", "Concept", "Material", "Organism", "Unknown"]
+RelationGuess = Literal["IS_A", "USES", "EVALUATED_ON", "COMPARED_TO", "OUTPERFORMS", "MEASURES", "PART_OF", "CAUSES", "ASSUMES", "OTHER"]
+
+
+class TriplePayload(BaseModel):
+    """Triple extracted by Tier-2 LLM following the strict JSON schema."""
 
     model_config = ConfigDict(extra="ignore")
 
-    section_id: Optional[str] = Field(default=None, min_length=1)
-    start: Optional[int] = Field(default=None, ge=0)
-    end: Optional[int] = Field(default=None, ge=0)
+    subject: str = Field(..., min_length=2, max_length=120)
+    relation: str = Field(..., min_length=2, max_length=60)
+    object: str = Field(..., min_length=1, max_length=120)
+    evidence: str = Field(..., min_length=10, max_length=400)
+    subject_span: list[int] = Field(default_factory=list, min_length=2, max_length=2)
+    object_span: list[int] = Field(default_factory=list, min_length=2, max_length=2)
+    subject_type_guess: TypeGuess = Field(default="Unknown")
+    object_type_guess: TypeGuess = Field(default="Unknown")
+    relation_type_guess: RelationGuess = Field(default="OTHER")
+    triple_conf: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    schema_match_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    section_id: Optional[str] = Field(default=None, min_length=1, max_length=64)
+    chunk_id: Optional[str] = Field(default=None, min_length=1, max_length=64)
 
 
-class MethodPayload(BaseModel):
-    """Method description extracted by the Tier-2 LLM."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    name: str = Field(..., min_length=1)
-    is_new: Optional[bool] = None
-    aliases: List[str] = Field(default_factory=list)
-
-
-class ResultPayload(BaseModel):
-    """Quantitative result extracted by the Tier-2 LLM."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    method: str = Field(..., min_length=1)
-    dataset: str = Field(..., min_length=1)
-    metric: str = Field(..., min_length=1)
-    value: Optional[Union[float, int, str]] = None
-    split: Optional[str] = None
-    task: Optional[str] = None
-    evidence_span: Optional[EvidenceSpan] = None
-
-
-class ClaimPayload(BaseModel):
-    """Natural-language claim extracted by the Tier-2 LLM."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    category: str = Field(..., min_length=1)
-    text: str = Field(..., min_length=1)
-    evidence_span: Optional[EvidenceSpan] = None
-
-
-class Tier2LLMPayload(BaseModel):
+class TripleExtractionResponse(BaseModel):
     """Top-level response returned by the Tier-2 LLM."""
 
     model_config = ConfigDict(extra="ignore")
 
-    paper_title: str = ""
-    methods: List[MethodPayload] = Field(default_factory=list)
-    tasks: List[str] = Field(default_factory=list)
-    datasets: List[str] = Field(default_factory=list)
-    metrics: List[str] = Field(default_factory=list)
-    results: List[ResultPayload] = Field(default_factory=list)
-    claims: List[ClaimPayload] = Field(default_factory=list)
+    triples: list[TriplePayload] = Field(default_factory=list, max_length=15)
+    discarded: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)

@@ -111,6 +111,8 @@ const INITIAL_GRAPH_STATE: GraphState = {
   edges: {},
 };
 
+const GRAPH_CLEARED_STORAGE_KEY = "scinets.graphCleared";
+
 const ALL_TYPES: NodeType[] = ["method", "dataset", "metric", "task"];
 const ALL_RELATIONS: RelationType[] = ["proposes", "evaluates_on", "reports", "compares"];
 
@@ -328,20 +330,35 @@ const getErrorMessage = (error: unknown): string => {
 
 const GraphExplorer = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const initialGraphCleared = (
+    typeof window !== "undefined" && window.localStorage.getItem(GRAPH_CLEARED_STORAGE_KEY) === "true"
+  );
   const [dimensions, setDimensions] = useState<LayoutDimensions>(DEFAULT_DIMENSIONS);
   const [graph, setGraph] = useState<GraphState>(INITIAL_GRAPH_STATE);
   const [meta, setMeta] = useState<GraphMeta | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
-  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(!initialGraphCleared);
+  const [isClearing, setIsClearing] = useState<boolean>(false);
   const [expandingNodeId, setExpandingNodeId] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<NodeType[]>(ALL_TYPES);
-  const [isGraphCleared, setIsGraphCleared] = useState<boolean>(false);
+  const [isGraphCleared, setIsGraphCleared] = useState<boolean>(initialGraphCleared);
   const [selectedRelations, setSelectedRelations] = useState<RelationType[]>(ALL_RELATIONS);
   const [minConfidence, setMinConfidence] = useState<number>(0.6);
   const [showEvidence, setShowEvidence] = useState<boolean>(false);
   const previousPositionsRef = useRef<LayoutPositions>({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (isGraphCleared) {
+      window.localStorage.setItem(GRAPH_CLEARED_STORAGE_KEY, "true");
+    } else {
+      window.localStorage.removeItem(GRAPH_CLEARED_STORAGE_KEY);
+    }
+  }, [isGraphCleared]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -418,7 +435,6 @@ const GraphExplorer = () => {
   }, [minConfidence, selectedRelations, selectedTypes]);
 
   const loadOverview = useCallback(async () => {
-    setIsGraphCleared(false);
     setIsInitialLoading(true);
     setError(null);
     setExpandedNodes({});
@@ -588,17 +604,25 @@ const GraphExplorer = () => {
     void loadOverview();
   };
 
-  const handleClearGraph = () => {
-    setIsGraphCleared(true);
-    previousPositionsRef.current = {};
-    setGraph({ nodes: {}, edges: {} });
-    setMeta(null);
-    setSelectedNodeId(null);
-    setExpandedNodes({});
+  const handleClearGraph = async () => {
+    setIsClearing(true);
     setError(null);
-    setShowEvidence(false);
-    setExpandingNodeId(null);
-    setIsInitialLoading(false);
+    try {
+      await axios.post(`${API_BASE_URL}/api/graph/clear`);
+      setIsGraphCleared(true);
+      previousPositionsRef.current = {};
+      setGraph({ nodes: {}, edges: {} });
+      setMeta(null);
+      setSelectedNodeId(null);
+      setExpandedNodes({});
+      setShowEvidence(false);
+      setExpandingNodeId(null);
+      setIsInitialLoading(false);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const handleExpandSelected = () => {
@@ -730,11 +754,15 @@ const GraphExplorer = () => {
               <button
                 type="button"
                 onClick={handleClearGraph}
-                disabled={!hasGraphData && !isInitialLoading}
+                disabled={(!hasGraphData && !isInitialLoading) || isClearing}
                 className="inline-flex items-center gap-2 rounded-md border border-red-500/70 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 shadow-sm transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Trash2 className="h-4 w-4" />
-                Clear graph
+                {isClearing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                {isClearing ? "Clearing..." : "Clear graph"}
               </button>
               <button
                 type="button"
@@ -785,18 +813,35 @@ const GraphExplorer = () => {
                   const strokeWidth = clamp(1 + Math.log(edge.weight + 1), 1.25, 4.5);
                   const color = EDGE_COLORS[edge.type];
                   const isActive = selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId);
+                  const midX = (sourcePos.x + targetPos.x) / 2;
+                  const midY = (sourcePos.y + targetPos.y) / 2;
+                  const label = formatRelationLabel(edge.type);
                   return (
-                    <line
-                      key={edge.id}
-                      x1={sourcePos.x}
-                      y1={sourcePos.y}
-                      x2={targetPos.x}
-                      y2={targetPos.y}
-                      stroke={color}
-                      strokeWidth={strokeWidth}
-                      strokeOpacity={isActive ? 0.75 : 0.35}
-                      className="transition-opacity"
-                    />
+                    <g key={edge.id} className="transition-opacity">
+                      <line
+                        x1={sourcePos.x}
+                        y1={sourcePos.y}
+                        x2={targetPos.x}
+                        y2={targetPos.y}
+                        stroke={color}
+                        strokeWidth={strokeWidth}
+                        strokeOpacity={isActive ? 0.75 : 0.35}
+                      />
+                      <text
+                        x={midX}
+                        y={midY - 6}
+                        textAnchor="middle"
+                        fill={isActive ? color : "#475569"}
+                        stroke="white"
+                        strokeWidth={isActive ? 2 : 1.5}
+                        strokeOpacity={0.9}
+                        fontSize="11"
+                        fontWeight={600}
+                        style={{ paintOrder: "stroke" }}
+                      >
+                        {label}
+                      </text>
+                    </g>
                   );
                 })}
 
@@ -836,8 +881,10 @@ const GraphExplorer = () => {
                 })}
               </svg>
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                Adjust filters to load graph data.
+              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                {isGraphCleared
+                  ? "Knowledge graph has been cleared. Upload a new paper to rebuild it."
+                  : "Adjust filters to load graph data."}
               </div>
             )}
 

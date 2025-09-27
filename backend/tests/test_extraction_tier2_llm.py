@@ -1,340 +1,460 @@
-import asyncio
+from __future__ import annotations
+
 import json
-from datetime import datetime, timezone
-from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
-from app.models.ontology import Method
+from app.core.config import settings
+from app.schemas.tier2 import TripleExtractionResponse, TriplePayload
 from app.services import extraction_tier2
 
 
-def _build_sections():
-    return [
-        {
-            "id": "sec-1",
-            "title": "Methodology",
-            "content": "We evaluate Method Alpha on the Benchmark dataset.",
-            "char_start": 0,
-            "char_end": 55,
-        },
-        {
-            "id": "sec-2",
-            "title": "Results",
-            "content": "Method Alpha reaches 92.4 accuracy on Benchmark (test split).",
-            "char_start": 55,
-            "char_end": 120,
-        },
-    ]
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"
 
 
-def test_describe_sections_handles_missing_ids():
-    assert extraction_tier2._describe_sections([]) == "count=0"
-
-    description = extraction_tier2._describe_sections([
-        {"id": "a"},
-        {},
-        {"id": "b"},
-        {"id": "c"},
-        {"id": "d"},
-        {"id": "e"},
-        {"id": "f"},
-    ])
-
-    assert description.startswith("count=7")
-    assert "ids=[a, b, c, d, e" in description
-
-
-def test_format_section_ids_handles_none_values():
-    assert extraction_tier2._format_section_ids(None) == "count=0"
-
-    formatted = extraction_tier2._format_section_ids([
-        {"id": "  alpha  "},
-        {"id": None},
-    ])
-
-    assert formatted == "count=2 ids=[alpha]"
-
-
-def test_serialize_method_handles_missing_aliases():
-    now = datetime.now(timezone.utc)
-    method = Method.model_construct(
-        id=uuid4(),
-        name="Method Alpha",
-        aliases=None,
-        description=None,
-        created_at=now,
-        updated_at=now,
-    )
-
-    payload = extraction_tier2._serialize_method(method)
-
-    assert payload["aliases"] == []
-    assert payload["name"] == "Method Alpha"
-
-
-def test_normalise_llm_payload_coerces_structures():
-    sections = _build_sections()
-    raw_payload = json.dumps(
-        {
-            "paper_title": "Original Title",
-            "methods": [
-                {"name": "Method Alpha", "aliases": ["Method alpha", ""]},
-                {"name": "method alpha"},
-            ],
-            "datasets": ["Benchmark", "benchmark"],
-            "metrics": ["Accuracy"],
-            "tasks": ["Image Classification"],
-            "results": [
-                {
-                    "method": "Method Alpha",
-                    "dataset": "Benchmark",
-                    "metric": "Accuracy",
-                    "value": "92.4",
-                    "split": "test",
-                    "task": None,
-                    "evidence_span": {"section_id": "sec-2", "start": 7, "end": 20},
-                }
-            ],
-            "claims": [
-                {
-                    "category": "sota",
-                    "text": "Method Alpha sets a new state of the art on Benchmark",
-                    "evidence_span": {"section_id": "sec-2", "start": 0, "end": 40},
-                }
-            ],
-        }
-    )
-
-    normalised = extraction_tier2._normalise_llm_payload(
-        raw_payload, paper_title="Overridden", sections=sections
-    )
-
-    assert normalised["paper_title"] == "Original Title"
-    assert normalised["methods"] == [
-        {"name": "Method Alpha", "aliases": ["Method alpha"]}
-    ]
-    assert normalised["datasets"] == ["Benchmark"]
-    assert normalised["metrics"] == ["Accuracy"]
-    assert normalised["tasks"] == ["Image Classification"]
-
-    result = normalised["results"][0]
-    assert result["method"] == "Method Alpha"
-    assert result["dataset"] == "Benchmark"
-    assert result["metric"] == "Accuracy"
-    assert result["value"] == "92.4"
-    assert result["split"] == "test"
-    assert result["evidence_span"] == {"section_id": "sec-2", "start": 7, "end": 20}
-
-    claim = normalised["claims"][0]
-    assert claim["category"] == "sota"
-    assert claim["text"].startswith("Method Alpha")
-    assert claim["evidence_span"] == {"section_id": "sec-2", "start": 0, "end": 40}
-
-
-@pytest.mark.parametrize(
-    "raw_payload, expected",
-    [
-        (
-            {
-                "methods": [{"name": ""}, "invalid"],
-                "datasets": "Benchmark",
-                "metrics": [123, "F1"],
-                "results": [
-                    {
-                        "method": "Method Alpha",
-                        "dataset": "Benchmark",
-                        "metric": "F1",
-                        "value": True,
-                        "evidence_span": {"section_id": "missing", "start": -5, "end": 999},
-                    },
-                    ["not", "a", "dict"],
-                ],
-                "claims": [
-                    {
-                        "category": "future_work",
-                        "text": "We plan to release code.",
-                        "evidence_span": {"section_id": "sec-1", "start": "0", "end": "10"},
-                    },
-                    "invalid",
-                ],
-            },
-            {
-                "methods": [],
-                "datasets": [],
-                "metrics": ["F1"],
-                "results": [
-                    {
-                        "method": "Method Alpha",
-                        "dataset": "Benchmark",
-                        "metric": "F1",
-                        "value": "true",
-                        "split": None,
-                        "task": None,
-                        "evidence_span": {"section_id": "sec-1", "start": 0, "end": 50},
-                    }
-                ],
-                "claims": [
-                    {
-                        "category": "future_work",
-                        "text": "We plan to release code.",
-                        "evidence_span": {"section_id": "sec-1", "start": 0, "end": 10},
-                    }
-                ],
-            },
-        ),
-    ],
-)
-def test_normalise_llm_payload_discards_invalid_entries(raw_payload, expected):
-    sections = _build_sections()
-    payload = json.dumps(raw_payload)
-    normalised = extraction_tier2._normalise_llm_payload(
-        payload, paper_title="Paper", sections=sections
-    )
-
-    assert normalised["methods"] == expected["methods"]
-    assert normalised["datasets"] == expected["datasets"]
-    assert normalised["metrics"] == expected["metrics"]
-    assert normalised["results"] == expected["results"]
-    assert normalised["claims"] == expected["claims"]
-
-
-def test_summary_inputs_with_null_collections_are_ignored():
-    summary = {
-        "methods": None,
-        "datasets": None,
-        "metrics": None,
-        "tasks": None,
-        "results": None,
-        "claims": None,
-        "tiers": None,
+def _build_section(section_id: str, title: str, sentences: list[str]) -> dict[str, object]:
+    return {
+        "section_id": section_id,
+        "title": title,
+        "section_hash": f"hash-{section_id}",
+        "page_number": 1,
+        "char_start": 0,
+        "char_end": sum(len(sentence) for sentence in sentences),
+        "sentence_spans": [
+            {"start": idx * 10, "end": idx * 10 + len(sentence), "text": sentence}
+            for idx, sentence in enumerate(sentences)
+        ],
     }
-    caches = extraction_tier2._Caches(methods={}, datasets={}, metrics={}, tasks={})
-
-    async def exercise() -> tuple[list, list]:
-        # Ensure catalog operations gracefully skip missing collections.
-        await extraction_tier2._ensure_catalog_from_summary(summary, caches)
-
-        # Conversion helpers should tolerate absent inputs and yield empty lists.
-        converted_results = await extraction_tier2._convert_summary_results(
-            uuid4(), summary, caches
-        )
-        converted_claims = await extraction_tier2._convert_summary_claims(
-            uuid4(), summary
-        )
-        return converted_results, converted_claims
-
-    converted_results, converted_claims = asyncio.run(exercise())
-
-    assert converted_results == []
-    assert converted_claims == []
-    assert extraction_tier2._merge_tiers(summary.get("tiers"), [2]) == [2]
 
 
+@pytest.mark.anyio
+async def test_run_tier2_structurer_parses_llm_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    paper_id = uuid4()
+    base_summary = {
+        "paper_id": str(paper_id),
+        "tiers": [1],
+        "sections": [
+            _build_section(
+                "sec-1",
+                "Method",
+                [
+                    "We introduce AlphaNet, a transformer-based model.",
+                    "AlphaNet is evaluated on the WMT14 En-Fr dataset.",
+                ],
+            ),
+            _build_section(
+                "sec-2",
+                "Results",
+                [
+                    "AlphaNet achieves BLEU 41.8 on WMT14 En-Fr test set.",
+                ],
+            ),
+        ],
+        "tables": [],
+    }
 
-def test_coerce_tier2_payload_missing_keys_returns_defaults():
-    sections = _build_sections()
-    payload = extraction_tier2._coerce_tier2_payload(
-        "{}",
-        paper_id=uuid4(),
-        paper_title="Paper",
-        sections=sections,
-    )
+    fake_payload = {
+        "triples": [
+            {
+                "subject": "AlphaNet",
+                "relation": "achieves",
+                "object": "BLEU 41.8 on WMT14 En-Fr test set",
+                "evidence": "AlphaNet achieves BLEU 41.8 on WMT14 En-Fr test set.",
+                "subject_span": [0, 8],
+                "object_span": [18, 48],
+                "subject_type_guess": "Method",
+                "relation_type_guess": "MEASURES",
+                "object_type_guess": "Metric",
+                "triple_conf": 0.62,
+                "schema_match_score": 0.97,
+                "section_id": "sec-2",
+            }
+        ],
+        "warnings": [],
+        "discarded": [],
+    }
 
-    assert payload.paper_title == "Paper"
-    assert payload.methods == []
-    assert payload.datasets == []
-    assert payload.results == []
+    captured_messages: list[list[dict[str, str]]] = []
+    persisted: dict[str, object] = {}
+    payload_iter = iter([
+        fake_payload,
+        {"triples": [], "warnings": [], "discarded": []},
+    ])
+
+    async def fake_invoke_llm(messages: list[dict[str, str]]) -> str:
+        captured_messages.append(messages)
+        payload = next(payload_iter, {"triples": [], "warnings": [], "discarded": []})
+        return json.dumps(payload)
+
+    async def fake_replace(paper: UUID, candidates: list) -> None:
+        persisted["paper_id"] = paper
+        persisted["candidates"] = list(candidates)
+
+    monkeypatch.setattr(extraction_tier2, "_invoke_llm", fake_invoke_llm)
+    monkeypatch.setattr(extraction_tier2, "replace_triple_candidates", fake_replace)
+
+    monkeypatch.setattr(settings, "tier2_llm_model", "gpt-test")
+    monkeypatch.setattr(settings, "tier2_llm_base_url", "https://example.com")
+    monkeypatch.setattr(settings, "tier2_llm_completion_path", "/chat/completions")
+    monkeypatch.setattr(settings, "tier2_llm_force_json", True)
+    monkeypatch.setattr(settings, "openai_api_key", None)
+    monkeypatch.setattr(settings, "openai_organization", None)
+
+    summary = await extraction_tier2.run_tier2_structurer(paper_id, base_summary=base_summary)
+
+    assert summary["tiers"] == [1, 2]
+    candidates = summary["triple_candidates"]
+    assert len(candidates) == 1
+    candidate = candidates[0]
+    assert candidate["subject"] == "AlphaNet"
+    assert candidate["relation_type_guess"] == "MEASURES"
+    assert candidate["subject_span"] == [0, 8]
+    assert candidate["section_id"] == "sec-2"
+    assert candidate["candidate_id"].startswith("tier2_llm_openie_")
+    assert summary["metadata"]["tier2"]["triple_count"] == 1
+    guardrails = summary["metadata"]["tier2"]["guardrails"]
+    assert guardrails["deduplicated_triples"] == 0
+    assert guardrails["unmatched_evidence"] == 0
+    assert guardrails["metrics_inferred"] == 0
+    assert len(captured_messages) == 2
+    comparison_prompt = captured_messages[1][1]["content"]
+    assert "comparison" in comparison_prompt.lower()
+
+    assert persisted.get("paper_id") == paper_id
+    stored = persisted.get("candidates") or []
+    assert len(stored) == 1
+    stored_candidate = stored[0]
+    assert stored_candidate.subject == "AlphaNet"
+    assert stored_candidate.section_id == "sec-2"
+    assert stored_candidate.object_span == [18, 48]
 
 
-def test_call_structurer_llm_returns_empty_payload_on_empty_response(monkeypatch):
-    async def fake_once(*_: Any, **__: Any) -> str:
-        return ""
 
-    monkeypatch.setattr(extraction_tier2, "_call_structurer_llm_once", fake_once)
+@pytest.mark.anyio
+async def test_run_tier2_structurer_resolves_pronoun_subject(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paper_id = uuid4()
+    base_summary = {
+        "paper_id": str(paper_id),
+        "tiers": [1],
+        "sections": [
+            _build_section(
+                "sec-1",
+                "Results",
+                [
+                    "SuperNet is introduced as a transformer model.",
+                    "It achieves BLEU 30.0 on WMT14 test set.",
+                ],
+            ),
+        ],
+        "tables": [],
+    }
 
-    result = asyncio.run(
-        extraction_tier2.call_structurer_llm(
-            paper_id=uuid4(),
-            paper_title="Paper",
-            sections=_build_sections(),
-        )
-    )
+    fake_payload = {
+        "triples": [
+            {
+                "subject": "It",
+                "relation": "achieves",
+                "object": "BLEU 30.0 on WMT14 test set",
+                "evidence": "It achieves BLEU 30.0 on WMT14 test set.",
+                "subject_span": [0, 2],
+                "object_span": [13, 43],
+                "subject_type_guess": "Method",
+                "relation_type_guess": "MEASURES",
+                "object_type_guess": "Metric",
+                "triple_conf": 0.6,
+                "schema_match_score": 0.9,
+                "section_id": "sec-1",
+            }
+        ],
+        "warnings": [],
+        "discarded": [],
+    }
 
-    assert result.methods == []
-    assert result.claims == []
+    payload_iter = iter([
+        fake_payload,
+        {"triples": [], "warnings": [], "discarded": []},
+    ])
 
+    async def fake_invoke_llm(_: list[dict[str, str]]) -> str:
+        payload = next(payload_iter, {"triples": [], "warnings": [], "discarded": []})
+        return json.dumps(payload)
 
-def test_call_structurer_llm_handles_malformed_json(monkeypatch):
-    async def fake_once(*_: Any, **__: Any) -> str:
-        return "{not:json"
-
-    monkeypatch.setattr(extraction_tier2, "_call_structurer_llm_once", fake_once)
-
-    result = asyncio.run(
-        extraction_tier2.call_structurer_llm(
-            paper_id=uuid4(),
-            paper_title="Paper",
-            sections=_build_sections(),
-        )
-    )
-
-    assert result.methods == []
-    assert result.results == []
-
-
-def test_call_structurer_llm_retries_transient_errors(monkeypatch):
-    call_count = 0
-
-    async def fake_once(*_: Any, **__: Any) -> str:
-        nonlocal call_count
-        call_count += 1
-        raise extraction_tier2.TransientLLMError("http 429")
-
-    async def fake_sleep(*_: Any, **__: Any) -> None:
+    async def fake_replace(_: UUID, __: list) -> None:
         return None
 
-    monkeypatch.setattr(extraction_tier2, "_call_structurer_llm_once", fake_once)
-    monkeypatch.setattr(extraction_tier2.asyncio, "sleep", fake_sleep)
+    monkeypatch.setattr(extraction_tier2, "_invoke_llm", fake_invoke_llm)
+    monkeypatch.setattr(extraction_tier2, "replace_triple_candidates", fake_replace)
 
-    result = asyncio.run(
-        extraction_tier2.call_structurer_llm(
-            paper_id=uuid4(),
-            paper_title="Paper",
-            sections=_build_sections(),
-        )
+    monkeypatch.setattr(settings, "tier2_llm_model", "gpt-test")
+    monkeypatch.setattr(settings, "tier2_llm_base_url", "https://example.com")
+    monkeypatch.setattr(settings, "tier2_llm_completion_path", "/chat/completions")
+    monkeypatch.setattr(settings, "tier2_llm_force_json", True)
+    monkeypatch.setattr(settings, "openai_api_key", None)
+    monkeypatch.setattr(settings, "openai_organization", None)
+
+    summary = await extraction_tier2.run_tier2_structurer(paper_id, base_summary=base_summary)
+
+    candidate = summary["triple_candidates"][0]
+    assert candidate["subject"] == "SuperNet"
+    guardrails = summary["metadata"]["tier2"]["guardrails"]
+    assert guardrails["pronoun_resolved_subjects"] == 1
+    assert guardrails["low_info_subject_dropped"] == 0
+    assert guardrails["unmatched_evidence"] == 0
+
+
+
+
+
+
+
+
+@pytest.mark.anyio
+async def test_run_tier2_structurer_dedupes_cross_pass_artifacts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paper_id = uuid4()
+    base_summary = {
+        "paper_id": str(paper_id),
+        "tiers": [1],
+        "sections": [
+            _build_section(
+                "sec-1",
+                "Results",
+                [
+                    "Method Alpha compares favorably to Method Beta on Dataset-X.",
+                ],
+            ),
+        ],
+        "tables": [],
+    }
+
+    shared_triple = {
+        "subject": "Method Alpha",
+        "relation": "compares to",
+        "object": "Method Beta on Dataset-X",
+        "evidence": "Method Alpha compares favorably to Method Beta on Dataset-X.",
+        "subject_span": [0, 12],
+        "object_span": [33, 55],
+        "subject_type_guess": "Method",
+        "relation_type_guess": "COMPARED_TO",
+        "object_type_guess": "Method",
+        "triple_conf": 0.6,
+        "schema_match_score": 0.9,
+        "section_id": "sec-1",
+    }
+
+    primary_payload = {
+        "triples": [shared_triple],
+        "warnings": ["Duplicate triple warning", "Spacing issue "],
+        "discarded": ["Row 1"],
+    }
+    comparison_payload = {
+        "triples": [dict(shared_triple)],
+        "warnings": ["duplicate triple warning", "Comparison only"],
+        "discarded": ["row 1 ", "Row 2"],
+    }
+
+    payload_iter = iter([primary_payload, comparison_payload])
+
+    async def fake_invoke_llm(_: list[dict[str, str]]) -> str:
+        payload = next(payload_iter, {"triples": [], "warnings": [], "discarded": []})
+        return json.dumps(payload)
+
+    persisted: dict[str, object] = {}
+
+    async def fake_replace(paper: UUID, candidates: list) -> None:
+        persisted["paper_id"] = paper
+        persisted["count"] = len(candidates)
+
+    monkeypatch.setattr(extraction_tier2, "_invoke_llm", fake_invoke_llm)
+    monkeypatch.setattr(extraction_tier2, "replace_triple_candidates", fake_replace)
+
+    monkeypatch.setattr(settings, "tier2_llm_model", "gpt-test")
+    monkeypatch.setattr(settings, "tier2_llm_base_url", "https://example.com")
+    monkeypatch.setattr(settings, "tier2_llm_completion_path", "/chat/completions")
+    monkeypatch.setattr(settings, "tier2_llm_force_json", True)
+    monkeypatch.setattr(settings, "openai_api_key", None)
+    monkeypatch.setattr(settings, "openai_organization", None)
+
+    summary = await extraction_tier2.run_tier2_structurer(paper_id, base_summary=base_summary)
+
+    assert len(summary["triple_candidates"]) == 1
+    guardrails = summary["metadata"]["tier2"]["guardrails"]
+    assert guardrails["deduplicated_triples"] == 1
+    tier2_meta = summary["metadata"]["tier2"]
+    assert tier2_meta["warnings"] == ["Duplicate triple warning", "Spacing issue ", "Comparison only"]
+    assert tier2_meta["discarded"] == ["Row 1", "Row 2"]
+    assert persisted.get("paper_id") == paper_id
+    assert persisted.get("count") == 1
+
+
+@pytest.mark.anyio
+async def test_run_tier2_structurer_infers_metric_from_synonym(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paper_id = uuid4()
+    base_summary = {
+        "paper_id": str(paper_id),
+        "tiers": [1],
+        "sections": [
+            _build_section(
+                "sec-1",
+                "Results",
+                [
+                    "Baseline model reports a misclassification rate of 5%.",
+                ],
+            ),
+        ],
+        "tables": [],
+    }
+
+    fake_payload = {
+        "triples": [
+            {
+                "subject": "Baseline model",
+                "relation": "reports",
+                "object": "misclassification rate of 5%",
+                "evidence": "Baseline model reports a misclassification rate of 5%.",
+                "subject_span": [0, 14],
+                "object_span": [29, 58],
+                "subject_type_guess": "Method",
+                "relation_type_guess": "MEASURES",
+                "object_type_guess": "Concept",
+                "triple_conf": 0.6,
+                "schema_match_score": 0.9,
+                "section_id": "sec-1",
+            }
+        ],
+        "warnings": [],
+        "discarded": [],
+    }
+
+    payload_iter = iter([
+        fake_payload,
+        {"triples": [], "warnings": [], "discarded": []},
+    ])
+
+    async def fake_invoke_llm(_: list[dict[str, str]]) -> str:
+        payload = next(payload_iter, {"triples": [], "warnings": [], "discarded": []})
+        return json.dumps(payload)
+
+    async def fake_replace(_: UUID, __: list) -> None:
+        return None
+
+    monkeypatch.setattr(extraction_tier2, "_invoke_llm", fake_invoke_llm)
+    monkeypatch.setattr(extraction_tier2, "replace_triple_candidates", fake_replace)
+
+    monkeypatch.setattr(settings, "tier2_llm_model", "gpt-test")
+    monkeypatch.setattr(settings, "tier2_llm_base_url", "https://example.com")
+    monkeypatch.setattr(settings, "tier2_llm_completion_path", "/chat/completions")
+    monkeypatch.setattr(settings, "tier2_llm_force_json", True)
+    monkeypatch.setattr(settings, "openai_api_key", None)
+    monkeypatch.setattr(settings, "openai_organization", None)
+
+    summary = await extraction_tier2.run_tier2_structurer(paper_id, base_summary=base_summary)
+
+    candidate = summary["triple_candidates"][0]
+    assert candidate["metric_inference"]["normalized_metric"] == "Accuracy"
+    assert candidate["metric_inference"]["confidence_penalty"] == pytest.approx(0.05)
+    assert candidate["triple_conf"] == pytest.approx(0.55)
+
+    guardrails = summary["metadata"]["tier2"]["guardrails"]
+    assert guardrails["metrics_inferred"] == 1
+
+@pytest.mark.anyio
+async def test_run_tier2_structurer_needs_review_after_invalid_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paper_id = uuid4()
+    base_summary = {
+        "paper_id": str(paper_id),
+        "tiers": [1],
+        "sections": [_build_section("sec-1", "Intro", ["AlphaNet is proposed."])],
+        "tables": [],
+    }
+
+    call_count = {"invocations": 0}
+
+    async def fake_invoke_llm(_: list[dict[str, str]]) -> str:
+        call_count["invocations"] += 1
+        return "not-json"
+
+    async def fake_replace(_: UUID, __: list) -> None:  # pragma: no cover - should not be called
+        raise AssertionError("replace_triple_candidates should not be invoked on failure")
+
+    monkeypatch.setattr(extraction_tier2, "_invoke_llm", fake_invoke_llm)
+    monkeypatch.setattr(extraction_tier2, "replace_triple_candidates", fake_replace)
+
+    monkeypatch.setattr(settings, "tier2_llm_model", "gpt-test")
+    monkeypatch.setattr(settings, "tier2_llm_base_url", "https://example.com")
+    monkeypatch.setattr(settings, "tier2_llm_completion_path", "/chat/completions")
+    monkeypatch.setattr(settings, "tier2_llm_force_json", True)
+    monkeypatch.setattr(settings, "openai_api_key", None)
+    monkeypatch.setattr(settings, "openai_organization", None)
+
+    summary = await extraction_tier2.run_tier2_structurer(paper_id, base_summary=base_summary)
+
+    assert call_count["invocations"] == extraction_tier2.MAX_LLM_ATTEMPTS
+    assert "needs_review" in summary
+    entry = summary["needs_review"][0]
+    assert entry["tier"] == extraction_tier2.TIER_NAME
+    assert summary["metadata"]["tier2"]["status"] == "needs_review"
+    assert summary.get("triple_candidates", []) == []
+
+
+def test_merge_payloads_dedupes_entries() -> None:
+    payload_a = TripleExtractionResponse(
+        triples=[
+            TriplePayload(
+                subject="Method Alpha",
+                relation="uses",
+                object="Dataset Foo",
+                evidence="Method Alpha uses Dataset Foo.",
+                subject_span=[0, 12],
+                object_span=[18, 29],
+                subject_type_guess="Method",
+                relation_type_guess="USES",
+                object_type_guess="Dataset",
+                triple_conf=0.6,
+                schema_match_score=0.9,
+                section_id="sec-1",
+            )
+        ],
+        warnings=["Duplicate triple warning", "Spacing issue "],
+        discarded=["Row 1", "Row 2"],
+    )
+    payload_b = TripleExtractionResponse(
+        triples=[
+            TriplePayload(
+                subject="Method Beta",
+                relation="reports",
+                object="Accuracy 92%",
+                evidence="Method Beta reports Accuracy 92%.",
+                subject_span=[0, 11],
+                object_span=[22, 33],
+                subject_type_guess="Method",
+                relation_type_guess="MEASURES",
+                object_type_guess="Metric",
+                triple_conf=0.7,
+                schema_match_score=0.95,
+                section_id="sec-2",
+            )
+        ],
+        warnings=["duplicate triple warning", "Another note"],
+        discarded=["row 1", "Row 3"],
     )
 
-    assert result.methods == []
-    assert call_count == len(extraction_tier2.LLM_RETRY_DELAYS) + 1
+    merged = extraction_tier2._merge_payloads([payload_a, payload_b])
 
-
-def test_call_structurer_llm_returns_valid_payload(monkeypatch):
-    sections = _build_sections()
-    raw_payload = json.dumps(
-        {
-            "paper_title": "Original",
-            "methods": [{"name": "Method Alpha"}],
-            "tasks": ["Task"],
-            "datasets": ["Dataset"],
-            "metrics": ["Metric"],
-        }
-    )
-
-    async def fake_once(*_: Any, **__: Any) -> str:
-        return raw_payload
-
-    monkeypatch.setattr(extraction_tier2, "_call_structurer_llm_once", fake_once)
-
-    result = asyncio.run(
-        extraction_tier2.call_structurer_llm(
-            paper_id=uuid4(),
-            paper_title="Paper",
-            sections=sections,
-        )
-    )
-
-    assert result.paper_title == "Original"
-    assert [method.name for method in result.methods] == ["Method Alpha"]
-
+    assert len(merged.triples) == 2
+    assert merged.warnings == [
+        "Duplicate triple warning",
+        "Spacing issue ",
+        "Another note",
+    ]
+    assert merged.discarded == ["Row 1", "Row 2", "Row 3"]

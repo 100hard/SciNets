@@ -5,6 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # System deps (OCR for pytesseract)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -21,6 +22,7 @@ RUN pip install --upgrade pip \
 
 # App
 COPY backend/app /app/app
+COPY backend/tests /app/tests
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

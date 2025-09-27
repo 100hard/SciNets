@@ -166,6 +166,9 @@ class FakeGraphConnection:
                     if res["task_id"] == target
                 ]
 
+        if normalized.startswith("SELECT c.id, c.paper_id, c.name, c.type, p.title AS paper_title"):
+            return []
+
         raise AssertionError(f"Unsupported fetch query: {normalized}")
 
     async def fetchrow(self, query: str, *params: Any) -> Mapping[str, Any] | None:

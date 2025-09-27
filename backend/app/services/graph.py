@@ -34,6 +34,32 @@ _ORDERED_RELATIONS: tuple[RelationType, ...] = ("proposes", "evaluates_on", "rep
 _CONCEPT_TYPES: tuple[str, ...] = ("method", "dataset", "metric", "task")
 _FALLBACK_NAMESPACE = UUID("00000000-0000-0000-0000-000000000000")
 
+_CLEAR_GRAPH_TABLES_IN_ORDER: tuple[str, ...] = (
+    "results",
+    "claims",
+    "paper_relations",
+    "concept_resolutions",
+    "triple_candidates",
+    "relations",
+    "evidence",
+    "concepts",
+    "methods",
+    "datasets",
+    "metrics",
+    "tasks",
+)
+
+
+async def clear_graph_data() -> None:
+    """Remove persisted graph artifacts so fresh extractions can repopulate them."""
+
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            for table in _CLEAR_GRAPH_TABLES_IN_ORDER:
+                await conn.execute(f"DELETE FROM {table}")
+
+
 _RESULT_SELECT = """
     SELECT
         r.id AS result_id,

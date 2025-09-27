@@ -7,7 +7,7 @@ from uuid import UUID
 import pytest
 from fastapi import HTTPException
 
-from app.api.graph import api_graph_neighborhood, api_graph_overview
+from app.api.graph import api_graph_clear, api_graph_neighborhood, api_graph_overview
 from app.models.graph import (
     GraphEdge,
     GraphEdgeData,
@@ -138,6 +138,25 @@ async def _run_api_graph_neighborhood_success(monkeypatch: pytest.MonkeyPatch) -
         min_conf=0.65,
     )
     assert response == expected
+
+
+
+def test_api_graph_clear_triggers_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_run_api_graph_clear(monkeypatch))
+
+
+async def _run_api_graph_clear(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = {"count": 0}
+
+    async def fake_clear_graph_data() -> None:
+        calls["count"] += 1
+
+    monkeypatch.setattr("app.api.graph.clear_graph_data", fake_clear_graph_data)
+
+    response = await api_graph_clear()
+    assert calls["count"] == 1
+    assert response.status_code == 204
+
 
 
 def test_api_graph_neighborhood_not_found(monkeypatch: pytest.MonkeyPatch) -> None:

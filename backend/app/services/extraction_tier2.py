@@ -1,1049 +1,1130 @@
 from __future__ import annotations
 
+import copy
+import difflib
+import json
 import logging
 import re
-from collections import defaultdict
-from dataclasses import dataclass, field
-from decimal import Decimal
-from typing import Any, Iterable, Optional, Sequence, Union
+from dataclasses import dataclass, asdict
+from typing import Any, Optional, Sequence
 from uuid import UUID
 
-from app.core.config import settings
-from app.models.ontology import ClaimCategory, ClaimCreate, ResultCreate
-from app.models.section import Section
-from app.schemas.tier2 import (
-    ClaimPayload,
-    EvidenceSpan,
-    MethodPayload,
-    ResultPayload,
-    Tier2LLMPayload,
-)
-from app.services.nlp_pipeline import CachedDoc, process_text
-from app.services.ontology_store import (
-    ensure_dataset,
-    ensure_method,
-    ensure_metric,
-    ensure_task,
-    replace_claims,
-    replace_results,
-)
-from app.services.papers import get_paper
-from app.services.sections import list_sections
+import httpx
+from pydantic import ValidationError
 
-from typing import Optional
+from app.core.config import settings
+from app.schemas.tier2 import (
+    RELATION_GUESS_VALUES,
+    TYPE_GUESS_VALUES,
+    TripleExtractionResponse,
+    TriplePayload,
+)
+from app.models.triple_candidate import TripleCandidateRecord
+from app.services.triple_candidates import replace_triple_candidates
+
+
 logger = logging.getLogger(__name__)
 
-TIER_NAME = "spacy_structurer"
-BASE_CONFIDENCE = 0.6
-_NUMERIC_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
-_PERCENT_PATTERN = re.compile(r"-?\d+(?:\.\d+)?\s*%")
-_NON_ALNUM = re.compile(r"[^a-z0-9]+")
-_MIN_SENTENCE_LENGTH = 35
+TIER_NAME = "tier2_llm_openie"
+SYSTEM_PROMPT = (
+    "You extract scientific facts as (subject, relation, object) with evidence. "
+    "Use precise noun phrases. Be conservative: if unsure, omit."
+)
+DEFAULT_TRIPLE_CONFIDENCE = 0.55
+DEFAULT_SCHEMA_SCORE = 1.0
+MAX_LLM_ATTEMPTS = 2
+METRIC_INFERENCE_CONF_PENALTY = 0.05
+COMPARISON_GUIDANCE = (
+    "Extract comparisons, ablations, and causal claims. Capture statements such as 'X improves Y', 'X vs. Y', 'with vs without', or reported gains/losses."
+    " Infer implied metrics when terms like misclassification rate or error rate appear."
+)
 
-_METRIC_KEYWORDS = {
-    "accuracy",
-    "f1",
-    "f1-score",
-    "precision",
-    "recall",
-    "bleu",
-    "rouge",
-    "meteor",
-    "chrf",
-    "psnr",
-    "iou",
-    "map",
-    "mrr",
-    "perplexity",
-    "wer",
-    "cer",
-    "bleu-4",
+METRIC_SYNONYM_MAP: dict[str, dict[str, str]] = {
+    "misclassification rate": {
+        "normalized_metric": "Accuracy",
+        "variant": "1 - error",
+        "reason": "Misclassification rate implies complement of accuracy",
+    },
+    "error rate": {
+        "normalized_metric": "Accuracy",
+        "variant": "1 - error",
+        "reason": "Error rate implies complement of accuracy",
+    },
+    "word error rate": {
+        "normalized_metric": "WER",
+        "variant": "WER",
+        "reason": "Word error rate corresponds to WER metric",
+    },
+    "false positive rate": {
+        "normalized_metric": "Specificity",
+        "variant": "1 - FPR",
+        "reason": "False positive rate implies specificity complement",
+    },
 }
-_DATASET_HINTS = {
-    "dataset",
-    "corpus",
-    "benchmark",
-    "collection",
-    "set",
-}
-_TASK_KEYWORDS = {
-    "classification",
-    "translation",
-    "segmentation",
-    "detection",
-    "retrieval",
-    "summarization",
-    "generation",
-    "analysis",
-    "recognition",
-    "answering",
-}
-_METHOD_NOVELTY_HINTS = {"novel", "new", "first", "state-of-the-art"}
 
-_CLAIM_LIMITATION_HINTS = {"limitation", "limited", "failure", "weakness"}
-_CLAIM_FUTURE_HINTS = {"future work", "future direction", "plan to"}
-_CLAIM_ABLATION_HINTS = {"ablation"}
+
+TRIPLE_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "triples": {
+            "type": "array",
+            "maxItems": 15,
+            "items": {
+                "type": "object",
+                "required": [
+                    "subject",
+                    "relation",
+                    "object",
+                    "evidence",
+                    "subject_span",
+                    "object_span",
+                    "subject_type_guess",
+                    "object_type_guess",
+                    "relation_type_guess",
+                ],
+                "properties": {
+                    "subject": {"type": "string", "minLength": 2, "maxLength": 120},
+                    "relation": {"type": "string", "minLength": 2, "maxLength": 60},
+                    "object": {"type": "string", "minLength": 1, "maxLength": 120},
+                    "evidence": {"type": "string", "minLength": 10, "maxLength": 400},
+                    "subject_span": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "minItems": 2,
+                        "maxItems": 2,
+                    },
+                    "object_span": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "minItems": 2,
+                        "maxItems": 2,
+                    },
+                    "subject_type_guess": {"type": "string", "enum": list(TYPE_GUESS_VALUES)},
+                    "object_type_guess": {"type": "string", "enum": list(TYPE_GUESS_VALUES)},
+                    "relation_type_guess": {
+                        "type": "string",
+                        "enum": list(RELATION_GUESS_VALUES),
+                    },
+                    "triple_conf": {
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0,
+                    },
+                    "schema_match_score": {
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0,
+                    },
+                    "section_id": {"type": "string"},
+                    "chunk_id": {"type": "string"},
+                },
+                "additionalProperties": False,
+            },
+            "default": [],
+        },
+        "warnings": {"type": "array", "items": {"type": "string"}, "default": []},
+        "discarded": {"type": "array", "items": {"type": "string"}, "default": []},
+    },
+    "required": ["triples"],
+    "additionalProperties": False,
+}
+
+
+@dataclass
+class SectionContext:
+    section_id: str
+    section_hash: str | None
+    title: str | None
+    page_number: int | None
+    sentences: list[tuple[int, str]]
+    captions: list[str]
+
+    def formatted_text(self) -> str:
+        lines: list[str] = []
+        for idx, text in self.sentences:
+            lines.append(f"[{idx}] {text}")
+        for caption in self.captions:
+            lines.append(f"[caption] {caption}")
+        return "\n".join(lines)
+
+
+@dataclass
+class GuardrailStats:
+    pronoun_resolved_subjects: int = 0
+    pronoun_resolved_objects: int = 0
+    low_info_subject_dropped: int = 0
+    low_info_object_dropped: int = 0
+    deduplicated_triples: int = 0
+    span_clamped: int = 0
+    span_fallback: int = 0
+    fuzzy_matches: int = 0
+    unmatched_evidence: int = 0
+    metrics_inferred: int = 0
+
+    def to_metadata(self) -> dict[str, int]:
+        return asdict(self)
+
+LOW_INFO_TERMS = frozenset(
+    {
+        "it",
+        "its",
+        "itself",
+        "they",
+        "them",
+        "theirs",
+        "themselves",
+        "we",
+        "us",
+        "our",
+        "ours",
+        "ourselves",
+        "this",
+        "that",
+        "these",
+        "those",
+        "this work",
+        "that work",
+        "our work",
+        "the work",
+        "the paper",
+        "our paper",
+        "the authors",
+        "the method",
+        "the model",
+        "the approach",
+        "the system",
+        "the framework",
+        "the technique",
+        "the algorithm",
+        "the pipeline",
+        "the study",
+        "our method",
+        "our model",
+        "our approach",
+        "our system",
+        "our framework",
+        "our technique",
+        "our algorithm",
+        "this method",
+        "this model",
+        "this approach",
+        "this system",
+        "this framework",
+        "this technique",
+        "this algorithm",
+        "that method",
+        "that model",
+        "that approach",
+        "that system",
+        "that framework",
+        "their method",
+        "their model",
+        "their approach",
+        "proposed method",
+        "proposed model",
+        "proposed approach",
+        "the proposed method",
+        "the proposed model",
+        "the proposed approach",
+    }
+)
+LOW_INFO_PREFIXES: tuple[str, ...] = (
+    "this ",
+    "that ",
+    "these ",
+    "those ",
+    "our ",
+    "their ",
+    "its ",
+    "the proposed ",
+    "the presented ",
+    "the aforementioned ",
+    "such ",
+)
+LOW_INFO_BASE_TERMS = frozenset(
+    {
+        "method",
+        "model",
+        "approach",
+        "system",
+        "framework",
+        "technique",
+        "algorithm",
+        "pipeline",
+        "architecture",
+        "study",
+        "work",
+    }
+)
+QUOTE_CHARS = '"\'“”‘’'
+
+MAX_ANTECEDENT_LOOKBACK = 5
+
+ANTECEDENT_QUOTE_RE = re.compile('["\'“”‘’]([^"\'“”‘’]{3,})["\'“”‘’]')
+
+ANTECEDENT_CAPITAL_RE = re.compile(r'([A-Z][A-Za-z0-9]*(?:[\s-][A-Z][A-Za-z0-9]*){0,4})')
+
+
+def _normalize_whitespace(value: str) -> str:
+    if not value:
+        return ""
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _normalize_key_text(value: str) -> str:
+    if not value:
+        return ""
+    return _normalize_whitespace(value).lower()
+
+
+def _strip_outer_quotes(value: str) -> str:
+    if not value:
+        return ""
+    stripped = value.strip()
+    while len(stripped) >= 2 and stripped[0] in QUOTE_CHARS and stripped[-1] in QUOTE_CHARS:
+        stripped = stripped[1:-1].strip()
+    return stripped
+
+
+def _is_low_info_text(value: str) -> bool:
+    normalized = _normalize_key_text(value)
+    if not normalized:
+        return True
+    if normalized in LOW_INFO_TERMS:
+        return True
+    if normalized in LOW_INFO_BASE_TERMS:
+        return True
+    for prefix in LOW_INFO_PREFIXES:
+        if normalized.startswith(prefix):
+            remainder = normalized[len(prefix):].strip()
+            if not remainder or remainder in LOW_INFO_BASE_TERMS:
+                return True
+    return False
+
+
+def _find_context_by_id(
+    contexts: Sequence[SectionContext],
+    section_id: Optional[str],
+) -> Optional[SectionContext]:
+    if not section_id:
+        return None
+    for context in contexts:
+        if context.section_id == section_id:
+            return context
+    return None
+
+
+def _extract_antecedent_from_sentence(sentence: str) -> Optional[str]:
+    if not sentence:
+        return None
+    for quoted in reversed(ANTECEDENT_QUOTE_RE.findall(sentence)):
+        candidate = _normalize_whitespace(quoted)
+        if candidate and not _is_low_info_text(candidate):
+            return candidate
+    for match in reversed(ANTECEDENT_CAPITAL_RE.findall(sentence)):
+        candidate = _normalize_whitespace(match)
+        if candidate and not _is_low_info_text(candidate):
+            return candidate
+    tokens = [token for token in re.findall(r"[A-Za-z0-9\-]+", sentence) if token]
+    if tokens:
+        tail = _normalize_whitespace(" ".join(tokens[-3:]))
+        if tail and not _is_low_info_text(tail):
+            return tail
+    return None
+
+
+def _find_antecedent(
+    matches: Sequence[dict[str, Any]],
+    contexts: Sequence[SectionContext],
+) -> Optional[str]:
+    for match in matches:
+        section_id = match.get("section_id")
+        context = _find_context_by_id(contexts, section_id)
+        if context is None:
+            continue
+        sentence_index = match.get("sentence_index")
+        if sentence_index is None:
+            continue
+        looked = 0
+        for idx, text in reversed(context.sentences):
+            if idx > sentence_index:
+                continue
+            if idx == sentence_index:
+                continue
+            candidate = _extract_antecedent_from_sentence(text)
+            if candidate:
+                return candidate
+            looked += 1
+            if looked >= MAX_ANTECEDENT_LOOKBACK:
+                break
+    return None
+
+
+def _resolve_low_info_term(
+    value: str,
+    matches: Sequence[dict[str, Any]],
+    contexts: Sequence[SectionContext],
+) -> tuple[str, bool, bool]:
+    cleaned = _normalize_whitespace(_strip_outer_quotes(value))
+    if not cleaned:
+        return "", False, False
+    if not _is_low_info_text(cleaned):
+        return cleaned, False, True
+    antecedent = _find_antecedent(matches, contexts)
+    if antecedent:
+        return antecedent, True, True
+    return cleaned, False, False
+
+
+def _sanitize_span(
+    span: Optional[Sequence[int]],
+    evidence: str,
+    fallback_text: str,
+    *,
+    match_length: Optional[int] = None,
+    stats: Optional[GuardrailStats] = None,
+) -> list[int]:
+    evidence_text = evidence or ""
+    evidence_length = len(evidence_text)
+    adjusted = False
+    fallback_used = False
+
+    start = 0
+    end = 0
+    original_start: Optional[int] = None
+    original_end: Optional[int] = None
+
+    if span and len(span) >= 2:
+        try:
+            start = int(span[0])
+            end = int(span[1])
+            original_start = start
+            original_end = end
+        except (TypeError, ValueError):
+            start = 0
+            end = 0
+
+    if end < start:
+        start, end = end, start
+        adjusted = True
+
+    if start < 0:
+        start = 0
+        adjusted = True
+    if end < 0:
+        end = 0
+        adjusted = True
+
+    if start > evidence_length:
+        start = evidence_length
+        adjusted = True
+    if end > evidence_length:
+        end = evidence_length
+        adjusted = True
+
+    if end <= start:
+        fallback = _normalize_whitespace(fallback_text)
+        if fallback:
+            lowered_evidence = evidence_text.lower()
+            lowered_fallback = fallback.lower()
+            position = lowered_evidence.find(lowered_fallback)
+            if position != -1:
+                start = position
+                end = min(evidence_length, position + len(fallback))
+            else:
+                end = min(evidence_length, start + len(fallback))
+        else:
+            end = min(evidence_length, start + 1)
+        fallback_used = True
+        adjusted = True
+
+    if match_length is not None and match_length >= 0:
+        if start > match_length:
+            start = max(0, match_length - 1)
+            adjusted = True
+        if end > match_length:
+            end = match_length
+            adjusted = True
+
+    if stats:
+        if adjusted and (original_start is not None or original_end is not None):
+            stats.span_clamped += 1
+        if fallback_used:
+            stats.span_fallback += 1
+
+    return [start, end]
+
+
+def _make_dedupe_key(
+    subject: str,
+    relation: str,
+    object_text: str,
+    evidence: str,
+    section_id: Optional[str],
+    chunk_id: Optional[str],
+) -> str:
+    parts = (
+        _normalize_key_text(subject),
+        _normalize_key_text(relation),
+        _normalize_key_text(object_text),
+        _normalize_key_text(evidence),
+        (section_id or "").lower(),
+        (chunk_id or "").lower(),
+    )
+    return "|".join(parts)
 
 
 class Tier2ValidationError(RuntimeError):
-    """Raised when Tier-2 is unable to generate a valid payload."""
+    """Raised when Tier-2 returns an invalid payload or cannot execute."""
 
 
-@dataclass
-class _Caches:
-    methods: dict[str, Any]
-    datasets: dict[str, Any]
-    metrics: dict[str, Any]
-    tasks: dict[str, Any]
+    def formatted_text(self) -> str:
+        lines: list[str] = []
+        for idx, text in self.sentences:
+            lines.append(f"[{idx}] {text}")
+        for caption in self.captions:
+            lines.append(f"[caption] {caption}")
+        return "\n".join(lines)
 
 
-@dataclass
-class EntityOccurrence:
-    section_id: Optional[str]
-    start: int
-    end: int
-    pipeline: str
-    source: str
-    score: float
-    sentence: str
-
-
-@dataclass
-class EntityRecord:
-    name: str
-    kind: str
-    score: float
-    aliases: set[str] = field(default_factory=set)
-    occurrences: list[EntityOccurrence] = field(default_factory=list)
-    is_new: bool = False
-
-    def add_occurrence(
-        self,
-        occurrence: EntityOccurrence,
-        *,
-        alias: Optional[str] = None,
-        score: float,
-        is_new: bool = False,
-    ) -> None:
-        if score > self.score:
-            self.score = score
-        if alias and alias != self.name:
-            self.aliases.add(alias)
-        self.occurrences.append(occurrence)
-        if is_new:
-            self.is_new = True
-
-
-class EntityAccumulator:
-    def __init__(self) -> None:
-        self._records: dict[str, dict[str, EntityRecord]] = defaultdict(dict)
-
-    def seed_from_summary(self, summary: Optional[dict[str, Any]]) -> None:
-        if not summary:
-            return
-        for method in _summary_list(summary, "methods"):
-            if isinstance(method, dict) and (name := method.get("name")):
-                record = EntityRecord(name=name, kind="method", score=1.0)
-                if isinstance(method.get("aliases"), list):
-                    record.aliases.update(method["aliases"])
-                if isinstance(method.get("is_new"), bool):
-                    record.is_new = bool(method["is_new"])
-                self._records["method"][_normalize_text(name)] = record
-        for key in ("datasets", "metrics", "tasks"):
-            for item in _summary_list(summary, key):
-                if isinstance(item, dict) and (name := item.get("name")):
-                    record = EntityRecord(name=name, kind=key[:-1], score=1.0)
-                    self._records[key[:-1]][_normalize_text(name)] = record
-
-    def add(
-        self,
-        *,
-        name: str,
-        kind: str,
-        score: float,
-        section: Optional[Section],
-        start: int,
-        end: int,
-        pipeline: str,
-        source: str,
-        sentence: str,
-        alias: Optional[str] = None,
-        is_new: bool = False,
-    ) -> None:
-        key = _normalize_text(name)
-        if not key or score < settings.nlp_min_span_score:
-            return
-        record = self._records[kind].get(key)
-        if record is None:
-            record = EntityRecord(name=name, kind=kind, score=score, is_new=is_new)
-            self._records[kind][key] = record
-        occurrence = EntityOccurrence(
-            section_id=str(section.id) if section else None,
-            start=start,
-            end=end,
-            pipeline=pipeline,
-            source=source,
-            score=score,
-            sentence=sentence,
-        )
-        record.add_occurrence(occurrence, alias=alias, score=score, is_new=is_new)
-
-    def records(self, kind: str) -> list[EntityRecord]:
-        return list(self._records.get(kind, {}).values())
-
-    def records_in_span(self, kind: str, section_id: Optional[str], start: int, end: int) -> list[EntityRecord]:
-        matches: list[EntityRecord] = []
-        for record in self._records.get(kind, {}).values():
-            for occurrence in record.occurrences:
-                if occurrence.section_id == section_id and occurrence.start < end and occurrence.end > start:
-                    matches.append(record)
-                    break
-        return matches
-
-    def best_record(self, kind: str) -> Optional[EntityRecord]:
-        candidates = self.records(kind)
-        if not candidates:
-            return None
-        return max(candidates, key=lambda record: record.score)
-
-
-class ResultBuilder:
-    def __init__(self) -> None:
-        self._results: list[ResultPayload] = []
-        self._signatures: set[tuple[str, str, str, str, Optional[str]]] = set()
-
-    def add(
-        self,
-        *,
-        method: str,
-        dataset: str,
-        metric: str,
-        value_text: str,
-        sentence_start: int,
-        sentence_end: int,
-        section_id: Optional[str],
-        task: Optional[str] = None,
-        split: Optional[str] = None,
-    ) -> None:
-        signature = (
-            _normalize_text(method),
-            _normalize_text(dataset),
-            _normalize_text(metric),
-            value_text,
-            section_id,
-        )
-        if signature in self._signatures:
-            return
-        self._signatures.add(signature)
-
-        numeric_value: Union[float, int, str]
-        cleaned = value_text.strip()
-        try:
-            numeric_value = float(cleaned)
-        except ValueError:
-            numeric_value = cleaned
-
-        evidence_span = EvidenceSpan(
-            section_id=section_id,
-            start=sentence_start,
-            end=sentence_end,
-        )
-        self._results.append(
-            ResultPayload(
-                method=method,
-                dataset=dataset,
-                metric=metric,
-                value=numeric_value,
-                split=split,
-                task=task,
-                evidence_span=evidence_span,
-            )
-        )
-
-    @property
-    def results(self) -> list[ResultPayload]:
-        return self._results
-
-
-class ClaimBuilder:
-    def __init__(self) -> None:
-        self._claims: list[ClaimPayload] = []
-        self._signatures: set[tuple[Optional[str], str]] = set()
-
-    def add(
-        self,
-        *,
-        text: str,
-        category: ClaimCategory,
-        section_id: Optional[str],
-        start: int,
-        end: int,
-    ) -> None:
-        normalized = _normalize_text(text)
-        signature = (section_id, normalized)
-        if signature in self._signatures:
-            return
-        self._signatures.add(signature)
-        self._claims.append(
-            ClaimPayload(
-                category=category.value,
-                text=text.strip(),
-                evidence_span=EvidenceSpan(section_id=section_id, start=start, end=end),
-            )
-        )
-
-    @property
-    def claims(self) -> list[ClaimPayload]:
-        return self._claims
 
 async def run_tier2_structurer(
     paper_id: UUID,
     *,
-    base_summary: Optional[dict[str, Any]] = None,
-    sections: Optional[Sequence[Section]] = None,
+    base_summary: Optional[dict[str, Any]],
 ) -> dict[str, Any]:
-    summary = base_summary or {}
+    if base_summary is None:
+        raise Tier2ValidationError("Tier-2 requires Tier-1 summary data")
 
-    paper = await get_paper(paper_id)
-    if paper is None:
-        raise ValueError(f"Paper {paper_id} does not exist")
+    sections_raw = base_summary.get("sections")
+    if not sections_raw:
+        raise Tier2ValidationError("Tier-2 requires Tier-1 sections with sentence spans")
 
-    if sections is None:
-        sections = await list_sections(paper_id=paper_id, limit=500, offset=0)
-
-    payload = _build_structured_payload(
-        paper_title=paper.title or "",
-        sections=sections,
-        summary=summary,
-    )
-
-    caches = _Caches(methods={}, datasets={}, metrics={}, tasks={})
-    existing_result_models = await _convert_summary_results(paper_id, summary, caches)
-    existing_claim_models = await _convert_summary_claims(paper_id, summary)
-
-    await _ensure_catalog_from_summary(summary, caches)
-    await _ensure_catalog_from_payload(payload, caches)
-
-    tier2_result_models = await _convert_payload_results(paper_id, payload, caches)
-    tier2_claim_models = _convert_payload_claims(paper_id, payload)
-
-    combined_results = existing_result_models + tier2_result_models
-    combined_claims = existing_claim_models + tier2_claim_models
-
-    stored_results = await replace_results(paper_id, combined_results)
-    stored_claims = await replace_claims(paper_id, combined_claims)
-
-    method_models = {model.id: model for model in caches.methods.values()}
-    dataset_models = {model.id: model for model in caches.datasets.values()}
-    metric_models = {model.id: model for model in caches.metrics.values()}
-    task_models = {model.id: model for model in caches.tasks.values()}
-
-    summary_payload = {
-        "paper_id": str(paper_id),
-        "tiers": _merge_tiers(_summary_list(summary, "tiers"), [2]),
-        "methods": [_serialize_method(model) for model in method_models.values()],
-        "datasets": [_serialize_dataset(model) for model in dataset_models.values()],
-        "metrics": [_serialize_metric(model) for model in metric_models.values()],
-        "tasks": [_serialize_task(model) for model in task_models.values()],
-        "results": [],
-        "claims": [],
-    }
-
-    tier2_start_index = len(existing_result_models)
-    for index, result in enumerate(stored_results):
-        serialized = _serialize_result(
-            result,
-            method_by_id=method_models,
-            dataset_by_id=dataset_models,
-            metric_by_id=metric_models,
-            task_by_id=task_models,
+    contexts = _prepare_section_contexts(sections_raw)
+    if not contexts:
+        logger.info("[tier2] no suitable sections found for LLM extraction")
+        return _augment_summary(
+            base_summary,
+            [],
+            TripleExtractionResponse(),
+            raw_response=None,
+            stats=GuardrailStats(),
         )
-        if index >= tier2_start_index:
-            serialized["tier"] = TIER_NAME
-        summary_payload["results"].append(serialized)
 
-    tier2_claim_start = len(existing_claim_models)
-    for index, claim in enumerate(stored_claims):
-        serialized = _serialize_claim(claim)
-        if index >= tier2_claim_start:
-            serialized["tier"] = TIER_NAME
-        summary_payload["claims"].append(serialized)
+    guard_stats = GuardrailStats()
+    seen_keys: set[str] = set()
+    all_candidates: list[dict[str, Any]] = []
+    all_persistence: list[TripleCandidateRecord] = []
+    raw_responses: dict[str, Optional[str]] = {}
+    payloads: list[TripleExtractionResponse] = []
 
-    return summary_payload
-
-
-def _build_structured_payload(
-    *,
-    paper_title: str,
-    sections: Sequence[Section],
-    summary: Optional[dict[str, Any]],
-) -> Tier2LLMPayload:
-    accumulator = EntityAccumulator()
-    accumulator.seed_from_summary(summary)
-    result_builder = ResultBuilder()
-    claim_builder = ClaimBuilder()
-
-    for section in sections:
-        text = (section.content or "").strip()
-        if not text:
-            continue
-        cached_docs = process_text(text)
-        for cached in cached_docs:
-            _collect_entities_from_doc(accumulator, section, cached)
-        primary = _select_primary_doc(cached_docs)
-        if primary:
-            _collect_sentence_relations(
-                accumulator=accumulator,
-                section=section,
-                cached=primary,
-                result_builder=result_builder,
-                claim_builder=claim_builder,
-            )
-
-    methods_payload = [
-        MethodPayload(
-            name=record.name,
-            aliases=sorted(record.aliases),
-            is_new=record.is_new or None,
-        )
-        for record in sorted(
-            accumulator.records("method"),
-            key=lambda item: (-item.score, item.name.lower()),
-        )
+    extraction_passes = [
+        ("primary", _build_messages(contexts, mode="primary"), True, "primary extraction"),
+        ("comparison", _build_messages(contexts, mode="comparison"), False, "comparison extraction"),
     ]
 
-    datasets_payload = sorted({record.name for record in accumulator.records("dataset")})
-    metrics_payload = sorted({record.name for record in accumulator.records("metric")})
-    tasks_payload = sorted({record.name for record in accumulator.records("task")})
-
-    if not methods_payload:
-        best_method = accumulator.best_record("method")
-        if best_method:
-            methods_payload.append(
-                MethodPayload(
-                    name=best_method.name,
-                    aliases=sorted(best_method.aliases),
-                    is_new=best_method.is_new or None,
-                )
-            )
-
-    return Tier2LLMPayload(
-        paper_title=paper_title,
-        methods=methods_payload,
-        tasks=tasks_payload,
-        datasets=datasets_payload,
-        metrics=metrics_payload,
-        results=result_builder.results,
-        claims=claim_builder.claims,
-    )
-
-def _collect_entities_from_doc(accumulator: EntityAccumulator, section: Section, cached: CachedDoc) -> None:
-    doc = cached.doc
-    pipeline_key = cached.pipeline.key
-    base_score = 0.62 if cached.pipeline.kind == "scispacy" else 0.58
-
-    for ent in doc.ents:
-        span_text = ent.text.strip()
-        if len(span_text) < settings.nlp_min_span_char_length:
-            continue
-        kind = _infer_entity_kind(ent)
-        if not kind:
-            continue
-        sentence = ent.sent.text.strip()
-        is_new = kind == "method" and _sentence_has_novelty_hint(sentence)
-        accumulator.add(
-            name=span_text,
-            alias=span_text,
-            kind=kind,
-            score=base_score,
-            section=section,
-            start=ent.start_char,
-            end=ent.end_char,
-            pipeline=pipeline_key,
-            source=f"ner:{ent.label_}",
-            sentence=sentence,
-            is_new=is_new,
-        )
-
-    for chunk in doc.noun_chunks:
-        span_text = chunk.text.strip()
-        if len(span_text) < settings.nlp_min_span_char_length:
-            continue
-        kind = _infer_chunk_kind(chunk)
-        if not kind:
-            continue
-        sentence = chunk.sent.text.strip()
-        accumulator.add(
-            name=span_text,
-            alias=span_text,
-            kind=kind,
-            score=base_score - 0.03,
-            section=section,
-            start=chunk.start_char,
-            end=chunk.end_char,
-            pipeline=pipeline_key,
-            source="chunk",
-            sentence=sentence,
-        )
-
-
-def _collect_sentence_relations(
-    *,
-    accumulator: EntityAccumulator,
-    section: Section,
-    cached: CachedDoc,
-    result_builder: ResultBuilder,
-    claim_builder: ClaimBuilder,
-) -> None:
-    doc = cached.doc
-    section_id = str(section.id) if section else None
-
-    for sent in doc.sents:
-        sent_text = sent.text.strip()
-        if not sent_text:
-            continue
-        start_char = sent.start_char
-        end_char = sent.end_char
-
-        lower_text = sent_text.lower()
-        if len(sent_text) >= _MIN_SENTENCE_LENGTH and _contains_claim_signal(lower_text):
-            category = _classify_claim(lower_text)
-            claim_builder.add(
-                text=sent_text,
-                category=category,
-                section_id=section_id,
-                start=start_char,
-                end=end_char,
-            )
-
-        method_records = accumulator.records_in_span("method", section_id, start_char, end_char)
-        dataset_records = accumulator.records_in_span("dataset", section_id, start_char, end_char)
-        metric_records = accumulator.records_in_span("metric", section_id, start_char, end_char)
-        task_records = accumulator.records_in_span("task", section_id, start_char, end_char)
-
-        if not metric_records:
-            for keyword in _METRIC_KEYWORDS:
-                if keyword in lower_text:
-                    accumulator.add(
-                        name=keyword.upper(),
-                        kind="metric",
-                        score=0.55,
-                        section=section,
-                        start=start_char,
-                        end=end_char,
-                        pipeline=cached.pipeline.key,
-                        source="heuristic",
-                        sentence=sent_text,
-                    )
-                    metric_records = accumulator.records_in_span("metric", section_id, start_char, end_char)
-                    break
-
-        if not (method_records and dataset_records and metric_records):
-            continue
-
-        number_match = _find_primary_value(sent_text)
-        if not number_match:
-            continue
-
-        method_name = max(method_records, key=lambda record: record.score).name
-        dataset_name = max(dataset_records, key=lambda record: record.score).name
-        metric_name = max(metric_records, key=lambda record: record.score).name
-        value_text = number_match.group().strip(" %")
-        split = _detect_split(lower_text)
-        task_name = (
-            max(task_records, key=lambda record: record.score).name
-            if task_records
-            else None
-        )
-
-        result_builder.add(
-            method=method_name,
-            dataset=dataset_name,
-            metric=metric_name,
-            value_text=value_text,
-            sentence_start=start_char,
-            sentence_end=end_char,
-            section_id=section_id,
-            task=task_name,
-            split=split,
-        )
-
-
-def _select_primary_doc(cached_docs: Sequence[CachedDoc]) -> Optional[CachedDoc]:
-    for cached in cached_docs:
-        if cached.pipeline.kind == "scispacy":
-            return cached
-    return cached_docs[0] if cached_docs else None
-
-
-def _sentence_has_novelty_hint(sentence: str) -> bool:
-    lowered = sentence.lower()
-    return any(hint in lowered for hint in _METHOD_NOVELTY_HINTS)
-
-
-def _contains_claim_signal(lowered_sentence: str) -> bool:
-    return (
-        "we " in lowered_sentence
-        or "our " in lowered_sentence
-        or "this paper" in lowered_sentence
-    )
-
-
-def _classify_claim(lowered_sentence: str) -> ClaimCategory:
-    if any(hint in lowered_sentence for hint in _CLAIM_LIMITATION_HINTS):
-        return ClaimCategory.LIMITATION
-    if any(hint in lowered_sentence for hint in _CLAIM_ABLATION_HINTS):
-        return ClaimCategory.ABLATION
-    if any(hint in lowered_sentence for hint in _CLAIM_FUTURE_HINTS):
-        return ClaimCategory.FUTURE_WORK
-    return ClaimCategory.CONTRIBUTION
-
-
-def _find_primary_value(sentence: str) -> Optional[re.Match[str]]:
-    percent_match = _PERCENT_PATTERN.search(sentence)
-    if percent_match:
-        return percent_match
-    return _NUMERIC_PATTERN.search(sentence)
-
-
-def _detect_split(lowered_sentence: str) -> Optional[str]:
-    if "test" in lowered_sentence:
-        return "test"
-    if "validation" in lowered_sentence or " val " in lowered_sentence:
-        return "validation"
-    if "dev" in lowered_sentence:
-        return "dev"
-    return None
-
-
-def _infer_entity_kind(span) -> Optional[str]:
-    text = span.text.strip()
-    lower = text.lower()
-    label = getattr(span, "label_", "")
-
-    if _looks_like_metric(text, lower, label):
-        return "metric"
-    if _looks_like_dataset(span, lower):
-        return "dataset"
-    if _looks_like_task(text, lower):
-        return "task"
-    return "method"
-
-
-def _infer_chunk_kind(chunk) -> Optional[str]:
-    text = chunk.text.strip()
-    lower = text.lower()
-    if _looks_like_dataset(chunk, lower):
-        return "dataset"
-    if _looks_like_task(text, lower):
-        return "task"
-    return None
-
-
-def _looks_like_metric(text: str, lower: str, label: str) -> bool:
-    if lower in _METRIC_KEYWORDS:
-        return True
-    if text.upper() in {"BLEU", "ROUGE", "ROUGE-L", "PSNR", "WER", "CER"}:
-        return True
-    if label in {"PERCENT", "CARDINAL", "QUANTITY"} and any(
-        keyword in lower for keyword in _METRIC_KEYWORDS
-    ):
-        return True
-    if "score" in lower and _NUMERIC_PATTERN.search(text):
-        return True
-    return False
-
-
-def _looks_like_dataset(span, lower: str) -> bool:
-    if any(lower.endswith(hint) for hint in _DATASET_HINTS):
-        return True
-    if "dataset" in lower or "corpus" in lower:
-        return True
-    head = getattr(span, "root", None)
-    if head is not None:
-        if head.dep_ == "pobj" and head.head is not None and head.head.text.lower() in {"on", "over", "against", "using"}:
-            return True
-        head_text = head.text.lower()
-        head_head = head.head.text.lower() if head.head is not None else ""
-        if head_text in _DATASET_HINTS or head_head in _DATASET_HINTS:
-            return True
-    upper_ratio = sum(1 for ch in span.text if ch.isupper()) / max(1, len(span.text))
-    if upper_ratio > 0.6 and len(span.text) <= 20:
-        return True
-    return False
-
-
-def _looks_like_task(text: str, lower: str) -> bool:
-    if "task" in lower or "problem" in lower:
-        return True
-    return any(keyword in lower for keyword in _TASK_KEYWORDS)
-
-def _summary_list(summary: dict[str, Any], key: str) -> list[Any]:
-    value = summary.get(key)
-    if isinstance(value, list):
-        return value
-    if isinstance(value, tuple):
-        return list(value)
-    return []
-
-
-async def _ensure_catalog_from_summary(summary: dict[str, Any], caches: _Caches) -> None:
-    for item in _summary_list(summary, "methods"):
-        if isinstance(item, dict) and (name := item.get("name")):
-            await _ensure_method(name, caches, aliases=item.get("aliases"))
-    for item in _summary_list(summary, "datasets"):
-        if isinstance(item, dict) and (name := item.get("name")):
-            await _ensure_dataset(name, caches, aliases=item.get("aliases"))
-    for item in _summary_list(summary, "metrics"):
-        if isinstance(item, dict) and (name := item.get("name")):
-            await _ensure_metric(name, caches, unit=item.get("unit"), aliases=item.get("aliases"))
-    for item in _summary_list(summary, "tasks"):
-        if isinstance(item, dict) and (name := item.get("name")):
-            await _ensure_task(name, caches, aliases=item.get("aliases"))
-
-
-async def _ensure_catalog_from_payload(payload: Tier2LLMPayload, caches: _Caches) -> None:
-    for method in payload.methods:
-        await _ensure_method(method.name, caches, aliases=method.aliases or None)
-    for dataset in payload.datasets:
-        await _ensure_dataset(dataset, caches)
-    for metric in payload.metrics:
-        await _ensure_metric(metric, caches)
-    for task in payload.tasks:
-        await _ensure_task(task, caches)
-
-
-async def _convert_summary_results(
-    paper_id: UUID,
-    summary: dict[str, Any],
-    caches: _Caches,
-) -> list[ResultCreate]:
-    converted: list[ResultCreate] = []
-    for result in _summary_list(summary, "results"):
-        if isinstance(result, dict):
-            converted_model = await _summary_result_to_model(paper_id, result, caches)
-            if converted_model:
-                converted.append(converted_model)
-    return converted
-
-
-async def _summary_result_to_model(
-    paper_id: UUID,
-    payload: dict[str, Any],
-    caches: _Caches,
-) -> Optional[ResultCreate]:
-    method_model = await _extract_summary_method(payload.get("method"), caches)
-    dataset_model = await _extract_summary_dataset(payload.get("dataset"), caches)
-    metric_model = await _extract_summary_metric(payload.get("metric"), caches)
-    task_model = await _extract_summary_task(payload.get("task"), caches)
-
-    numeric_decimal = None
-    if (value_numeric := payload.get("value_numeric")) is not None:
-        numeric_decimal = Decimal(str(value_numeric))
-
-    return ResultCreate(
-        paper_id=paper_id,
-        method_id=method_model.id if method_model else None,
-        dataset_id=dataset_model.id if dataset_model else None,
-        metric_id=metric_model.id if metric_model else None,
-        task_id=task_model.id if task_model else None,
-        split=payload.get("split"),
-        value_numeric=numeric_decimal,
-        value_text=payload.get("value_text"),
-        is_sota=bool(payload.get("is_sota")),
-        confidence=payload.get("confidence"),
-        evidence=list(payload.get("evidence") or []),
-        verified=payload.get("verified"),
-        verifier_notes=payload.get("verifier_notes"),
-    )
-
-
-async def _extract_summary_ontology(
-    payload: Optional[dict[str, Any]],
-    ensure_func,
-    caches: _Caches,
-):
-    if payload and (name := payload.get("name")):
-        return await ensure_func(name, caches, aliases=payload.get("aliases"))
-    return None
-
-
-async def _extract_summary_method(payload: Optional[dict[str, Any]], caches: _Caches):
-    return await _extract_summary_ontology(payload, _ensure_method, caches)
-
-
-async def _extract_summary_dataset(payload: Optional[dict[str, Any]], caches: _Caches):
-    return await _extract_summary_ontology(payload, _ensure_dataset, caches)
-
-
-async def _extract_summary_metric(payload: Optional[dict[str, Any]], caches: _Caches):
-    if payload and (name := payload.get("name")):
-        return await _ensure_metric(name, caches, unit=payload.get("unit"), aliases=payload.get("aliases"))
-    return None
-
-
-async def _extract_summary_task(payload: Optional[dict[str, Any]], caches: _Caches):
-    return await _extract_summary_ontology(payload, _ensure_task, caches)
-
-
-async def _convert_payload_results(
-    paper_id: UUID,
-    payload: Tier2LLMPayload,
-    caches: _Caches,
-) -> list[ResultCreate]:
-    converted: list[ResultCreate] = []
-    method_lookup = {_normalize_text(method.name): method for method in payload.methods}
-
-    for result in payload.results:
-        method_meta = method_lookup.get(_normalize_text(result.method))
-        method_aliases = method_meta.aliases if method_meta else None
-
-        method_model = await _ensure_method(result.method, caches, aliases=method_aliases)
-        dataset_model = await _ensure_dataset(result.dataset, caches)
-        metric_model = await _ensure_metric(result.metric, caches)
-
-        task_name = result.task or (payload.tasks[0] if payload.tasks else None)
-        task_model = await _ensure_task(task_name, caches) if task_name else None
-
-        value_text = None
-        numeric_decimal = None
-        if result.value is not None:
-            value_text = str(result.value)
-            try:
-                numeric_decimal = Decimal(value_text)
-            except Exception:
-                numeric_decimal = None
-
-        evidence_payload: list[dict[str, Any]] = []
-        if result.evidence_span:
-            evidence_payload.append(
-                {
-                    "tier": TIER_NAME,
-                    "evidence_span": result.evidence_span.model_dump(),
-                }
-            )
-
-        converted.append(
-            ResultCreate(
-                paper_id=paper_id,
-                method_id=method_model.id,
-                dataset_id=dataset_model.id,
-                metric_id=metric_model.id,
-                task_id=task_model.id if task_model else None,
-                split=result.split,
-                value_numeric=numeric_decimal,
-                value_text=value_text,
-                is_sota=False,
-                confidence=BASE_CONFIDENCE,
-                evidence=evidence_payload,
-            )
-        )
-    return converted
-
-
-def _convert_payload_claims(paper_id: UUID, payload: Tier2LLMPayload) -> list[ClaimCreate]:
-    converted: list[ClaimCreate] = []
-    for claim in payload.claims:
+    for pass_label, messages, required, failure_reason in extraction_passes:
         try:
-            category = ClaimCategory(claim.category.strip().lower())
-        except ValueError:
-            category = ClaimCategory.OTHER
-
-        evidence_payload: list[dict[str, Any]] = []
-        if claim.evidence_span:
-            evidence_payload.append(
-                {
-                    "tier": TIER_NAME,
-                    "evidence_span": claim.evidence_span.model_dump(),
-                }
+            validated, raw_json = await _request_llm_payload(
+                paper_id,
+                messages,
+                required=required,
+                failure_reason=failure_reason,
             )
+        except Tier2ValidationError as exc:
+            return _mark_needs_review(base_summary, contexts, exc)
 
-        converted.append(
-            ClaimCreate(
-                paper_id=paper_id,
-                category=category,
-                text=claim.text,
-                confidence=BASE_CONFIDENCE,
-                evidence=evidence_payload,
-            )
-        )
-    return converted
-
-
-async def _convert_summary_claims(
-    paper_id: UUID,
-    summary: dict[str, Any],
-) -> list[ClaimCreate]:
-    converted: list[ClaimCreate] = []
-    for claim in _summary_list(summary, "claims"):
-        if isinstance(claim, dict) and (text := claim.get("text")):
-            try:
-                category = ClaimCategory(claim.get("category", "").strip().lower())
-            except ValueError:
-                category = ClaimCategory.OTHER
-
-            converted.append(
-                ClaimCreate(
-                    paper_id=paper_id,
-                    category=category,
-                    text=text,
-                    confidence=claim.get("confidence"),
-                    evidence=list(claim.get("evidence") or []),
-                )
-            )
-    return converted
-
-
-async def _ensure_method(
-    name: str,
-    caches: _Caches,
-    *,
-    aliases: Optional[Iterable[str]] = None,
-    description: Optional[str] = None,
-):
-    normalized = _normalize_text(name)
-    if not normalized:
-        raise ValueError("Method name cannot be empty")
-    model = caches.methods.get(normalized)
-    if model is None:
-        model = await ensure_method(name, aliases=aliases, description=description)
-        caches.methods[normalized] = model
-    return model
-
-
-async def _ensure_dataset(
-    name: str,
-    caches: _Caches,
-    *,
-    aliases: Optional[Iterable[str]] = None,
-    description: Optional[str] = None,
-):
-    normalized = _normalize_text(name)
-    if not normalized:
-        raise ValueError("Dataset name cannot be empty")
-    model = caches.datasets.get(normalized)
-    if model is None:
-        model = await ensure_dataset(name, aliases=aliases, description=description)
-        caches.datasets[normalized] = model
-    return model
-
-
-async def _ensure_metric(
-    name: str,
-    caches: _Caches,
-    *,
-    unit: Optional[str] = None,
-    aliases: Optional[Iterable[str]] = None,
-    description: Optional[str] = None,
-):
-    normalized = _normalize_text(name)
-    if not normalized:
-        raise ValueError("Metric name cannot be empty")
-    model = caches.metrics.get(normalized)
-    if model is None:
-        model = await ensure_metric(name, unit=unit, aliases=aliases, description=description)
-        caches.metrics[normalized] = model
-    return model
-
-
-async def _ensure_task(
-    name: str,
-    caches: _Caches,
-    *,
-    aliases: Optional[Iterable[str]] = None,
-    description: Optional[str] = None,
-):
-    normalized = _normalize_text(name)
-    if not normalized:
-        raise ValueError("Task name cannot be empty")
-    model = caches.tasks.get(normalized)
-    if model is None:
-        model = await ensure_task(name, aliases=aliases, description=description)
-        caches.tasks[normalized] = model
-    return model
-
-
-def _normalize_text(value: str) -> str:
-    normalized = _NON_ALNUM.sub(" ", value.lower())
-    return " ".join(normalized.split())
-
-
-def _merge_tiers(existing: Optional[Sequence[Union[int, str]]], new: Sequence[int]) -> list[int]:
-    tier_set: set[int] = set(new)
-    for tier in existing or []:
-        try:
-            tier_set.add(int(tier))
-        except (TypeError, ValueError):
+        if not validated:
             continue
-    return sorted(tier_set)
+
+        payloads.append(validated)
+        raw_responses[pass_label] = raw_json
+
+        candidate_entries, persistence_payload, guard_stats, seen_keys = _build_candidates(
+            validated,
+            contexts,
+            paper_id,
+            stats=guard_stats,
+            seen_keys=seen_keys,
+            pass_label=pass_label,
+        )
+        all_candidates.extend(candidate_entries)
+        all_persistence.extend(persistence_payload)
+
+    merged_payload = (
+        _merge_payloads(payloads) if payloads else TripleExtractionResponse()
+    )
+
+    summary = _augment_summary(
+        base_summary,
+        all_candidates,
+        merged_payload,
+        raw_response=raw_responses if raw_responses else None,
+        stats=guard_stats,
+    )
+
+    try:
+        await replace_triple_candidates(paper_id, all_persistence)
+    except Exception as exc:  # pragma: no cover - persistence failure should be surfaced but not fatal
+        logger.error(
+            "[tier2] failed to persist triple candidates for paper %s: %s",
+            paper_id,
+            exc,
+        )
+        metadata = summary.setdefault("metadata", {})
+        tier2_meta = metadata.setdefault("tier2", {})
+        tier2_meta["persistence_error"] = str(exc)
+
+    return summary
 
 
-def _coerce_aliases_for_serialization(values: Any) -> list[str]:
-    if isinstance(values, str):
-        return [values.strip()] if values.strip() else []
-    if isinstance(values, Iterable) and not isinstance(values, bytes):
-        return [alias.strip() for alias in values if isinstance(alias, str) and alias.strip()]
-    return []
-
-
-def _serialize_ontology(model) -> dict[str, Any]:
-    return {
-        "id": str(model.id),
-        "name": model.name,
-        "aliases": _coerce_aliases_for_serialization(getattr(model, "aliases", None)),
-        "description": getattr(model, "description", None),
-        "created_at": model.created_at.isoformat(),
-        "updated_at": model.updated_at.isoformat(),
-    }
-
-
-_serialize_method = _serialize_ontology
-_serialize_dataset = _serialize_ontology
-_serialize_task = _serialize_ontology
-
-
-def _serialize_metric(model) -> dict[str, Any]:
-    payload = _serialize_ontology(model)
-    payload["unit"] = getattr(model, "unit", None)
-    return payload
-
-
-def _serialize_result(
-    result,
-    *,
-    method_by_id,
-    dataset_by_id,
-    metric_by_id,
-    task_by_id,
+def _mark_needs_review(
+    base_summary: dict[str, Any],
+    contexts: Sequence[SectionContext],
+    error: Exception,
 ) -> dict[str, Any]:
-    return {
-        "id": str(result.id),
-        "paper_id": str(result.paper_id),
-        "method": _serialize_method(method_by_id[result.method_id]) if result.method_id else None,
-        "dataset": _serialize_dataset(dataset_by_id[result.dataset_id]) if result.dataset_id else None,
-        "metric": _serialize_metric(metric_by_id[result.metric_id]) if result.metric_id else None,
-        "task": _serialize_task(task_by_id[result.task_id]) if result.task_id else None,
-        "split": result.split,
-        "value_numeric": float(result.value_numeric) if result.value_numeric is not None else None,
-        "value_text": result.value_text,
-        "is_sota": result.is_sota,
-        "confidence": result.confidence,
-        "evidence": result.evidence,
-        "verified": result.verified,
-        "verifier_notes": result.verifier_notes,
-        "created_at": result.created_at.isoformat(),
-        "updated_at": result.updated_at.isoformat(),
+    summary = copy.deepcopy(base_summary)
+    metadata = summary.setdefault("metadata", {})
+    metadata["tier2"] = {
+        "tier": TIER_NAME,
+        "status": "needs_review",
+        "error": str(error),
     }
+    entry = {
+        "tier": TIER_NAME,
+        "reason": str(error),
+        "section_ids": [context.section_id for context in contexts],
+    }
+    summary.setdefault("needs_review", []).append(entry)
+    return summary
 
 
-def _serialize_claim(model) -> dict[str, Any]:
-    return {
-        "id": str(model.id),
-        "paper_id": str(model.paper_id),
-        "category": model.category.value,
-        "text": model.text,
-        "confidence": model.confidence,
-        "evidence": model.evidence,
-        "created_at": model.created_at.isoformat(),
-        "updated_at": model.updated_at.isoformat(),
+
+
+def _merge_payloads(payloads: Sequence[TripleExtractionResponse]) -> TripleExtractionResponse:
+    merged_triples: list[TriplePayload] = []
+    warnings: list[str] = []
+    discarded: list[str] = []
+    seen_warnings: set[str] = set()
+    seen_discarded: set[str] = set()
+
+    for payload in payloads:
+        merged_triples.extend(payload.triples)
+
+        for warning in payload.warnings or []:
+            normalized = warning.strip()
+            key = normalized.lower() if normalized else warning
+            if key in seen_warnings:
+                continue
+            seen_warnings.add(key)
+            warnings.append(warning)
+
+        for item in payload.discarded or []:
+            normalized = item.strip()
+            key = normalized.lower() if normalized else item
+            if key in seen_discarded:
+                continue
+            seen_discarded.add(key)
+            discarded.append(item)
+
+    return TripleExtractionResponse(
+        triples=list(merged_triples),
+        warnings=warnings,
+        discarded=discarded,
+    )
+
+
+async def _request_llm_payload(
+    paper_id: UUID,
+    messages: Sequence[dict[str, str]],
+    *,
+    required: bool,
+    failure_reason: str,
+) -> tuple[Optional[TripleExtractionResponse], Optional[str]]:
+    attempts = 0
+    last_error: Optional[Exception] = None
+    while attempts < MAX_LLM_ATTEMPTS:
+        attempts += 1
+        try:
+            raw_json = await _invoke_llm(messages)
+            payload_dict = _parse_json(raw_json)
+            validated = _validate_payload(payload_dict)
+            return validated, raw_json
+        except Tier2ValidationError as exc:
+            last_error = exc
+            logger.warning(
+                "[tier2] %s attempt %s failed for paper %s: %s",
+                failure_reason,
+                attempts,
+                paper_id,
+                exc,
+            )
+            if attempts >= MAX_LLM_ATTEMPTS:
+                if required:
+                    raise
+                return None, None
+    if required:
+        raise last_error or Tier2ValidationError(
+            "Tier-2 validation failed without exception"
+        )
+    return None, None
+
+
+def _prepare_section_contexts(sections: Sequence[dict[str, Any]]) -> list[SectionContext]:
+    limit = max(1, settings.tier2_llm_max_sections or 1)
+    max_chars = max(400, settings.tier2_llm_max_section_chars or 2000)
+
+    def _section_sort_key(section: dict[str, Any]) -> tuple[int, int]:
+        page = section.get("page_number")
+        char_start = section.get("char_start")
+        page_rank = int(page) if isinstance(page, int) else 1_000_000
+        char_rank = int(char_start) if isinstance(char_start, int) else 1_000_000
+        return page_rank, char_rank
+
+    ordered = sorted(sections, key=_section_sort_key)
+    contexts: list[SectionContext] = []
+
+    for section in ordered:
+        if len(contexts) >= limit:
+            break
+        section_id = str(section.get("section_id") or "").strip()
+        if not section_id:
+            continue
+        section_hash = str(section.get("section_hash") or "")
+        title = section.get("title")
+        page_number = section.get("page_number") if isinstance(section.get("page_number"), int) else None
+        sentences_payload = section.get("sentence_spans") or []
+        if not isinstance(sentences_payload, list):
+            continue
+        sentences: list[tuple[int, str]] = []
+        running_chars = 0
+        for sentence_index, sentence in enumerate(sentences_payload):
+            if not isinstance(sentence, dict):
+                continue
+            raw_text = sentence.get("text")
+            if not isinstance(raw_text, str):
+                continue
+            text = raw_text.strip()
+            if not text:
+                continue
+            formatted = f"[{sentence_index}] {text}"
+            addition = len(formatted) + 1
+            if running_chars + addition > max_chars and sentences:
+                break
+            sentences.append((sentence_index, text))
+            running_chars += addition
+        if not sentences:
+            continue
+        captions_raw = section.get("captions") or []
+        captions = [
+            str(caption.get("text") or "").strip()
+            for caption in captions_raw
+            if isinstance(caption, dict) and caption.get("text")
+        ]
+        contexts.append(
+            SectionContext(
+                section_id=section_id,
+                section_hash=section_hash,
+                title=title,
+                page_number=page_number,
+                sentences=sentences,
+                captions=captions,
+            )
+        )
+
+    return contexts
+
+
+def _build_messages(contexts: Sequence[SectionContext], *, mode: str = "primary") -> list[dict[str, str]]:
+    type_vocab = ", ".join(TYPE_GUESS_VALUES)
+    relation_vocab = ", ".join(RELATION_GUESS_VALUES)
+    guidance = (
+        "Analyse the provided paper snippets. Extract factual triples and only emit entries "
+        "that are explicitly supported."
+    )
+    evidence_hint = (
+        "For each triple, provide subject/object spans (character offsets) within the evidence sentence "
+        "and include section_id if known."
+    )
+    output_hint = (
+        "Type guesses must use the provided vocabularies. If none apply, use 'Unknown'."
+    )
+
+    content_lines = [
+        guidance,
+        evidence_hint,
+        output_hint,
+        f"Subject/Object type guesses: {type_vocab}.",
+        f"Relation type guesses: {relation_vocab}.",
+        "Return JSON only, matching the provided schema.",
+        "",
+    ]
+    if mode == "comparison":
+        content_lines.insert(0, COMPARISON_GUIDANCE)
+
+    for idx, context in enumerate(contexts, start=1):
+        header_parts = [f"Section {idx}", f"section_id={context.section_id}"]
+        if context.title:
+            header_parts.append(f"title={context.title}")
+        if context.page_number is not None:
+            header_parts.append(f"page={context.page_number}")
+        if context.section_hash:
+            header_parts.append(f"hash={context.section_hash}")
+        content_lines.append(" | ".join(header_parts))
+        content_lines.append("---")
+        content_lines.append(context.formatted_text())
+        content_lines.append("")
+
+    user_message = "\n".join(line for line in content_lines if line is not None)
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_message},
+    ]
+
+
+
+def _infer_metric_from_evidence(
+    object_text: str,
+    evidence_text: str,
+) -> Optional[dict[str, str]]:
+    combined = f"{object_text} {evidence_text}".lower()
+    for synonym, info in METRIC_SYNONYM_MAP.items():
+        if synonym in combined:
+            return {
+                "normalized_metric": info["normalized_metric"],
+                "variant": info["variant"],
+                "reason": info["reason"],
+            }
+    return None
+
+
+def _build_candidates(
+    payload: TripleExtractionResponse,
+    contexts: Sequence[SectionContext],
+    paper_id: UUID,
+    *,
+    stats: Optional[GuardrailStats] = None,
+    seen_keys: Optional[set[str]] = None,
+    pass_label: str = "primary",
+) -> tuple[list[dict[str, Any]], list[TripleCandidateRecord], GuardrailStats, set[str]]:
+    stats = stats or GuardrailStats()
+    candidates: list[dict[str, Any]] = []
+    persistence_payload: list[TripleCandidateRecord] = []
+    seen_keys = set(seen_keys or set())
+
+    for index, triple in enumerate(payload.triples, start=1):
+        evidence_text = (triple.evidence or "").strip()
+        if not evidence_text:
+            logger.debug(
+                "[tier2] skipping triple %s for paper %s due to empty evidence",
+                index,
+                paper_id,
+            )
+            continue
+
+        matches = _match_evidence(evidence_text, contexts, stats=stats)
+        if not matches:
+            stats.unmatched_evidence += 1
+        candidate_section_id = triple.section_id or (matches[0]["section_id"] if matches else None)
+        primary_match_length = (
+            matches[0]["end"] - matches[0]["start"] if matches else None
+        )
+
+        subject_text, subject_resolved, subject_valid = _resolve_low_info_term(
+            triple.subject,
+            matches,
+            contexts,
+        )
+        if subject_resolved:
+            stats.pronoun_resolved_subjects += 1
+        elif not subject_valid:
+            stats.low_info_subject_dropped += 1
+            logger.debug(
+                "[tier2] dropping triple %s for paper %s due to unresolved subject '%s'",
+                index,
+                paper_id,
+                triple.subject,
+            )
+            continue
+
+        object_text, object_resolved, object_valid = _resolve_low_info_term(
+            triple.object,
+            matches,
+            contexts,
+        )
+        if object_resolved:
+            stats.pronoun_resolved_objects += 1
+        elif not object_valid:
+            stats.low_info_object_dropped += 1
+            logger.debug(
+                "[tier2] dropping triple %s for paper %s due to unresolved object '%s'",
+                index,
+                paper_id,
+                triple.object,
+            )
+            continue
+
+        relation_text = _normalize_whitespace(triple.relation)
+        if not relation_text:
+            logger.debug(
+                "[tier2] dropping triple %s for paper %s due to empty relation",
+                index,
+                paper_id,
+            )
+            continue
+
+        subject_span = _sanitize_span(
+            triple.subject_span,
+            evidence_text,
+            subject_text,
+            match_length=primary_match_length,
+            stats=stats,
+        )
+        object_span = _sanitize_span(
+            triple.object_span,
+            evidence_text,
+            object_text,
+            match_length=primary_match_length,
+            stats=stats,
+        )
+
+        dedupe_key = _make_dedupe_key(
+            subject_text,
+            relation_text,
+            object_text,
+            evidence_text,
+            candidate_section_id,
+            triple.chunk_id,
+        )
+        if dedupe_key in seen_keys:
+            stats.deduplicated_triples += 1
+            logger.debug(
+                "[tier2] deduped triple %s for paper %s (subject=%s, relation=%s, object=%s)",
+                index,
+                paper_id,
+                subject_text,
+                relation_text,
+                object_text,
+            )
+            continue
+        seen_keys.add(dedupe_key)
+
+        triple_conf = _coerce_float(triple.triple_conf, DEFAULT_TRIPLE_CONFIDENCE)
+        schema_score = _coerce_float(triple.schema_match_score, DEFAULT_SCHEMA_SCORE)
+
+        metric_inference = _infer_metric_from_evidence(object_text, evidence_text)
+        if metric_inference:
+            stats.metrics_inferred += 1
+            triple_conf = round(max(0.0, triple_conf - METRIC_INFERENCE_CONF_PENALTY), 4)
+
+        candidate: dict[str, Any] = {
+            "candidate_id": f"{TIER_NAME}_{index:03d}",
+            "tier": TIER_NAME,
+            "subject": subject_text,
+            "relation": relation_text,
+            "object": object_text,
+            "subject_span": subject_span,
+            "object_span": object_span,
+            "subject_type_guess": triple.subject_type_guess,
+            "relation_type_guess": triple.relation_type_guess,
+            "object_type_guess": triple.object_type_guess,
+            "triple_conf": triple_conf,
+            "schema_match_score": schema_score,
+            "evidence": evidence_text,
+            "evidence_spans": matches,
+        }
+        if metric_inference:
+            candidate["metric_inference"] = {**metric_inference, "confidence_penalty": METRIC_INFERENCE_CONF_PENALTY}
+
+        if candidate_section_id:
+            candidate["section_id"] = candidate_section_id
+        if triple.chunk_id:
+            candidate["chunk_id"] = triple.chunk_id
+        if pass_label:
+            candidate["pass"] = pass_label
+
+        candidates.append(candidate)
+
+        persistence_payload.append(
+            TripleCandidateRecord(
+                paper_id=paper_id,
+                section_id=candidate_section_id,
+                subject=subject_text,
+                relation=relation_text,
+                object=object_text,
+                subject_span=subject_span,
+                object_span=object_span,
+                subject_type_guess=triple.subject_type_guess,
+                relation_type_guess=triple.relation_type_guess,
+                object_type_guess=triple.object_type_guess,
+                evidence=evidence_text,
+                triple_conf=triple_conf,
+                schema_match_score=schema_score,
+                tier=TIER_NAME,
+            )
+        )
+
+    return candidates, persistence_payload, stats, seen_keys
+
+
+
+def _match_evidence(
+    evidence: str,
+    contexts: Sequence[SectionContext],
+    *,
+    stats: Optional[GuardrailStats] = None,
+) -> list[dict[str, Any]]:
+    cleaned = _normalize_whitespace(evidence)
+    if not cleaned:
+        return []
+    lowered_clean = cleaned.lower()
+    matches: list[dict[str, Any]] = []
+
+    for context in contexts:
+        for sentence_index, sentence in context.sentences:
+            lowered_sentence = sentence.lower()
+            start = lowered_sentence.find(lowered_clean)
+            end: Optional[int] = None
+            fuzzy_used = False
+
+            if start == -1:
+                matcher = difflib.SequenceMatcher(None, lowered_sentence, lowered_clean)
+                block = matcher.find_longest_match(0, len(lowered_sentence), 0, len(lowered_clean))
+                ratio = matcher.ratio()
+                if block.size >= max(5, int(len(lowered_clean) * 0.6)) and ratio >= 0.75:
+                    start = block.a
+                    end = start + block.size
+                    fuzzy_used = True
+                else:
+                    continue
+
+            if end is None:
+                end = start + len(cleaned)
+
+            matches.append(
+                {
+                    "section_id": context.section_id,
+                    "sentence_index": sentence_index,
+                    "start": start,
+                    "end": end,
+                }
+            )
+            if fuzzy_used and stats:
+                stats.fuzzy_matches += 1
+    return matches
+
+
+
+def _augment_summary(
+    base_summary: dict[str, Any],
+    candidates: Sequence[dict[str, Any]],
+    payload: TripleExtractionResponse,
+    *,
+    raw_response: Optional[str],
+    stats: Optional[GuardrailStats] = None,
+) -> dict[str, Any]:
+    summary = copy.deepcopy(base_summary)
+    tiers = set(summary.get("tiers") or [])
+    tiers.add(1)
+    tiers.add(2)
+    summary["tiers"] = sorted(tiers)
+
+    summary["triple_candidates"] = list(candidates)
+
+    metadata = summary.setdefault("metadata", {})
+    tier2_meta = {
+        "tier": TIER_NAME,
+        "triple_count": len(candidates),
     }
+    if payload.warnings:
+        tier2_meta["warnings"] = list(payload.warnings)
+    if payload.discarded:
+        tier2_meta["discarded"] = list(payload.discarded)
+    if raw_response is not None:
+        tier2_meta["raw_response"] = raw_response
+    if stats is not None:
+        tier2_meta["guardrails"] = stats.to_metadata()
+    metadata["tier2"] = tier2_meta
+
+    return summary
+
+
+def _coerce_float(candidate: Optional[float], default: float) -> float:
+    try:
+        if candidate is None:
+            raise ValueError
+        value = float(candidate)
+    except (TypeError, ValueError):
+        value = default
+    return round(max(0.0, min(1.0, value)), 4)
+
+
+def _parse_json(raw: str) -> dict[str, Any]:
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise Tier2ValidationError(f"Tier-2 LLM returned invalid JSON: {exc}") from exc
+
+
+def _validate_payload(payload: dict[str, Any]) -> TripleExtractionResponse:
+    try:
+        return TripleExtractionResponse.model_validate(payload)
+    except ValidationError as exc:
+        raise Tier2ValidationError(f"Tier-2 payload failed schema validation: {exc}") from exc
+
+
+async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
+    model = settings.tier2_llm_model
+    if not model:
+        raise Tier2ValidationError("Tier-2 LLM model is not configured")
+
+    base_url = (settings.tier2_llm_base_url or "https://api.openai.com/v1").rstrip("/")
+    path = (settings.tier2_llm_completion_path or "/chat/completions").lstrip("/")
+    url = f"{base_url}/{path}" if path else base_url
+
+    payload: dict[str, Any] = {
+        "model": model,
+        "messages": list(messages),
+        "temperature": settings.tier2_llm_temperature,
+        "top_p": settings.tier2_llm_top_p,
+        "max_tokens": settings.tier2_llm_max_output_tokens,
+    }
+    if settings.tier2_llm_force_json:
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "triple_extraction",
+                "schema": TRIPLE_JSON_SCHEMA,
+            },
+        }
+    else:
+        payload["response_format"] = {"type": "json_object"}
+
+    headers = {"Content-Type": "application/json"}
+    if settings.openai_api_key:
+        headers["Authorization"] = f"Bearer {settings.openai_api_key}"
+    if settings.openai_organization:
+        headers["OpenAI-Organization"] = settings.openai_organization
+
+    timeout = float(settings.tier2_llm_timeout_seconds or 120.0)
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+    except httpx.HTTPError as exc:  # pragma: no cover - network failure path
+        raise Tier2ValidationError(f"Tier-2 LLM request failed: {exc}") from exc
+
+    data = response.json()
+    try:
+        choice = data["choices"][0]
+        message = choice["message"]
+        content = message["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise Tier2ValidationError(f"Unexpected LLM response format: {exc}") from exc
+
+    if not isinstance(content, str) or not content.strip():
+        raise Tier2ValidationError("Tier-2 LLM returned empty content")
+    return content
+
+
+
