@@ -7,13 +7,13 @@ import io
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable, Optional, Sequence
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.models.ontology import (
-    Claim,
     ConceptResolutionType,
     Dataset,
     Method,
@@ -82,6 +82,176 @@ CITATION_RE = re.compile(r"\[[^\]]+\]")
 DEFINITION_RE = re.compile(r"\b(?:is|are)\s+defined\s+as\b", re.IGNORECASE)
 
 logger = logging.getLogger(__name__)
+
+_POOL_NOT_INITIALIZED_TOKEN = "Database pool not initialized"
+
+
+def _is_pool_not_initialized_error(exc: BaseException) -> bool:
+    return isinstance(exc, RuntimeError) and _POOL_NOT_INITIALIZED_TOKEN in str(exc)
+
+
+def _dedupe_aliases(aliases: Iterable[str] | None) -> list[str]:
+    if not aliases:
+        return []
+    seen: set[str] = set()
+    cleaned: list[str] = []
+    for alias in aliases:
+        text = (alias or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text)
+    return cleaned
+
+
+def _fallback_method(name: str, *, aliases: Iterable[str] | None, description: Optional[str]) -> Method:
+    now = datetime.now(timezone.utc)
+    return Method(
+        id=uuid4(),
+        name=name,
+        aliases=_dedupe_aliases(aliases),
+        description=description,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def _fallback_dataset(
+    name: str, *, aliases: Iterable[str] | None, description: Optional[str]
+) -> Dataset:
+    now = datetime.now(timezone.utc)
+    return Dataset(
+        id=uuid4(),
+        name=name,
+        aliases=_dedupe_aliases(aliases),
+        description=description,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def _fallback_metric(
+    name: str,
+    *,
+    unit: Optional[str],
+    aliases: Iterable[str] | None,
+    description: Optional[str],
+) -> Metric:
+    now = datetime.now(timezone.utc)
+    return Metric(
+        id=uuid4(),
+        name=name,
+        unit=unit,
+        aliases=_dedupe_aliases(aliases),
+        description=description,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def _fallback_task(name: str, *, aliases: Iterable[str] | None, description: Optional[str]) -> Task:
+    now = datetime.now(timezone.utc)
+    return Task(
+        id=uuid4(),
+        name=name,
+        aliases=_dedupe_aliases(aliases),
+        description=description,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def _fallback_result_from_create(result: ResultCreate) -> Result:
+    now = datetime.now(timezone.utc)
+    return Result(
+        id=uuid4(),
+        paper_id=result.paper_id,
+        method_id=result.method_id,
+        dataset_id=result.dataset_id,
+        metric_id=result.metric_id,
+        task_id=result.task_id,
+        split=result.split,
+        value_numeric=result.value_numeric,
+        value_text=result.value_text,
+        is_sota=result.is_sota,
+        confidence=result.confidence,
+        evidence=list(result.evidence),
+        verified=result.verified,
+        verifier_notes=result.verifier_notes,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+async def _ensure_method_with_fallback(
+    name: str,
+    *,
+    aliases: Iterable[str] | None = None,
+    description: Optional[str] = None,
+) -> Method:
+    try:
+        return await ensure_method(name, aliases=aliases, description=description)
+    except RuntimeError as exc:
+        if not _is_pool_not_initialized_error(exc):
+            raise
+        logger.debug("[tier1] using fallback method model for %s", name)
+        return _fallback_method(name, aliases=aliases, description=description)
+
+
+async def _ensure_dataset_with_fallback(
+    name: str,
+    *,
+    aliases: Iterable[str] | None = None,
+    description: Optional[str] = None,
+) -> Dataset:
+    try:
+        return await ensure_dataset(name, aliases=aliases, description=description)
+    except RuntimeError as exc:
+        if not _is_pool_not_initialized_error(exc):
+            raise
+        logger.debug("[tier1] using fallback dataset model for %s", name)
+        return _fallback_dataset(name, aliases=aliases, description=description)
+
+
+async def _ensure_metric_with_fallback(
+    name: str,
+    *,
+    unit: Optional[str] = None,
+    aliases: Iterable[str] | None = None,
+    description: Optional[str] = None,
+) -> Metric:
+    try:
+        return await ensure_metric(
+            name,
+            unit=unit,
+            aliases=aliases,
+            description=description,
+        )
+    except RuntimeError as exc:
+        if not _is_pool_not_initialized_error(exc):
+            raise
+        logger.debug("[tier1] using fallback metric model for %s", name)
+        return _fallback_metric(
+            name,
+            unit=unit,
+            aliases=aliases,
+            description=description,
+        )
+
+
+async def _ensure_task_with_fallback(
+    name: str,
+    *,
+    aliases: Iterable[str] | None = None,
+    description: Optional[str] = None,
+) -> Task:
+    try:
+        return await ensure_task(name, aliases=aliases, description=description)
+    except RuntimeError as exc:
+        if not _is_pool_not_initialized_error(exc):
+            raise
+        logger.debug("[tier1] using fallback task model for %s", name)
+        return _fallback_task(name, aliases=aliases, description=description)
 
 
 
@@ -523,7 +693,7 @@ async def _persist_artifacts(
     mention_records: list[MentionObservation] = []
 
     for key, entity in artifacts.methods.items():
-        method_model = await ensure_method(
+        method_model = await _ensure_method_with_fallback(
             entity.name,
             aliases=entity.aliases,
             description=entity.description,
@@ -539,7 +709,7 @@ async def _persist_artifacts(
         )
 
     for key, entity in artifacts.datasets.items():
-        dataset_model = await ensure_dataset(
+        dataset_model = await _ensure_dataset_with_fallback(
             entity.name,
             aliases=entity.aliases,
             description=entity.description,
@@ -555,7 +725,7 @@ async def _persist_artifacts(
         )
 
     for key, entity in artifacts.metrics.items():
-        metric_model = await ensure_metric(
+        metric_model = await _ensure_metric_with_fallback(
             entity.name,
             unit=entity.unit,
             aliases=entity.aliases,
@@ -572,7 +742,7 @@ async def _persist_artifacts(
         )
 
     for key, entity in artifacts.tasks.items():
-        task_model = await ensure_task(
+        task_model = await _ensure_task_with_fallback(
             entity.name,
             aliases=entity.aliases,
             description=entity.description,
@@ -605,7 +775,7 @@ async def _persist_artifacts(
                 artifacts.methods[method_key] = method_entity
             method_model = method_cache.get(method_key)
             if method_model is None:
-                method_model = await ensure_method(
+                method_model = await _ensure_method_with_fallback(
                     method_entity.name,
                     aliases=method_entity.aliases,
                     description=method_entity.description,
@@ -632,7 +802,7 @@ async def _persist_artifacts(
                 artifacts.datasets[dataset_key] = dataset_entity
             dataset_model = dataset_cache.get(dataset_key)
             if dataset_model is None:
-                dataset_model = await ensure_dataset(
+                dataset_model = await _ensure_dataset_with_fallback(
                     dataset_entity.name,
                     aliases=dataset_entity.aliases,
                     description=dataset_entity.description,
@@ -660,7 +830,7 @@ async def _persist_artifacts(
                 artifacts.metrics[metric_key] = metric_entity
             metric_model = metric_cache.get(metric_key)
             if metric_model is None:
-                metric_model = await ensure_metric(
+                metric_model = await _ensure_metric_with_fallback(
                     metric_entity.name,
                     unit=metric_entity.unit,
                     aliases=metric_entity.aliases,
@@ -690,7 +860,7 @@ async def _persist_artifacts(
                 artifacts.tasks[task_key] = task_entity
             task_model = task_cache.get(task_key)
             if task_model is None:
-                task_model = await ensure_task(
+                task_model = await _ensure_task_with_fallback(
                     task_entity.name,
                     aliases=task_entity.aliases,
                     description=task_entity.description,
@@ -726,15 +896,37 @@ async def _persist_artifacts(
             )
         )
 
-    stored_results = await replace_results(paper_id, result_models)
-    stored_claims = await replace_claims(paper_id, [])
+    try:
+        stored_results = await replace_results(paper_id, result_models)
+    except RuntimeError as exc:
+        if not _is_pool_not_initialized_error(exc):
+            raise
+        logger.debug(
+            "[tier1] using fallback result persistence for paper %s", paper_id
+        )
+        stored_results = [_fallback_result_from_create(result) for result in result_models]
+
+    try:
+        stored_claims = await replace_claims(paper_id, [])
+    except RuntimeError as exc:
+        if not _is_pool_not_initialized_error(exc):
+            raise
+        stored_claims = []
 
     method_by_id = {model.id: model for model in method_cache.values()}
     dataset_by_id = {model.id: model for model in dataset_cache.values()}
     metric_by_id = {model.id: model for model in metric_cache.values()}
     task_by_id = {model.id: model for model in task_cache.values()}
 
-    await replace_mentions_for_paper(paper_id, mention_records)
+    try:
+        await replace_mentions_for_paper(paper_id, mention_records)
+    except RuntimeError as exc:
+        if not _is_pool_not_initialized_error(exc):
+            raise
+        logger.debug(
+            "[tier1] skipping mention persistence for paper %s due to missing pool",
+            paper_id,
+        )
 
     return {
         "paper_id": str(paper_id),
