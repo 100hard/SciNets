@@ -46,9 +46,21 @@ async def replace_triple_candidates(
             if not candidates:
                 return
 
+            section_lookup_needed = any(candidate.section_id for candidate in candidates)
+            valid_section_ids: set[UUID] = set()
+            if section_lookup_needed:
+                rows = await conn.fetch(
+                    "SELECT id FROM sections WHERE paper_id = $1",
+                    paper_id,
+                )
+                valid_section_ids = {row["id"] for row in rows}
+
             records = []
             for candidate in candidates:
                 section_uuid = _safe_uuid(candidate.section_id)
+                if section_uuid and section_uuid not in valid_section_ids:
+                    section_uuid = None
+
                 records.append(
                     (
                         candidate.paper_id,
