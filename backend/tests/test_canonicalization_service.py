@@ -301,8 +301,6 @@ async def _run_canonicalize_service_merges_methods(monkeypatch: pytest.MonkeyPat
     method_ids = {row["method_id"] for row in conn.results}
     assert METHOD_B not in method_ids
     assert METHOD_A in method_ids
-
-
     audit_rows = [
         row
         for row in conn.canonicalization_merge_decisions

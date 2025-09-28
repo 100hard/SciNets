@@ -587,7 +587,6 @@ async def _compute_canonicalization(
                     id=member.id,
                     name=member.name,
                     score=score,
-
                 )
             )
             decisions.append(
@@ -600,8 +599,6 @@ async def _compute_canonicalization(
                     rationale=rationale,
                 )
             )
-
-
         merged_items.sort(key=lambda item: (-item.score, item.name.casefold()))
         merged_items_by_canonical[canonical_id] = merged_items
 
