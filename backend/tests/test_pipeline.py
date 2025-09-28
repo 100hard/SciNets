@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from io import BytesIO
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import fitz
 from fastapi import BackgroundTasks
@@ -10,6 +10,7 @@ from starlette.datastructures import UploadFile
 
 from app.api.papers import api_list_papers, api_upload_paper
 from app.api.sections import api_list_sections
+from app.core.config import settings
 from app.services.tasks import parse_pdf_task
 
 if TYPE_CHECKING:
@@ -120,6 +121,12 @@ def test_pipeline_marks_failed_when_extraction_fails(
     asyncio.run(_run_extraction_failure(datastore, monkeypatch))
 
 
+def test_parse_pdf_triggers_canonicalization(
+    datastore: "InMemoryDataStore", monkeypatch: "MonkeyPatch"
+) -> None:
+    asyncio.run(_run_parse_triggers_canonicalization(datastore, monkeypatch))
+
+
 async def _run_extraction_failure(
     datastore: "InMemoryDataStore", monkeypatch: "MonkeyPatch"
 ) -> None:
@@ -152,3 +159,41 @@ async def _run_extraction_failure(
     failed_paper = await datastore.wait_for_status(paper.id, "failed")
     assert failed_paper.status == "failed"
     assert datastore.extraction_log == [("tier1", paper.id)]
+
+
+async def _run_parse_triggers_canonicalization(
+    datastore: "InMemoryDataStore", monkeypatch: "MonkeyPatch"
+) -> None:
+    pdf_bytes = _create_sample_pdf()
+    upload = UploadFile(
+        filename="integration.pdf",
+        file=BytesIO(pdf_bytes),
+        headers={"content-type": "application/pdf"},
+    )
+
+    background_tasks = BackgroundTasks()
+    paper = await api_upload_paper(
+        background_tasks=background_tasks,
+        file=upload,
+        title=None,
+        authors=None,
+        venue=None,
+        year=None,
+    )
+
+    called = False
+
+    async def fake_canonicalize(*_: Any, **__: Any) -> None:
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr("app.services.tasks.canonicalize", fake_canonicalize)
+
+    previous_flag = settings.auto_canonicalize_after_parse
+    settings.auto_canonicalize_after_parse = True
+    try:
+        await parse_pdf_task(paper.id)
+    finally:
+        settings.auto_canonicalize_after_parse = previous_flag
+
+    assert called
