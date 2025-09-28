@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover - optional dependency
     TesseractError = Exception  # type: ignore[assignment]
     TesseractNotFoundError = Exception  # type: ignore[assignment]
 
-from app.core.config import settings
+from app.models.ontology import ConceptResolutionType
 from app.models.section import SectionCreate
 from app.services.canonicalization import canonicalize
 from app.services.concept_extraction import extract_and_store_concepts
@@ -216,20 +216,19 @@ async def parse_pdf_task(paper_id: UUID) -> None:
                 print(
                     f"[parse_pdf_task] Tier-3 verifier failed for paper {paper_id}: {exc}"
                 )
+        try:
+            await canonicalize(list(ConceptResolutionType))
+        except Exception as exc:  # pragma: no cover - defensive logging
+            print(
+                "[parse_pdf_task] Canonicalization failed after verification for "
+                f"paper {paper_id}: {exc}"
+            )
+
         await update_paper_status(paper_id, "parsed")
         print(
             f"[parse_pdf_task] Completed parsing for paper {paper_id} with "
             f"{len(section_models)} sections"
         )
-        if settings.auto_canonicalize_after_parse:
-            # Merge newly extracted concepts before completing the parse task.
-            try:
-                await canonicalize()
-            except Exception as exc:  # pragma: no cover - defensive logging
-                print(
-                    "[parse_pdf_task] Canonicalization failed after parsing paper "
-                    f"{paper_id}: {exc}"
-                )
     except Exception as exc:  # pragma: no cover - background task logging
         await update_paper_status(paper_id, "failed")
         print(f"[parse_pdf_task] Failed to parse paper {paper_id}: {exc}")
