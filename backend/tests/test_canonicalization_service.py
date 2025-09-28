@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any, Sequence
 from uuid import UUID, uuid4
@@ -30,10 +31,18 @@ class FakeEmbeddingBackend:
 
 
 class FakeTransaction:
+    def __init__(self, conn: "FakeCanonicalizationConnection") -> None:
+        self._conn = conn
+        self._snapshot: dict[str, Any] | None = None
+
     async def __aenter__(self) -> "FakeTransaction":
+        self._snapshot = self._conn.snapshot()
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> bool:  # pragma: no cover - nothing to clean up
+        if exc_type is not None and self._snapshot is not None:
+            self._conn.restore_snapshot(self._snapshot)
+        self._snapshot = None
         return False
 
 
@@ -86,6 +95,8 @@ class FakeCanonicalizationConnection:
             {"id": uuid4(), "method_id": METHOD_C},
         ]
         self.concept_resolutions: list[dict[str, Any]] = []
+        self.canonicalization_merge_decisions: list[dict[str, Any]] = []
+        self.fail_on_audit_insert = False
 
     async def fetch(self, query: str, *params: Any) -> list[dict[str, Any]]:  # noqa: ARG002
         normalized = " ".join(query.split())
@@ -99,6 +110,15 @@ class FakeCanonicalizationConnection:
             types = set(params[0])
             self.concept_resolutions = [
                 row for row in self.concept_resolutions if row["resolution_type"] not in types
+            ]
+            return "DELETE"
+        if normalized.startswith("DELETE FROM canonicalization_merge_decisions"):
+            types = set(params[0])
+            version = params[1]
+            self.canonicalization_merge_decisions = [
+                row
+                for row in self.canonicalization_merge_decisions
+                if row["resolution_type"] not in types or row["mapping_version"] != version
             ]
             return "DELETE"
         raise AssertionError(f"Unsupported execute query: {normalized}")
@@ -116,6 +136,34 @@ class FakeCanonicalizationConnection:
                     }
                 )
             return
+        if normalized.startswith("INSERT INTO canonicalization_merge_decisions"):
+            if self.fail_on_audit_insert:
+                raise RuntimeError("Simulated failure")
+            for (
+                resolution_type,
+                left_id,
+                right_id,
+                score,
+                decision_source,
+                verdict,
+                rationale,
+                mapping_version,
+                adjudicator_metadata,
+            ) in param_sets:
+                self.canonicalization_merge_decisions.append(
+                    {
+                        "resolution_type": resolution_type,
+                        "left_id": left_id,
+                        "right_id": right_id,
+                        "score": score,
+                        "decision_source": decision_source,
+                        "verdict": verdict,
+                        "rationale": rationale,
+                        "mapping_version": mapping_version,
+                        "adjudicator_metadata": adjudicator_metadata,
+                    }
+                )
+            return
         if normalized.startswith("UPDATE methods SET aliases"):
             for record_id, aliases in param_sets:
                 self.methods[record_id]["aliases"] = list(aliases)
@@ -129,7 +177,25 @@ class FakeCanonicalizationConnection:
         raise AssertionError(f"Unsupported executemany query: {normalized}")
 
     def transaction(self) -> FakeTransaction:
-        return FakeTransaction()
+        return FakeTransaction(self)
+
+    def snapshot(self) -> dict[str, Any]:
+        return {
+            "methods": deepcopy(self.methods),
+            "results": deepcopy(self.results),
+            "concept_resolutions": deepcopy(self.concept_resolutions),
+            "canonicalization_merge_decisions": deepcopy(
+                self.canonicalization_merge_decisions
+            ),
+        }
+
+    def restore_snapshot(self, snapshot: dict[str, Any]) -> None:
+        self.methods = deepcopy(snapshot["methods"])
+        self.results = deepcopy(snapshot["results"])
+        self.concept_resolutions = deepcopy(snapshot["concept_resolutions"])
+        self.canonicalization_merge_decisions = deepcopy(
+            snapshot["canonicalization_merge_decisions"]
+        )
 
 
 def test_canonicalize_service_merges_methods(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -176,3 +242,95 @@ async def _run_canonicalize_service_merges_methods(monkeypatch: pytest.MonkeyPat
     method_ids = {row["method_id"] for row in conn.results}
     assert METHOD_B not in method_ids
     assert METHOD_A in method_ids
+
+    audit_rows = [
+        row
+        for row in conn.canonicalization_merge_decisions
+        if row["resolution_type"] == ConceptResolutionType.METHOD.value
+    ]
+    assert len(audit_rows) == 1
+    audit = audit_rows[0]
+    assert audit["left_id"] == METHOD_A
+    assert audit["right_id"] == METHOD_B
+    assert audit["decision_source"] == "llm"
+    assert audit["verdict"] == "accepted"
+    assert audit["mapping_version"] == canonicalization_service.settings.canonicalization_mapping_version
+    assert audit["adjudicator_metadata"] is None
+    assert audit["score"] >= 0.85
+    assert "similarity" in audit["rationale"].lower()
+
+
+def test_canonicalize_rolls_back_on_audit_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_run_canonicalize_rolls_back_on_audit_failure(monkeypatch))
+
+
+async def _run_canonicalize_rolls_back_on_audit_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = FakeEmbeddingBackend()
+    conn = FakeCanonicalizationConnection()
+    conn.fail_on_audit_insert = True
+    pool = FakePool(conn)
+
+    baseline = conn.snapshot()
+
+    monkeypatch.setattr(canonicalization_service, "_embedding_backend", backend, raising=False)
+    monkeypatch.setattr(canonicalization_service, "get_pool", lambda: pool)
+
+    with pytest.raises(RuntimeError):
+        await canonicalization_service.canonicalize([ConceptResolutionType.METHOD])
+
+    assert conn.methods == baseline["methods"]
+    assert conn.results == baseline["results"]
+    assert conn.concept_resolutions == baseline["concept_resolutions"]
+    assert (
+        conn.canonicalization_merge_decisions
+        == baseline["canonicalization_merge_decisions"]
+    )
+
+
+def test_canonicalize_records_manual_adjudications(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_run_canonicalize_records_manual_adjudications(monkeypatch))
+
+
+async def _run_canonicalize_records_manual_adjudications(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = FakeEmbeddingBackend()
+    conn = FakeCanonicalizationConnection()
+    pool = FakePool(conn)
+
+    monkeypatch.setattr(canonicalization_service, "_embedding_backend", backend, raising=False)
+    monkeypatch.setattr(canonicalization_service, "get_pool", lambda: pool)
+
+    adjudication = canonicalization_service.CanonicalizationAdjudicationRequest(
+        resolution_type=ConceptResolutionType.METHOD,
+        left_id=METHOD_A,
+        right_id=METHOD_C,
+        verdict="rejected",
+        rationale="Distinct research direction",
+        score=0.05,
+        decision_source="hard",
+        adjudicator_metadata={"reviewer": "alice"},
+    )
+
+    await canonicalization_service.canonicalize(
+        [ConceptResolutionType.METHOD],
+        adjudications=[adjudication],
+    )
+
+    audit_rows = [
+        row
+        for row in conn.canonicalization_merge_decisions
+        if row["resolution_type"] == ConceptResolutionType.METHOD.value
+    ]
+    assert len(audit_rows) == 2
+    manual = next(row for row in audit_rows if row["right_id"] == METHOD_C)
+    assert manual["left_id"] == METHOD_A
+    assert manual["decision_source"] == "hard"
+    assert manual["verdict"] == "rejected"
+    assert manual["rationale"]
+    assert manual["score"] == 0.05
+    assert manual["adjudicator_metadata"] == {"reviewer": "alice"}
