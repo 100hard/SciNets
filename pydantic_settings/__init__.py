@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import json
 import os
 from pathlib import Path
@@ -74,7 +73,6 @@ def _coerce(value: str, annotation: Any) -> Any:
             return set(loaded)
         return list(loaded)
     return value
-
 
 class BaseSettings:
     def __init__(self, **overrides: Any) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any, Iterable
 from uuid import UUID, uuid4
 
 import pytest
@@ -100,6 +101,17 @@ async def test_run_tier1_extraction_emits_structural_artifacts(monkeypatch: pyte
         fake_tables,
     )
 
+    captured_mentions: dict[str, Any] = {}
+
+    async def fake_replace_mentions(paper: UUID, mentions: Iterable[Any]) -> None:
+        captured_mentions["paper_id"] = paper
+        captured_mentions["mentions"] = list(mentions)
+
+    monkeypatch.setattr(
+        "app.services.extraction_tier1.replace_mentions_for_paper",
+        fake_replace_mentions,
+    )
+
     summary = await run_tier1_extraction(paper_id)
 
     assert summary["paper_id"] == str(paper_id)
@@ -120,3 +132,5 @@ async def test_run_tier1_extraction_emits_structural_artifacts(monkeypatch: pyte
 
     assert section_payload.get("table_refs") == ["table_1_1"]
     assert summary["tables"][0]["cells"][1]["text"] == "BLEU 41.8"
+    assert captured_mentions.get("paper_id") == paper_id
+    assert captured_mentions.get("mentions") is not None
