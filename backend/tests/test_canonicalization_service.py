@@ -347,4 +347,3 @@ async def _run_canonicalize_rolls_back_on_audit_failure(
         conn.canonicalization_merge_decisions
         == baseline["canonicalization_merge_decisions"]
     )
-
