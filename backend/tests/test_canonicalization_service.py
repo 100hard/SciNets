@@ -1,19 +1,27 @@
+from __future__ import annotations
+
 import asyncio
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 from uuid import UUID, uuid4
 
 import pytest
 
 from app.models.ontology import ConceptResolutionType
 from app.services import canonicalization as canonicalization_service
+from app.services.canonicalization import (
+    CanonicalizationAdjudicationRequest,
+    CanonicalizationAdjudicationResult,
+)
 
 
 METHOD_A = UUID("11111111-1111-1111-1111-111111111111")
 METHOD_B = UUID("22222222-2222-2222-2222-222222222222")
 METHOD_C = UUID("33333333-3333-3333-3333-333333333333")
+METHOD_D = UUID("44444444-4444-4444-4444-444444444444")
+METHOD_E = UUID("55555555-5555-5555-5555-555555555555")
 
 
 class FakeEmbeddingBackend:
@@ -66,10 +74,16 @@ class FakePool:
 
 
 class FakeCanonicalizationConnection:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        methods: Optional[dict[UUID, dict[str, Any]]] = None,
+        results: Optional[list[dict[str, Any]]] = None,
+        mentions: Optional[list[dict[str, Any]]] = None,
+    ) -> None:
         now = datetime(2024, 1, 1, tzinfo=timezone.utc)
         later = datetime(2024, 2, 1, tzinfo=timezone.utc)
-        self.methods: dict[UUID, dict[str, Any]] = {
+        self.methods: dict[UUID, dict[str, Any]] = methods or {
             METHOD_A: {
                 "id": METHOD_A,
                 "name": "RoBERTa",
@@ -89,19 +103,64 @@ class FakeCanonicalizationConnection:
                 "created_at": later,
             },
         }
-        self.results: list[dict[str, Any]] = [
+        self.results: list[dict[str, Any]] = results or [
             {"id": uuid4(), "method_id": METHOD_A},
             {"id": uuid4(), "method_id": METHOD_B},
             {"id": uuid4(), "method_id": METHOD_C},
         ]
+        self.mentions: list[dict[str, Any]] = mentions or []
         self.concept_resolutions: list[dict[str, Any]] = []
         self.canonicalization_merge_decisions: list[dict[str, Any]] = []
         self.fail_on_audit_insert = False
 
     async def fetch(self, query: str, *params: Any) -> list[dict[str, Any]]:  # noqa: ARG002
         normalized = " ".join(query.split())
-        if normalized == "SELECT id, name, aliases, created_at FROM methods":
-            return [dict(record) for record in self.methods.values()]
+        if "FROM methods" in normalized and "ontology_mentions" in normalized:
+            resolution = params[0] if params else ConceptResolutionType.METHOD.value
+            rows: list[dict[str, Any]] = []
+            for method in self.methods.values():
+                attached = [
+                    mention
+                    for mention in self.mentions
+                    if mention.get("entity_id") == method["id"]
+                    and mention.get("resolution_type") == resolution
+                ]
+                if not attached:
+                    attached = [None]
+                for mention in attached:
+                    rows.append(
+                        {
+                            "entity_id": method["id"],
+                            "entity_name": method["name"],
+                            "entity_aliases": list(method.get("aliases") or []),
+                            "entity_created_at": method["created_at"],
+                            "mention_surface": None if mention is None else mention.get("surface"),
+                            "mention_normalized_surface": None
+                            if mention is None
+                            else mention.get("normalized_surface"),
+                            "mention_type": None if mention is None else mention.get("mention_type"),
+                            "mention_paper_id": None if mention is None else mention.get("paper_id"),
+                            "mention_section_id": None if mention is None else mention.get("section_id"),
+                            "mention_start": None if mention is None else mention.get("start"),
+                            "mention_end": None if mention is None else mention.get("end"),
+                            "mention_first_seen_year": None
+                            if mention is None
+                            else mention.get("first_seen_year"),
+                            "mention_is_acronym": False
+                            if mention is None
+                            else mention.get("is_acronym", False),
+                            "mention_has_digit": False
+                            if mention is None
+                            else mention.get("has_digit", False),
+                            "mention_is_shared": False
+                            if mention is None
+                            else mention.get("is_shared", False),
+                            "mention_context_embedding": None
+                            if mention is None
+                            else mention.get("context_embedding"),
+                        }
+                    )
+            return rows
         raise AssertionError(f"Unsupported fetch query: {normalized}")
 
     async def execute(self, query: str, *params: Any) -> str:
@@ -334,3 +393,4 @@ async def _run_canonicalize_records_manual_adjudications(
     assert manual["rationale"]
     assert manual["score"] == 0.05
     assert manual["adjudicator_metadata"] == {"reviewer": "alice"}
+
