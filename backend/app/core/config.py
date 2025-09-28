@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     # Canonicalization
     canonicalization_mapping_version: int = Field(default=1)
 
+
     # Tier-2 LLM
     openai_api_key: Optional[str] = Field(default=None)
     openai_organization: Optional[str] = Field(default=None)
