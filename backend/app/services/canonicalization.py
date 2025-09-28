@@ -228,6 +228,9 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
             if prepared:
                 flattened.append(prepared)
             continue
+        if isinstance(item, dict):
+            queue.extend(item.values())
+            continue
         if isinstance(item, (list, tuple, set)):
             text_items: list[str] = []
             other_items: list[Any] = []
@@ -241,13 +244,13 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
                 prepared_items = [_prepare_text(value) for value in text_items]
                 prepared_items = [value for value in prepared_items if value]
                 if prepared_items:
-                    long_items = [value for value in prepared_items if len(value) > 1]
-                    if len(long_items) <= 1:
+
+                    if all(len(value) <= 1 for value in prepared_items):
                         combined = _prepare_text("".join(prepared_items))
+                        if combined:
+                            flattened.append(combined)
                     else:
-                        combined = _prepare_text(" ".join(prepared_items))
-                    if combined:
-                        flattened.append(combined)
+                        flattened.extend(prepared_items)
             queue.extend(other_items)
             continue
         prepared = _prepare_text(str(item))
@@ -257,18 +260,32 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
     return flattened
 
 
+
+def _normalise_alias_candidates(values: Sequence[Any]) -> list[str]:
+    normalised: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        for candidate in _extract_alias_values(value):
+            prepared = _prepare_text(candidate)
+            if not prepared:
+                continue
+            key = prepared.casefold()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            normalised.append(prepared)
+    return normalised
+
 def _normalise_key(value: str) -> str:
     return _prepare_text(value).casefold()
 
 
 def _collect_normalised_variants(record: _OntologyRecord) -> set[str]:
-    variants: set[str] = set()
-    if record.name:
-        variants.add(_normalise_key(record.name))
-    for alias in record.aliases:
-        if alias:
-            variants.add(_normalise_key(alias))
-    return variants
+    return {
+        _normalise_key(value)
+        for value in _normalise_alias_candidates([record.name, *record.aliases])
+        if value
+    }
 
 
 def _select_canonical(group_ids: Sequence[UUID], records: Mapping[UUID, _OntologyRecord]) -> UUID:
@@ -295,7 +312,7 @@ def _generate_candidate_pairs(records: Sequence[_OntologyRecord]) -> set[tuple[U
 
     alias_blocks: Dict[str, list[UUID]] = defaultdict(list)
     for record in records:
-        for variant in [record.name, *record.aliases]:
+        for variant in _normalise_alias_candidates([record.name, *record.aliases]):
             key = _normalise_key(variant)
             if key:
                 alias_blocks[key].append(record.id)
@@ -609,9 +626,7 @@ async def _compute_canonicalization(
     texts: list[str] = []
     seen_texts: set[str] = set()
     for record in records:
-        for variant in [record.name, *record.aliases]:
-            if not variant:
-                continue
+        for variant in _normalise_alias_candidates([record.name, *record.aliases]):
             if variant not in seen_texts:
                 seen_texts.add(variant)
                 texts.append(variant)
@@ -623,9 +638,7 @@ async def _compute_canonicalization(
 
     alias_index: Dict[str, list[UUID]] = defaultdict(list)
     for record in records:
-        for variant in [record.name, *record.aliases]:
-            if not variant:
-                continue
+        for variant in _normalise_alias_candidates([record.name, *record.aliases]):
             alias_index[_normalise_key(variant)].append(record.id)
     for ids in alias_index.values():
         if len(ids) <= 1:
@@ -676,11 +689,7 @@ async def _compute_canonicalization(
         per_record_variants: Dict[UUID, list[str]] = {}
         for record_id in group_ids:
             record = record_by_id[record_id]
-            variants = [
-                _prepare_text(value)
-                for value in [record.name, *record.aliases]
-                if _prepare_text(value)
-            ]
+            variants = _normalise_alias_candidates([record.name, *record.aliases])
             per_record_variants[record_id] = variants
 
         variant_scores: Dict[str, tuple[str, float]] = {}
@@ -729,10 +738,9 @@ async def _compute_canonicalization(
             )
             record = record_by_id[record_id]
             existing_aliases: Dict[str, str] = {}
-            for alias in record.aliases:
-                prepared = _prepare_text(alias)
-                if prepared and len(prepared) > 1:
-                    existing_aliases.setdefault(prepared.casefold(), prepared)
+            for alias in _normalise_alias_candidates(record.aliases):
+                if len(alias) > 1:
+                    existing_aliases.setdefault(alias.casefold(), alias)
 
             combined_alias_map = dict(existing_aliases)
             for variant in other_variants:
@@ -811,12 +819,15 @@ async def _persist_concept_resolutions(
     for canonical_id, alias_entries in computation.alias_map.items():
         seen: set[str] = set()
         for alias_text, score in alias_entries:
-            key = alias_text.casefold()
 
-            if not key or key in seen or len(alias_text) <= 1:
-                continue
-            seen.add(key)
-            records.append((resolution_type.value, canonical_id, alias_text, score))
+            for prepared in _normalise_alias_candidates([alias_text]):
+                if len(prepared) <= 1:
+                    continue
+                key = prepared.casefold()
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                records.append((resolution_type.value, canonical_id, prepared, score))
     if records:
         await conn.executemany(
             """
