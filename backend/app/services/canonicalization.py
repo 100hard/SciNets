@@ -67,6 +67,32 @@ class CanonicalizationAdjudicationRequest:
 
 
 @dataclass
+class CanonicalizationAdjudicationResult:
+    canonical_id: UUID
+    merged_id: UUID
+    verdict: str
+    score: float
+    decision_source: str
+    rationale: str
+    adjudicator_metadata: Optional[dict[str, Any]] = None
+
+    @classmethod
+    def from_merge_decision(
+        cls, decision: "_MergeDecision"
+    ) -> "CanonicalizationAdjudicationResult":
+        return cls(
+            canonical_id=decision.canonical_id,
+            merged_id=decision.merged_id,
+            verdict=decision.verdict,
+            score=decision.score,
+            decision_source=decision.decision_source,
+            rationale=decision.rationale,
+            adjudicator_metadata=decision.adjudicator_metadata,
+        )
+
+
+
+@dataclass
 class _MergeDecision:
     canonical_id: UUID
     merged_id: UUID
@@ -372,6 +398,7 @@ async def canonicalize(
                     computation,
                     manual_decisions,
                 )
+
             summary.append(
                 CanonicalizationTypeReport(
                     resolution_type=resolution_type,
