@@ -8,6 +8,10 @@ import pytest
 
 from app.models.ontology import ConceptResolutionType
 from app.services import canonicalization as canonicalization_service
+from app.services.canonicalization import (
+    CanonicalizationAdjudicationRequest,
+    CanonicalizationAdjudicationResult,
+)
 
 
 METHOD_A = UUID("11111111-1111-1111-1111-111111111111")
@@ -231,6 +235,93 @@ async def _run_canonicalize_service_merges_methods(monkeypatch: pytest.MonkeyPat
     assert METHOD_A in method_ids
 
 
+
+class FakeAdjudicator:
+    def __init__(self, *, approved: bool) -> None:
+        self._approved = approved
+        self.requests: list[CanonicalizationAdjudicationRequest] = []
+
+    async def adjudicate(
+        self, request: CanonicalizationAdjudicationRequest
+    ) -> CanonicalizationAdjudicationResult:
+        self.requests.append(request)
+        rationale = "approved" if self._approved else "denied"
+        return CanonicalizationAdjudicationResult(
+            approved=self._approved,
+            rationale=f"Fake adjudicator {rationale}",
+        )
+
+
+def test_canonicalize_service_borderline_requires_adjudicator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_run_canonicalize_service_borderline(monkeypatch, None, True))
+
+
+def test_canonicalize_service_borderline_adjudicator_approves(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _run_canonicalize_service_borderline(
+            monkeypatch,
+            FakeAdjudicator(approved=True),
+            True,
+        )
+    )
+
+
+def test_canonicalize_service_borderline_adjudicator_denies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(
+        _run_canonicalize_service_borderline(
+            monkeypatch,
+            FakeAdjudicator(approved=False),
+            False,
+        )
+    )
+
+
+async def _run_canonicalize_service_borderline(
+    monkeypatch: pytest.MonkeyPatch,
+    adjudicator: FakeAdjudicator | None,
+    expect_merge: bool,
+) -> None:
+    backend = FakeEmbeddingBackend()
+    conn = FakeCanonicalizationConnection()
+    pool = FakePool(conn)
+
+    monkeypatch.setattr(canonicalization_service, "_embedding_backend", backend, raising=False)
+    monkeypatch.setattr(canonicalization_service, "get_pool", lambda: pool)
+    monkeypatch.setitem(
+        canonicalization_service._SIMILARITY_BORDERLINE_WINDOWS,
+        ConceptResolutionType.METHOD,
+        (0.0, 1.0),
+    )
+
+    report = await canonicalization_service.canonicalize(
+        [ConceptResolutionType.METHOD],
+        adjudicator=adjudicator,
+    )
+
+    assert report.summary
+    entry = report.summary[0]
+    assert entry.resolution_type == ConceptResolutionType.METHOD
+    if expect_merge:
+        assert entry.after == 2
+        assert entry.merges == 1
+    else:
+        assert entry.after == 3
+        assert entry.merges == 0
+
+    if adjudicator is not None:
+        assert adjudicator.requests
+        ids = {
+            (request.left_id, request.right_id)
+            for request in adjudicator.requests
+        }
+        assert (METHOD_A, METHOD_B) in ids or (METHOD_B, METHOD_A) in ids
+
 def test_canonicalize_mentions_influence_merges(monkeypatch: pytest.MonkeyPatch) -> None:
     asyncio.run(_run_canonicalize_mentions_influence_merges(monkeypatch))
 
@@ -347,3 +438,4 @@ async def _run_canonicalize_mentions_influence_merges(
     no_merge_entry = report_no_merge.summary[0]
     assert no_merge_entry.merges == 0
     assert no_merge_entry.after == 2
+
