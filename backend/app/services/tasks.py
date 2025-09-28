@@ -24,7 +24,9 @@ except ImportError:  # pragma: no cover - optional dependency
     TesseractError = Exception  # type: ignore[assignment]
     TesseractNotFoundError = Exception  # type: ignore[assignment]
 
+from app.core.config import settings
 from app.models.section import SectionCreate
+from app.services.canonicalization import canonicalize
 from app.services.concept_extraction import extract_and_store_concepts
 from app.services.embeddings import embed_paper_sections
 from app.services.extraction_tier1 import run_tier1_extraction
@@ -219,6 +221,14 @@ async def parse_pdf_task(paper_id: UUID) -> None:
             f"[parse_pdf_task] Completed parsing for paper {paper_id} with "
             f"{len(section_models)} sections"
         )
+        if settings.auto_canonicalize_after_parse:
+            try:
+                await canonicalize()
+            except Exception as exc:  # pragma: no cover - defensive logging
+                print(
+                    "[parse_pdf_task] Canonicalization failed after parsing paper "
+                    f"{paper_id}: {exc}"
+                )
     except Exception as exc:  # pragma: no cover - background task logging
         await update_paper_status(paper_id, "failed")
         print(f"[parse_pdf_task] Failed to parse paper {paper_id}: {exc}")
