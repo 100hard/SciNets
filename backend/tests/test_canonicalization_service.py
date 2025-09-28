@@ -1,7 +1,7 @@
 import asyncio
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 from uuid import UUID, uuid4
 
 import pytest
@@ -13,6 +13,8 @@ from app.services import canonicalization as canonicalization_service
 METHOD_A = UUID("11111111-1111-1111-1111-111111111111")
 METHOD_B = UUID("22222222-2222-2222-2222-222222222222")
 METHOD_C = UUID("33333333-3333-3333-3333-333333333333")
+METHOD_D = UUID("44444444-4444-4444-4444-444444444444")
+METHOD_E = UUID("55555555-5555-5555-5555-555555555555")
 
 
 class FakeEmbeddingBackend:
@@ -57,10 +59,16 @@ class FakePool:
 
 
 class FakeCanonicalizationConnection:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        methods: Optional[dict[UUID, dict[str, Any]]] = None,
+        results: Optional[list[dict[str, Any]]] = None,
+        mentions: Optional[list[dict[str, Any]]] = None,
+    ) -> None:
         now = datetime(2024, 1, 1, tzinfo=timezone.utc)
         later = datetime(2024, 2, 1, tzinfo=timezone.utc)
-        self.methods: dict[UUID, dict[str, Any]] = {
+        self.methods: dict[UUID, dict[str, Any]] = methods or {
             METHOD_A: {
                 "id": METHOD_A,
                 "name": "RoBERTa",
@@ -80,17 +88,62 @@ class FakeCanonicalizationConnection:
                 "created_at": later,
             },
         }
-        self.results: list[dict[str, Any]] = [
+        self.results: list[dict[str, Any]] = results or [
             {"id": uuid4(), "method_id": METHOD_A},
             {"id": uuid4(), "method_id": METHOD_B},
             {"id": uuid4(), "method_id": METHOD_C},
         ]
+        self.mentions: list[dict[str, Any]] = mentions or []
         self.concept_resolutions: list[dict[str, Any]] = []
 
     async def fetch(self, query: str, *params: Any) -> list[dict[str, Any]]:  # noqa: ARG002
         normalized = " ".join(query.split())
-        if normalized == "SELECT id, name, aliases, created_at FROM methods":
-            return [dict(record) for record in self.methods.values()]
+        if "FROM methods" in normalized and "ontology_mentions" in normalized:
+            resolution = params[0] if params else ConceptResolutionType.METHOD.value
+            rows: list[dict[str, Any]] = []
+            for method in self.methods.values():
+                attached = [
+                    mention
+                    for mention in self.mentions
+                    if mention.get("entity_id") == method["id"]
+                    and mention.get("resolution_type") == resolution
+                ]
+                if not attached:
+                    attached = [None]
+                for mention in attached:
+                    rows.append(
+                        {
+                            "entity_id": method["id"],
+                            "entity_name": method["name"],
+                            "entity_aliases": list(method.get("aliases") or []),
+                            "entity_created_at": method["created_at"],
+                            "mention_surface": None if mention is None else mention.get("surface"),
+                            "mention_normalized_surface": None
+                            if mention is None
+                            else mention.get("normalized_surface"),
+                            "mention_type": None if mention is None else mention.get("mention_type"),
+                            "mention_paper_id": None if mention is None else mention.get("paper_id"),
+                            "mention_section_id": None if mention is None else mention.get("section_id"),
+                            "mention_start": None if mention is None else mention.get("start"),
+                            "mention_end": None if mention is None else mention.get("end"),
+                            "mention_first_seen_year": None
+                            if mention is None
+                            else mention.get("first_seen_year"),
+                            "mention_is_acronym": False
+                            if mention is None
+                            else mention.get("is_acronym", False),
+                            "mention_has_digit": False
+                            if mention is None
+                            else mention.get("has_digit", False),
+                            "mention_is_shared": False
+                            if mention is None
+                            else mention.get("is_shared", False),
+                            "mention_context_embedding": None
+                            if mention is None
+                            else mention.get("context_embedding"),
+                        }
+                    )
+            return rows
         raise AssertionError(f"Unsupported fetch query: {normalized}")
 
     async def execute(self, query: str, *params: Any) -> str:
@@ -176,3 +229,121 @@ async def _run_canonicalize_service_merges_methods(monkeypatch: pytest.MonkeyPat
     method_ids = {row["method_id"] for row in conn.results}
     assert METHOD_B not in method_ids
     assert METHOD_A in method_ids
+
+
+def test_canonicalize_mentions_influence_merges(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_run_canonicalize_mentions_influence_merges(monkeypatch))
+
+
+async def _run_canonicalize_mentions_influence_merges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = FakeEmbeddingBackend()
+    monkeypatch.setattr(canonicalization_service, "_embedding_backend", backend, raising=False)
+
+    created = datetime(2024, 3, 1, tzinfo=timezone.utc)
+
+    def _build_methods() -> dict[UUID, dict[str, Any]]:
+        return {
+            METHOD_D: {
+                "id": METHOD_D,
+                "name": "AlphaZero",
+                "aliases": [],
+                "created_at": created,
+            },
+            METHOD_E: {
+                "id": METHOD_E,
+                "name": "Greedy Optimizer",
+                "aliases": [],
+                "created_at": created,
+            },
+        }
+
+    paper_id = uuid4()
+    mentions_merge = [
+        {
+            "entity_id": METHOD_D,
+            "resolution_type": ConceptResolutionType.METHOD.value,
+            "surface": "Alpha Method",
+            "normalized_surface": "alpha method",
+            "mention_type": "method",
+            "paper_id": paper_id,
+            "section_id": None,
+            "start": 5,
+            "end": 20,
+            "first_seen_year": 2020,
+            "is_acronym": False,
+            "has_digit": False,
+            "is_shared": False,
+            "context_embedding": [12.0, 0.0, 0.0],
+        },
+        {
+            "entity_id": METHOD_E,
+            "resolution_type": ConceptResolutionType.METHOD.value,
+            "surface": "Alpha Method",
+            "normalized_surface": "alpha method",
+            "mention_type": "method",
+            "paper_id": paper_id,
+            "section_id": None,
+            "start": 15,
+            "end": 30,
+            "first_seen_year": 2021,
+            "is_acronym": True,
+            "has_digit": False,
+            "is_shared": False,
+            "context_embedding": [11.5, 0.0, 0.0],
+        },
+    ]
+
+    results_payload = [
+        {"id": uuid4(), "method_id": METHOD_D},
+        {"id": uuid4(), "method_id": METHOD_E},
+    ]
+
+    conn_merge = FakeCanonicalizationConnection(
+        methods=_build_methods(),
+        results=list(results_payload),
+        mentions=list(mentions_merge),
+    )
+    pool_merge = FakePool(conn_merge)
+    monkeypatch.setattr(canonicalization_service, "get_pool", lambda: pool_merge)
+
+    report_merge = await canonicalization_service.canonicalize([ConceptResolutionType.METHOD])
+    assert report_merge.summary
+    merge_entry = report_merge.summary[0]
+    assert merge_entry.merges == 1
+    assert merge_entry.after == 1
+
+    mentions_no_merge = [
+        mentions_merge[0],
+        {
+            "entity_id": METHOD_E,
+            "resolution_type": ConceptResolutionType.METHOD.value,
+            "surface": "Beta Strategy",
+            "normalized_surface": "beta strategy",
+            "mention_type": "method",
+            "paper_id": uuid4(),
+            "section_id": None,
+            "start": 10,
+            "end": 24,
+            "first_seen_year": 2024,
+            "is_acronym": False,
+            "has_digit": False,
+            "is_shared": False,
+            "context_embedding": [4.0, 0.0, 0.0],
+        },
+    ]
+
+    conn_no_merge = FakeCanonicalizationConnection(
+        methods=_build_methods(),
+        results=list(results_payload),
+        mentions=list(mentions_no_merge),
+    )
+    pool_no_merge = FakePool(conn_no_merge)
+    monkeypatch.setattr(canonicalization_service, "get_pool", lambda: pool_no_merge)
+
+    report_no_merge = await canonicalization_service.canonicalize([ConceptResolutionType.METHOD])
+    assert report_no_merge.summary
+    no_merge_entry = report_no_merge.summary[0]
+    assert no_merge_entry.merges == 0
+    assert no_merge_entry.after == 2
