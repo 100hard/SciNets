@@ -706,7 +706,6 @@ async def _compute_canonicalization(
             seen_aliases.add(key)
             deduped_alias_entries.append((alias_text, score))
         alias_map[canonical_id] = deduped_alias_entries
-
         canonical_variants = {
             key: variant for key, (variant, _) in variant_scores.items()
         }
