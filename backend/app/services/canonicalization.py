@@ -227,7 +227,22 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
             flattened.append(item)
             continue
         if isinstance(item, (list, tuple, set)):
-            queue.extend(item)
+            text_items: list[str] = []
+            other_items: list[Any] = []
+            for value in item:
+                if isinstance(value, str):
+                    text_items.append(value)
+                else:
+                    other_items.append(value)
+
+            if text_items:
+                long_text_count = sum(1 for value in text_items if len(value.strip()) > 1)
+                if long_text_count <= 1:
+                    combined = _prepare_text("".join(text_items))
+                    if combined:
+                        flattened.append(combined)
+            queue.extend(other_items)
+            queue.extend(text_items)
             continue
         flattened.append(str(item))
 
