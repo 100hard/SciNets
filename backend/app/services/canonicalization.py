@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections import defaultdict
+import json
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
 import math
@@ -196,6 +197,41 @@ def _prepare_text(value: Optional[str]) -> str:
     if not value:
         return ""
     return " ".join(value.strip().split())
+
+
+def _extract_alias_values(raw_aliases: Any) -> list[str]:
+    if raw_aliases is None:
+        return []
+
+    queue: deque[Any] = deque()
+    if isinstance(raw_aliases, str):
+        stripped = raw_aliases.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                queue.append(raw_aliases)
+            else:
+                queue.append(parsed)
+        else:
+            queue.append(raw_aliases)
+    else:
+        queue.append(raw_aliases)
+
+    flattened: list[str] = []
+    while queue:
+        item = queue.popleft()
+        if item is None:
+            continue
+        if isinstance(item, str):
+            flattened.append(item)
+            continue
+        if isinstance(item, (list, tuple, set)):
+            queue.extend(item)
+            continue
+        flattened.append(str(item))
+
+    return flattened
 
 
 def _normalise_key(value: str) -> str:
@@ -449,8 +485,8 @@ async def _load_records(
             mention.mention_type AS mention_type,
             mention.paper_id AS mention_paper_id,
             mention.section_id AS mention_section_id,
-            mention.start AS mention_start,
-            mention."end" AS mention_end,
+            mention.evidence_start AS mention_start,
+            mention.evidence_end AS mention_end,
             mention.first_seen_year AS mention_first_seen_year,
             mention.is_acronym AS mention_is_acronym,
             mention.has_digit AS mention_has_digit,
@@ -469,12 +505,18 @@ async def _load_records(
         record = records_by_id.get(record_id)
         if record is None:
             name = _prepare_text(str(payload.get("entity_name") or ""))
-            alias_values = payload.get("entity_aliases") or []
-            aliases = [
-                alias
-                for alias in (_prepare_text(str(value)) for value in alias_values)
-                if alias
-            ]
+            raw_aliases = payload.get("entity_aliases")
+            aliases: list[str] = []
+            seen_aliases: set[str] = set()
+            for candidate in _extract_alias_values(raw_aliases):
+                prepared = _prepare_text(candidate)
+                if not prepared:
+                    continue
+                key = prepared.casefold()
+                if key in seen_aliases:
+                    continue
+                seen_aliases.add(key)
+                aliases.append(prepared)
             record = _OntologyRecord(
                 id=record_id,
                 name=name,
@@ -616,11 +658,7 @@ async def _compute_canonicalization(
             ]
             per_record_variants[record_id] = variants
 
-        group_variant_set: set[str] = set()
-        for variant_list in per_record_variants.values():
-            group_variant_set.update(variant_list)
-
-        variant_scores: Dict[str, float] = {}
+        variant_scores: Dict[str, tuple[str, float]] = {}
         for record_id, variants in per_record_variants.items():
             if record_id == canonical_id:
                 pair_score = 1.0
@@ -631,29 +669,54 @@ async def _compute_canonicalization(
                     embeddings,
                 )
             for variant in variants:
-                existing = variant_scores.get(variant)
-                if existing is None or pair_score > existing:
-                    variant_scores[variant] = pair_score
+                key = variant.casefold()
+                existing = variant_scores.get(key)
+                candidate = (variant, pair_score)
+                if (
+                    existing is None
+                    or pair_score > existing[1]
+                    or (pair_score == existing[1] and variant < existing[0])
+                ):
+                    variant_scores[key] = candidate
 
-        alias_map[canonical_id] = [
-            (variant, score)
-            for variant, score in sorted(
-                variant_scores.items(), key=lambda item: (-item[1], item[0])
-            )
-        ]
+        alias_entries = sorted(
+            variant_scores.values(), key=lambda item: (-item[1], item[0])
+        )
+        deduped_alias_entries: list[tuple[str, float]] = []
+        seen_aliases: set[str] = set()
+        for alias_text, score in alias_entries:
+            key = alias_text.casefold()
+            if not key or key in seen_aliases:
+                continue
+            seen_aliases.add(key)
+            deduped_alias_entries.append((alias_text, score))
+        alias_map[canonical_id] = deduped_alias_entries
+
+        canonical_variants = {
+            key: variant for key, (variant, _) in variant_scores.items()
+        }
 
         for record_id, variants in per_record_variants.items():
-            self_variants = set(variants)
+            record_variant_keys = {variant.casefold() for variant in variants}
             other_variants = sorted(
-                variant for variant in group_variant_set if variant not in self_variants
+                variant
+                for key, variant in canonical_variants.items()
+                if key not in record_variant_keys
             )
             record = record_by_id[record_id]
-            existing_aliases = [
-                prepared
-                for prepared in (_prepare_text(alias) for alias in record.aliases)
-                if prepared
-            ]
-            combined_aliases = sorted({*other_variants, *existing_aliases})
+            existing_aliases: Dict[str, str] = {}
+            for alias in record.aliases:
+                prepared = _prepare_text(alias)
+                if prepared:
+                    existing_aliases.setdefault(prepared.casefold(), prepared)
+
+            combined_alias_map = dict(existing_aliases)
+            for variant in other_variants:
+                combined_alias_map.setdefault(variant.casefold(), variant)
+
+            combined_aliases = sorted(
+                combined_alias_map.values(), key=lambda value: (value.casefold(), value)
+            )
             aliases_by_record[record_id] = combined_aliases
             id_to_canonical[record_id] = canonical_id
 
@@ -721,7 +784,12 @@ async def _persist_concept_resolutions(
     )
     records: list[tuple[str, UUID, str, float]] = []
     for canonical_id, alias_entries in computation.alias_map.items():
+        seen: set[str] = set()
         for alias_text, score in alias_entries:
+            key = alias_text.casefold()
+            if not key or key in seen:
+                continue
+            seen.add(key)
             records.append((resolution_type.value, canonical_id, alias_text, score))
     if records:
         await conn.executemany(
