@@ -222,6 +222,7 @@ async def parse_pdf_task(paper_id: UUID) -> None:
             f"{len(section_models)} sections"
         )
         if settings.auto_canonicalize_after_parse:
+            # Merge newly extracted concepts before completing the parse task.
             try:
                 await canonicalize()
             except Exception as exc:  # pragma: no cover - defensive logging

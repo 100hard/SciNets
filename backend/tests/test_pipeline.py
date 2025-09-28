@@ -181,11 +181,11 @@ async def _run_parse_triggers_canonicalization(
         year=None,
     )
 
-    called = False
+    call_count = 0
 
     async def fake_canonicalize(*_: Any, **__: Any) -> None:
-        nonlocal called
-        called = True
+        nonlocal call_count
+        call_count += 1
 
     monkeypatch.setattr("app.services.tasks.canonicalize", fake_canonicalize)
 
@@ -196,4 +196,4 @@ async def _run_parse_triggers_canonicalization(
     finally:
         settings.auto_canonicalize_after_parse = previous_flag
 
-    assert called
+    assert call_count == 1
