@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 import math
-from typing import Dict, Iterable, Mapping, Sequence
+from typing import Dict, Mapping, Optional, Protocol, Sequence, Tuple
 from uuid import UUID
 
 from app.core.config import settings
@@ -17,9 +17,6 @@ from app.models.ontology import (
     ConceptResolutionType,
 )
 from app.services.embeddings import EmbeddingBackend, build_embedding_backend
-
-
-from typing import Optional
 @dataclass
 class _OntologyRecord:
     id: UUID
@@ -32,6 +29,31 @@ class _OntologyRecord:
 class _TypeConfig:
     table: str
     fk_column: str
+
+
+@dataclass(frozen=True)
+class CanonicalizationAdjudicationRequest:
+    resolution_type: ConceptResolutionType
+    left_id: UUID
+    left_name: str
+    left_aliases: Sequence[str]
+    right_id: UUID
+    right_name: str
+    right_aliases: Sequence[str]
+    similarity: float
+
+
+@dataclass(frozen=True)
+class CanonicalizationAdjudicationResult:
+    approved: bool
+    rationale: str
+
+
+class CanonicalizationAdjudicator(Protocol):
+    async def adjudicate(
+        self, request: CanonicalizationAdjudicationRequest
+    ) -> CanonicalizationAdjudicationResult:
+        ...
 
 
 _TYPE_CONFIG: Dict[ConceptResolutionType, _TypeConfig] = {
@@ -47,6 +69,14 @@ _SIMILARITY_THRESHOLDS: Dict[ConceptResolutionType, float] = {
     ConceptResolutionType.DATASET: 0.82,
     ConceptResolutionType.METRIC: 0.90,
     ConceptResolutionType.TASK: 0.80,
+}
+
+
+_SIMILARITY_BORDERLINE_WINDOWS: Dict[ConceptResolutionType, Tuple[float, float]] = {
+    ConceptResolutionType.METHOD: (0.80, 0.85),
+    ConceptResolutionType.DATASET: (0.78, 0.82),
+    ConceptResolutionType.METRIC: (0.86, 0.90),
+    ConceptResolutionType.TASK: (0.76, 0.80),
 }
 
 
@@ -132,6 +162,7 @@ def get_embedding_backend() -> EmbeddingBackend:
 
 async def canonicalize(
     types: Optional[Sequence[ConceptResolutionType]] = None,
+    adjudicator: Optional[CanonicalizationAdjudicator] = None,
 ) -> CanonicalizationReport:
     selected = list(types) if types else list(_TYPE_CONFIG.keys())
     pool = get_pool()
@@ -152,7 +183,11 @@ async def canonicalize(
                 )
                 continue
 
-            computation = await _compute_canonicalization(records, resolution_type)
+            computation = await _compute_canonicalization(
+                records,
+                resolution_type,
+                adjudicator=adjudicator,
+            )
             async with conn.transaction():
                 await _persist_concept_resolutions(conn, resolution_type, computation)
                 await _update_aliases(conn, config, computation)
@@ -196,6 +231,7 @@ async def _load_records(conn, config: _TypeConfig) -> list[_OntologyRecord]:
 async def _compute_canonicalization(
     records: Sequence[_OntologyRecord],
     resolution_type: ConceptResolutionType,
+    adjudicator: Optional[CanonicalizationAdjudicator] = None,
 ) -> _CanonicalizationComputation:
     record_by_id: Dict[UUID, _OntologyRecord] = {record.id: record for record in records}
     texts: list[str] = []
@@ -228,12 +264,43 @@ async def _compute_canonicalization(
             uf.union(base, other)
 
     threshold = _SIMILARITY_THRESHOLDS[resolution_type]
+    borderline_window = _SIMILARITY_BORDERLINE_WINDOWS.get(resolution_type)
+    pending_adjudications: list[tuple[_OntologyRecord, _OntologyRecord, float]] = []
     for idx, left in enumerate(records):
         for right in records[idx + 1 :]:
             if uf.find(left.id) == uf.find(right.id):
                 continue
             score = _compute_similarity(left.name, right.name, embeddings)
+            is_borderline = False
+            if borderline_window:
+                lower, upper = borderline_window
+                if lower <= score <= upper:
+                    is_borderline = True
+            if is_borderline:
+                pending_adjudications.append((left, right, score))
+                continue
             if score >= threshold:
+                uf.union(left.id, right.id)
+
+    if pending_adjudications:
+        for left, right, score in pending_adjudications:
+            if uf.find(left.id) == uf.find(right.id):
+                continue
+            if adjudicator is None:
+                uf.union(left.id, right.id)
+                continue
+            request = CanonicalizationAdjudicationRequest(
+                resolution_type=resolution_type,
+                left_id=left.id,
+                left_name=left.name,
+                left_aliases=tuple(left.aliases),
+                right_id=right.id,
+                right_name=right.name,
+                right_aliases=tuple(right.aliases),
+                similarity=float(score),
+            )
+            result = await adjudicator.adjudicate(request)
+            if result.approved:
                 uf.union(left.id, right.id)
 
     groups: Dict[UUID, list[UUID]] = defaultdict(list)
