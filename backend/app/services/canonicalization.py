@@ -449,8 +449,8 @@ async def _load_records(
             mention.mention_type AS mention_type,
             mention.paper_id AS mention_paper_id,
             mention.section_id AS mention_section_id,
-            mention.start AS mention_start,
-            mention."end" AS mention_end,
+            mention.evidence_start AS mention_start,
+            mention.evidence_end AS mention_end,
             mention.first_seen_year AS mention_first_seen_year,
             mention.is_acronym AS mention_is_acronym,
             mention.has_digit AS mention_has_digit,
@@ -616,11 +616,7 @@ async def _compute_canonicalization(
             ]
             per_record_variants[record_id] = variants
 
-        group_variant_set: set[str] = set()
-        for variant_list in per_record_variants.values():
-            group_variant_set.update(variant_list)
-
-        variant_scores: Dict[str, float] = {}
+        variant_scores: Dict[str, tuple[str, float]] = {}
         for record_id, variants in per_record_variants.items():
             if record_id == canonical_id:
                 pair_score = 1.0
@@ -631,29 +627,46 @@ async def _compute_canonicalization(
                     embeddings,
                 )
             for variant in variants:
-                existing = variant_scores.get(variant)
-                if existing is None or pair_score > existing:
-                    variant_scores[variant] = pair_score
+                key = variant.casefold()
+                existing = variant_scores.get(key)
+                candidate = (variant, pair_score)
+                if (
+                    existing is None
+                    or pair_score > existing[1]
+                    or (pair_score == existing[1] and variant < existing[0])
+                ):
+                    variant_scores[key] = candidate
 
-        alias_map[canonical_id] = [
-            (variant, score)
-            for variant, score in sorted(
-                variant_scores.items(), key=lambda item: (-item[1], item[0])
-            )
-        ]
+        alias_entries = sorted(
+            variant_scores.values(), key=lambda item: (-item[1], item[0])
+        )
+        alias_map[canonical_id] = alias_entries
+
+        canonical_variants = {
+            key: variant for key, (variant, _) in variant_scores.items()
+        }
 
         for record_id, variants in per_record_variants.items():
-            self_variants = set(variants)
+            record_variant_keys = {variant.casefold() for variant in variants}
             other_variants = sorted(
-                variant for variant in group_variant_set if variant not in self_variants
+                variant
+                for key, variant in canonical_variants.items()
+                if key not in record_variant_keys
             )
             record = record_by_id[record_id]
-            existing_aliases = [
-                prepared
-                for prepared in (_prepare_text(alias) for alias in record.aliases)
-                if prepared
-            ]
-            combined_aliases = sorted({*other_variants, *existing_aliases})
+            existing_aliases: Dict[str, str] = {}
+            for alias in record.aliases:
+                prepared = _prepare_text(alias)
+                if prepared:
+                    existing_aliases.setdefault(prepared.casefold(), prepared)
+
+            combined_alias_map = dict(existing_aliases)
+            for variant in other_variants:
+                combined_alias_map.setdefault(variant.casefold(), variant)
+
+            combined_aliases = sorted(
+                combined_alias_map.values(), key=lambda value: (value.casefold(), value)
+            )
             aliases_by_record[record_id] = combined_aliases
             id_to_canonical[record_id] = canonical_id
 
