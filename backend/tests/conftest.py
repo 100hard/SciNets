@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
+import sys
+import types
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
@@ -11,6 +14,37 @@ from fastapi import UploadFile
 from app.models.paper import Paper, PaperCreate
 from app.models.section import Section, SectionCreate
 from app.services.storage import StorageUploadResult
+
+
+def _ensure_backend_alias() -> None:
+    """Expose the runtime ``app`` package under the ``backend`` namespace."""
+
+    backend_module = sys.modules.get("backend")
+    if isinstance(backend_module, types.ModuleType) and getattr(
+        backend_module, "__path__", None
+    ):
+        return
+
+    app_module = importlib.import_module("app")
+
+    if not isinstance(backend_module, types.ModuleType):
+        backend_module = types.ModuleType("backend")
+        sys.modules["backend"] = backend_module
+
+    module_file = getattr(app_module, "__file__", None)
+    if module_file:
+        package_root = Path(module_file).resolve().parent.parent
+    else:  # pragma: no cover - fallback for namespace packages
+        package_root = Path(next(iter(app_module.__path__))).resolve().parent
+
+    backend_module.__file__ = module_file
+    backend_module.__path__ = [str(package_root)]
+    backend_module.app = app_module  # type: ignore[attr-defined]
+
+    sys.modules.setdefault("backend.app", app_module)
+
+
+_ensure_backend_alias()
 
 
 class InMemoryDataStore:
