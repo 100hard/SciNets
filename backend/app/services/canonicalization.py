@@ -244,6 +244,7 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
                 prepared_items = [_prepare_text(value) for value in text_items]
                 prepared_items = [value for value in prepared_items if value]
                 if prepared_items:
+
                     if all(len(value) <= 1 for value in prepared_items):
                         combined = _prepare_text("".join(prepared_items))
                         if combined:
@@ -257,6 +258,7 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
             flattened.append(prepared)
 
     return flattened
+
 
 
 def _normalise_alias_candidates(values: Sequence[Any]) -> list[str]:
@@ -273,7 +275,6 @@ def _normalise_alias_candidates(values: Sequence[Any]) -> list[str]:
             seen.add(key)
             normalised.append(prepared)
     return normalised
-
 
 def _normalise_key(value: str) -> str:
     return _prepare_text(value).casefold()
@@ -724,7 +725,6 @@ async def _compute_canonicalization(
             seen_aliases.add(key)
             deduped_alias_entries.append((alias_text, score))
         alias_map[canonical_id] = deduped_alias_entries
-
         canonical_variants = {
             key: variant for key, (variant, _) in variant_scores.items()
         }
@@ -819,6 +819,7 @@ async def _persist_concept_resolutions(
     for canonical_id, alias_entries in computation.alias_map.items():
         seen: set[str] = set()
         for alias_text, score in alias_entries:
+
             for prepared in _normalise_alias_candidates([alias_text]):
                 if len(prepared) <= 1:
                     continue
