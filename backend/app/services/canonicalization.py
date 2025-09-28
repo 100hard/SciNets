@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections import defaultdict
+import json
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
 import math
@@ -196,6 +197,41 @@ def _prepare_text(value: Optional[str]) -> str:
     if not value:
         return ""
     return " ".join(value.strip().split())
+
+
+def _extract_alias_values(raw_aliases: Any) -> list[str]:
+    if raw_aliases is None:
+        return []
+
+    queue: deque[Any] = deque()
+    if isinstance(raw_aliases, str):
+        stripped = raw_aliases.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError:
+                queue.append(raw_aliases)
+            else:
+                queue.append(parsed)
+        else:
+            queue.append(raw_aliases)
+    else:
+        queue.append(raw_aliases)
+
+    flattened: list[str] = []
+    while queue:
+        item = queue.popleft()
+        if item is None:
+            continue
+        if isinstance(item, str):
+            flattened.append(item)
+            continue
+        if isinstance(item, (list, tuple, set)):
+            queue.extend(item)
+            continue
+        flattened.append(str(item))
+
+    return flattened
 
 
 def _normalise_key(value: str) -> str:
@@ -469,12 +505,18 @@ async def _load_records(
         record = records_by_id.get(record_id)
         if record is None:
             name = _prepare_text(str(payload.get("entity_name") or ""))
-            alias_values = payload.get("entity_aliases") or []
-            aliases = [
-                alias
-                for alias in (_prepare_text(str(value)) for value in alias_values)
-                if alias
-            ]
+            raw_aliases = payload.get("entity_aliases")
+            aliases: list[str] = []
+            seen_aliases: set[str] = set()
+            for candidate in _extract_alias_values(raw_aliases):
+                prepared = _prepare_text(candidate)
+                if not prepared:
+                    continue
+                key = prepared.casefold()
+                if key in seen_aliases:
+                    continue
+                seen_aliases.add(key)
+                aliases.append(prepared)
             record = _OntologyRecord(
                 id=record_id,
                 name=name,
