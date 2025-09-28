@@ -35,6 +35,38 @@ class _TypeConfig:
 
 
 @dataclass
+class CanonicalizationAdjudicationRequest:
+    resolution_type: ConceptResolutionType
+    left_id: UUID
+    right_id: UUID
+    verdict: str
+    rationale: Optional[str] = None
+    score: Optional[float] = None
+    decision_source: str = "llm"
+    adjudicator_metadata: Optional[dict[str, Any]] = None
+
+    def __post_init__(self) -> None:
+        if self.decision_source not in {"hard", "llm"}:
+            raise ValueError(
+                "decision_source must be either 'hard' or 'llm' to match the audit enum"
+            )
+
+    def to_merge_decision(self) -> "_MergeDecision":
+        score = 0.0 if self.score is None else float(max(0.0, min(1.0, self.score)))
+        rationale = self.rationale or "Manual adjudication decision applied."
+        return _MergeDecision(
+            canonical_id=self.left_id,
+            merged_id=self.right_id,
+            score=score,
+            decision_source=self.decision_source,
+            verdict=self.verdict,
+            rationale=rationale,
+            adjudicator_metadata=self.adjudicator_metadata,
+        )
+
+
+
+@dataclass
 class _MergeDecision:
     canonical_id: UUID
     merged_id: UUID
@@ -302,11 +334,12 @@ def get_embedding_backend() -> EmbeddingBackend:
 
 async def canonicalize(
     types: Optional[Sequence[ConceptResolutionType]] = None,
-    adjudicator: Optional[CanonicalizationAdjudicator] = None,
+    adjudications: Optional[Sequence[CanonicalizationAdjudicationRequest]] = None,
 ) -> CanonicalizationReport:
     selected = list(types) if types else list(_TYPE_CONFIG.keys())
     pool = get_pool()
     summary: list[CanonicalizationTypeReport] = []
+    adjudications_by_type = _group_adjudications(adjudications or [])
     async with pool.acquire() as conn:
         for resolution_type in selected:
             config = _TYPE_CONFIG[resolution_type]
@@ -332,8 +365,13 @@ async def canonicalize(
                 await _persist_concept_resolutions(conn, resolution_type, computation)
                 await _update_aliases(conn, config, computation)
                 await _update_results(conn, config, computation)
-                await _record_merge_audit(conn, resolution_type, computation)
-
+                manual_decisions = adjudications_by_type.get(resolution_type, [])
+                await _record_merge_audit(
+                    conn,
+                    resolution_type,
+                    computation,
+                    manual_decisions,
+                )
             summary.append(
                 CanonicalizationTypeReport(
                     resolution_type=resolution_type,
@@ -346,37 +384,20 @@ async def canonicalize(
     return CanonicalizationReport(summary=summary)
 
 
-async def _load_records(
-    conn,
-    config: _TypeConfig,
-    resolution_type: ConceptResolutionType,
-) -> list[_OntologyRecord]:
-    query = f"""
-        SELECT
-            base.id AS entity_id,
-            base.name AS entity_name,
-            base.aliases AS entity_aliases,
-            base.created_at AS entity_created_at,
-            mention.surface AS mention_surface,
-            mention.normalized_surface AS mention_normalized_surface,
-            mention.mention_type AS mention_type,
-            mention.paper_id AS mention_paper_id,
-            mention.section_id AS mention_section_id,
-            mention.evidence_start AS mention_start,
-            mention.evidence_end AS mention_end,
-            mention.first_seen_year AS mention_first_seen_year,
-            mention.is_acronym AS mention_is_acronym,
-            mention.has_digit AS mention_has_digit,
-            mention.is_shared AS mention_is_shared,
-            mention.context_embedding AS mention_context_embedding
-        FROM {config.table} AS base
-        LEFT JOIN ontology_mentions AS mention
-            ON mention.entity_id = base.id
-           AND mention.resolution_type = $1::concept_resolution_type
-        ORDER BY base.id
-    """
-    rows = await conn.fetch(query, resolution_type.value)
-    records: Dict[UUID, _OntologyRecord] = {}
+
+def _group_adjudications(
+    adjudications: Sequence[CanonicalizationAdjudicationRequest],
+) -> Dict[ConceptResolutionType, list[_MergeDecision]]:
+    grouped: Dict[ConceptResolutionType, list[_MergeDecision]] = defaultdict(list)
+    for request in adjudications:
+        grouped[request.resolution_type].append(request.to_merge_decision())
+    return grouped
+
+
+async def _load_records(conn, config: _TypeConfig) -> list[_OntologyRecord]:
+    query = f"SELECT id, name, aliases, created_at FROM {config.table}"
+    rows = await conn.fetch(query)
+    records: list[_OntologyRecord] = []
     for row in rows:
         payload = dict(row)
         record_id: UUID = payload["entity_id"]
@@ -599,6 +620,7 @@ async def _compute_canonicalization(
                     rationale=rationale,
                 )
             )
+
         merged_items.sort(key=lambda item: (-item.score, item.name.casefold()))
         merged_items_by_canonical[canonical_id] = merged_items
 
@@ -696,6 +718,7 @@ async def _record_merge_audit(
     conn,
     resolution_type: ConceptResolutionType,
     computation: _CanonicalizationComputation,
+    manual_decisions: Sequence[_MergeDecision] | None = None,
 ) -> None:
     mapping_version = settings.canonicalization_mapping_version
     await conn.execute(
@@ -707,7 +730,10 @@ async def _record_merge_audit(
         [resolution_type.value],
         mapping_version,
     )
-    if not computation.decisions:
+    decisions: list[_MergeDecision] = list(computation.decisions)
+    if manual_decisions:
+        decisions.extend(manual_decisions)
+    if not decisions:
         return
     records = [
         (
@@ -721,7 +747,7 @@ async def _record_merge_audit(
             mapping_version,
             decision.adjudicator_metadata,
         )
-        for decision in computation.decisions
+        for decision in decisions
     ]
     await conn.executemany(
         """

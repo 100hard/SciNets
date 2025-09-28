@@ -74,6 +74,7 @@ def _coerce(value: str, annotation: Any) -> Any:
         return list(loaded)
     return value
 
+
 class BaseSettings:
     def __init__(self, **overrides: Any) -> None:
         annotations: Dict[str, Any] = {}

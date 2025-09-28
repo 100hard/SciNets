@@ -345,3 +345,51 @@ async def _run_canonicalize_rolls_back_on_audit_failure(
         conn.canonicalization_merge_decisions
         == baseline["canonicalization_merge_decisions"]
     )
+
+
+def test_canonicalize_records_manual_adjudications(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_run_canonicalize_records_manual_adjudications(monkeypatch))
+
+
+async def _run_canonicalize_records_manual_adjudications(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = FakeEmbeddingBackend()
+    conn = FakeCanonicalizationConnection()
+    pool = FakePool(conn)
+
+    monkeypatch.setattr(canonicalization_service, "_embedding_backend", backend, raising=False)
+    monkeypatch.setattr(canonicalization_service, "get_pool", lambda: pool)
+
+    adjudication = canonicalization_service.CanonicalizationAdjudicationRequest(
+        resolution_type=ConceptResolutionType.METHOD,
+        left_id=METHOD_A,
+        right_id=METHOD_C,
+        verdict="rejected",
+        rationale="Distinct research direction",
+        score=0.05,
+        decision_source="hard",
+        adjudicator_metadata={"reviewer": "alice"},
+    )
+
+    await canonicalization_service.canonicalize(
+        [ConceptResolutionType.METHOD],
+        adjudications=[adjudication],
+    )
+
+    audit_rows = [
+        row
+        for row in conn.canonicalization_merge_decisions
+        if row["resolution_type"] == ConceptResolutionType.METHOD.value
+    ]
+    assert len(audit_rows) == 2
+    manual = next(row for row in audit_rows if row["right_id"] == METHOD_C)
+    assert manual["left_id"] == METHOD_A
+    assert manual["decision_source"] == "hard"
+    assert manual["verdict"] == "rejected"
+    assert manual["rationale"]
+    assert manual["score"] == 0.05
+    assert manual["adjudicator_metadata"] == {"reviewer": "alice"}
+
