@@ -4,10 +4,12 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 import math
+from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
 
 from typing import Dict, Mapping, Optional, Protocol, Sequence, Tuple
 
 from typing import Dict, Iterable, Mapping, Optional, Sequence
+
 
 from uuid import UUID
 
@@ -21,7 +23,6 @@ from app.models.ontology import (
     ConceptResolutionType,
 )
 from app.services.embeddings import EmbeddingBackend, build_embedding_backend
-
 
 @dataclass
 class _MentionSignal:
@@ -40,6 +41,7 @@ class _MentionSignal:
 
 
 
+
 @dataclass
 class _OntologyRecord:
     id: UUID
@@ -54,6 +56,29 @@ class _TypeConfig:
     table: str
     fk_column: str
 
+
+
+@dataclass
+class _MergeDecision:
+    canonical_id: UUID
+    merged_id: UUID
+    score: float
+    decision_source: str
+    verdict: str
+    rationale: str
+    adjudicator_metadata: Optional[dict[str, Any]] = None
+
+
+@dataclass
+class _CanonicalizationComputation:
+    before: int
+    after: int
+    merges: int
+    alias_map: Dict[UUID, list[tuple[str, float]]]
+    aliases_by_record: Dict[UUID, list[str]]
+    id_to_canonical: Dict[UUID, UUID]
+    decisions: list[_MergeDecision]
+    examples: list[CanonicalizationExample]
 
 @dataclass(frozen=True)
 class CanonicalizationAdjudicationRequest:
@@ -78,6 +103,7 @@ class CanonicalizationAdjudicator(Protocol):
         self, request: CanonicalizationAdjudicationRequest
     ) -> CanonicalizationAdjudicationResult:
         ...
+
 
 
 _TYPE_CONFIG: Dict[ConceptResolutionType, _TypeConfig] = {
@@ -140,17 +166,6 @@ class _UnionFind:
         return True
 
 
-@dataclass
-class _CanonicalizationComputation:
-    before: int
-    after: int
-    merges: int
-    alias_map: Dict[UUID, list[tuple[str, float]]]
-    aliases_by_record: Dict[UUID, list[str]]
-    id_to_canonical: Dict[UUID, UUID]
-    examples: list[CanonicalizationExample]
-
-
 _embedding_backend: Optional[EmbeddingBackend] = None
 
 
@@ -162,6 +177,16 @@ def _prepare_text(value: Optional[str]) -> str:
 
 def _normalise_key(value: str) -> str:
     return _prepare_text(value).casefold()
+
+
+def _collect_normalised_variants(record: _OntologyRecord) -> set[str]:
+    variants: set[str] = set()
+    if record.name:
+        variants.add(_normalise_key(record.name))
+    for alias in record.aliases:
+        if alias:
+            variants.add(_normalise_key(alias))
+    return variants
 
 
 def _select_canonical(group_ids: Sequence[UUID], records: Mapping[UUID, _OntologyRecord]) -> UUID:
@@ -356,6 +381,7 @@ async def canonicalize(
                 await _persist_concept_resolutions(conn, resolution_type, computation)
                 await _update_aliases(conn, config, computation)
                 await _update_results(conn, config, computation)
+                await _record_merge_audit(conn, resolution_type, computation)
 
             summary.append(
                 CanonicalizationTypeReport(
@@ -551,8 +577,11 @@ async def _compute_canonicalization(
 
     alias_map: Dict[UUID, list[tuple[str, float]]] = {}
     aliases_by_record: Dict[UUID, list[str]] = {}
+    merged_items_by_canonical: Dict[UUID, list[CanonicalizationMergedItem]] = {}
+    decisions: list[_MergeDecision] = []
     for canonical_id, member_ids in canonical_groups.items():
         canonical_record = record_by_id[canonical_id]
+        canonical_variants = _collect_normalised_variants(canonical_record)
         collected: Dict[str, str] = {}
         for member_id in member_ids:
             member = record_by_id[member_id]
@@ -574,6 +603,7 @@ async def _compute_canonicalization(
         alias_map[canonical_id] = alias_entries
 
         alias_texts_sorted = [text for text, _ in alias_entries]
+        merged_items: list[CanonicalizationMergedItem] = []
         for member_id in member_ids:
             member = record_by_id[member_id]
             filtered = [
@@ -583,29 +613,55 @@ async def _compute_canonicalization(
             ]
             aliases_by_record[member_id] = filtered
 
+            if member_id == canonical_id:
+                continue
+
+            member_variants = _collect_normalised_variants(member)
+            if canonical_variants & member_variants:
+                raw_score = 1.0
+                decision_source = "hard"
+                rationale = "Exact name or alias match triggered canonical merge."
+            else:
+                raw_score = _compute_similarity(member.name, canonical_record.name, embeddings)
+                decision_source = "llm"
+                rationale = (
+                    "Similarity score "
+                    f"{raw_score:.2f} exceeded threshold {threshold:.2f} "
+                    f"for {resolution_type.value} canonicalization."
+                )
+
+            score = float(max(0.0, min(1.0, raw_score)))
+            merged_items.append(
+                CanonicalizationMergedItem(
+                    id=member.id,
+                    name=member.name,
+                    score=score,
+                )
+            )
+            decisions.append(
+                _MergeDecision(
+                    canonical_id=canonical_id,
+                    merged_id=member.id,
+                    score=score,
+                    decision_source=decision_source,
+                    verdict="accepted",
+                    rationale=rationale,
+                )
+            )
+
+        merged_items.sort(key=lambda item: (-item.score, item.name.casefold()))
+        merged_items_by_canonical[canonical_id] = merged_items
+
     before = len(records)
     after = len(canonical_groups)
     merges = max(0, before - after)
 
     examples: list[CanonicalizationExample] = []
     for canonical_id, member_ids in canonical_groups.items():
-        if len(member_ids) <= 1:
+        merged_items = merged_items_by_canonical.get(canonical_id, [])
+        if len(member_ids) <= 1 or not merged_items:
             continue
         canonical_record = record_by_id[canonical_id]
-        merged_items: list[CanonicalizationMergedItem] = []
-        for member_id in member_ids:
-            if member_id == canonical_id:
-                continue
-            member = record_by_id[member_id]
-            score = _compute_similarity(member.name, canonical_record.name, embeddings)
-            merged_items.append(
-                CanonicalizationMergedItem(
-                    id=member.id,
-                    name=member.name,
-                    score=float(max(0.0, min(1.0, score))),
-                )
-            )
-        merged_items.sort(key=lambda item: (-item.score, item.name.casefold()))
         examples.append(
             CanonicalizationExample(
                 canonical_id=canonical_id,
@@ -623,6 +679,7 @@ async def _compute_canonicalization(
         alias_map=alias_map,
         aliases_by_record=aliases_by_record,
         id_to_canonical=id_to_canonical,
+        decisions=decisions,
         examples=examples,
     )
 
@@ -682,6 +739,56 @@ async def _update_results(
     await conn.executemany(
         f"UPDATE results SET {config.fk_column} = $2 WHERE {config.fk_column} = $1",
         updates,
+    )
+
+
+async def _record_merge_audit(
+    conn,
+    resolution_type: ConceptResolutionType,
+    computation: _CanonicalizationComputation,
+) -> None:
+    mapping_version = settings.canonicalization_mapping_version
+    await conn.execute(
+        """
+        DELETE FROM canonicalization_merge_decisions
+        WHERE resolution_type = ANY($1::concept_resolution_type[])
+          AND mapping_version = $2
+        """,
+        [resolution_type.value],
+        mapping_version,
+    )
+    if not computation.decisions:
+        return
+    records = [
+        (
+            resolution_type.value,
+            decision.canonical_id,
+            decision.merged_id,
+            decision.score,
+            decision.decision_source,
+            decision.verdict,
+            decision.rationale,
+            mapping_version,
+            decision.adjudicator_metadata,
+        )
+        for decision in computation.decisions
+    ]
+    await conn.executemany(
+        """
+        INSERT INTO canonicalization_merge_decisions (
+            resolution_type,
+            left_id,
+            right_id,
+            score,
+            decision_source,
+            verdict,
+            rationale,
+            mapping_version,
+            adjudicator_metadata
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        """,
+        records,
     )
 
 

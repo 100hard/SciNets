@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     nlp_min_span_char_length: int = Field(default=3)
     nlp_overlap_score_margin: float = Field(default=0.05)
 
+    # Canonicalization
+    canonicalization_mapping_version: int = Field(default=1)
+
     # Tier-2 LLM
     openai_api_key: Optional[str] = Field(default=None)
     openai_organization: Optional[str] = Field(default=None)
