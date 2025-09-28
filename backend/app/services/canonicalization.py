@@ -716,7 +716,6 @@ async def _compute_canonicalization(
             seen_aliases.add(key)
             deduped_alias_entries.append((alias_text, score))
         alias_map[canonical_id] = deduped_alias_entries
-
         canonical_variants = {
             key: variant for key, (variant, _) in variant_scores.items()
         }
@@ -813,6 +812,7 @@ async def _persist_concept_resolutions(
         seen: set[str] = set()
         for alias_text, score in alias_entries:
             key = alias_text.casefold()
+
             if not key or key in seen or len(alias_text) <= 1:
                 continue
             seen.add(key)
