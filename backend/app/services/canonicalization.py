@@ -5,6 +5,12 @@ from dataclasses import dataclass
 from datetime import datetime
 import math
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
+
+from typing import Dict, Mapping, Optional, Protocol, Sequence, Tuple
+
+from typing import Dict, Iterable, Mapping, Optional, Sequence
+
+
 from uuid import UUID
 
 from app.core.config import settings
@@ -17,18 +23,39 @@ from app.models.ontology import (
     ConceptResolutionType,
 )
 from app.services.embeddings import EmbeddingBackend, build_embedding_backend
+
+@dataclass
+class _MentionSignal:
+    surface: str
+    normalized_surface: str
+    mention_type: Optional[str]
+    paper_id: Optional[UUID]
+    section_id: Optional[UUID]
+    start: Optional[int]
+    end: Optional[int]
+    first_seen_year: Optional[int]
+    is_acronym: bool
+    has_digit: bool
+    is_shared: bool
+    context_embedding: Optional[Sequence[float]]
+
+
+
+
 @dataclass
 class _OntologyRecord:
     id: UUID
     name: str
     aliases: list[str]
     created_at: datetime
+    mentions: list[_MentionSignal]
 
 
 @dataclass(frozen=True)
 class _TypeConfig:
     table: str
     fk_column: str
+
 
 
 @dataclass
@@ -53,6 +80,31 @@ class _CanonicalizationComputation:
     decisions: list[_MergeDecision]
     examples: list[CanonicalizationExample]
 
+@dataclass(frozen=True)
+class CanonicalizationAdjudicationRequest:
+    resolution_type: ConceptResolutionType
+    left_id: UUID
+    left_name: str
+    left_aliases: Sequence[str]
+    right_id: UUID
+    right_name: str
+    right_aliases: Sequence[str]
+    similarity: float
+
+
+@dataclass(frozen=True)
+class CanonicalizationAdjudicationResult:
+    approved: bool
+    rationale: str
+
+
+class CanonicalizationAdjudicator(Protocol):
+    async def adjudicate(
+        self, request: CanonicalizationAdjudicationRequest
+    ) -> CanonicalizationAdjudicationResult:
+        ...
+
+
 
 _TYPE_CONFIG: Dict[ConceptResolutionType, _TypeConfig] = {
     ConceptResolutionType.METHOD: _TypeConfig("methods", "method_id"),
@@ -67,6 +119,14 @@ _SIMILARITY_THRESHOLDS: Dict[ConceptResolutionType, float] = {
     ConceptResolutionType.DATASET: 0.82,
     ConceptResolutionType.METRIC: 0.90,
     ConceptResolutionType.TASK: 0.80,
+}
+
+
+_SIMILARITY_BORDERLINE_WINDOWS: Dict[ConceptResolutionType, Tuple[float, float]] = {
+    ConceptResolutionType.METHOD: (0.80, 0.85),
+    ConceptResolutionType.DATASET: (0.78, 0.82),
+    ConceptResolutionType.METRIC: (0.86, 0.90),
+    ConceptResolutionType.TASK: (0.76, 0.80),
 }
 
 
@@ -140,6 +200,146 @@ def _select_canonical(group_ids: Sequence[UUID], records: Mapping[UUID, _Ontolog
     )
 
 
+def _generate_candidate_pairs(records: Sequence[_OntologyRecord]) -> set[tuple[UUID, UUID]]:
+    pairs: set[tuple[UUID, UUID]] = set()
+
+    def _add_pairs(ids: Sequence[UUID]) -> None:
+        unique = list(dict.fromkeys(ids))
+        for index, left in enumerate(unique):
+            for right in unique[index + 1 :]:
+                ordered = tuple(sorted((left, right), key=str))
+                if ordered[0] != ordered[1]:
+                    pairs.add(ordered)
+
+    alias_blocks: Dict[str, list[UUID]] = defaultdict(list)
+    for record in records:
+        for variant in [record.name, *record.aliases]:
+            key = _normalise_key(variant)
+            if key:
+                alias_blocks[key].append(record.id)
+    for ids in alias_blocks.values():
+        if len(ids) > 1:
+            _add_pairs(ids)
+
+    mention_blocks: Dict[str, list[UUID]] = defaultdict(list)
+    paper_blocks: Dict[UUID, list[UUID]] = defaultdict(list)
+    for record in records:
+        for mention in record.mentions:
+            if mention.normalized_surface:
+                mention_blocks[mention.normalized_surface].append(record.id)
+            if mention.paper_id:
+                paper_blocks[mention.paper_id].append(record.id)
+
+    for ids in mention_blocks.values():
+        if len(ids) > 1:
+            _add_pairs(ids)
+
+    for ids in paper_blocks.values():
+        if len(ids) > 1:
+            _add_pairs(ids)
+
+    if not pairs:
+        for index, left in enumerate(records):
+            for right in records[index + 1 :]:
+                ordered = tuple(sorted((left.id, right.id), key=str))
+                if ordered[0] != ordered[1]:
+                    pairs.add(ordered)
+
+    return pairs
+
+
+def _cosine_similarity(left: Sequence[float], right: Sequence[float]) -> float:
+    if not left or not right:
+        return 0.0
+    numerator = sum(l * r for l, r in zip(left, right))
+    left_norm = math.sqrt(sum(l * l for l in left))
+    right_norm = math.sqrt(sum(r * r for r in right))
+    if left_norm == 0.0 or right_norm == 0.0:
+        return 0.0
+    return float(max(-1.0, min(1.0, numerator / (left_norm * right_norm))))
+
+
+def _compute_mention_similarity(
+    left: _OntologyRecord,
+    right: _OntologyRecord,
+) -> float:
+    if not left.mentions or not right.mentions:
+        return 0.0
+
+    left_by_surface: Dict[str, list[_MentionSignal]] = defaultdict(list)
+    right_by_surface: Dict[str, list[_MentionSignal]] = defaultdict(list)
+    for mention in left.mentions:
+        if mention.normalized_surface:
+            left_by_surface[mention.normalized_surface].append(mention)
+    for mention in right.mentions:
+        if mention.normalized_surface:
+            right_by_surface[mention.normalized_surface].append(mention)
+
+    best = 0.0
+    shared_surfaces = set(left_by_surface.keys()).intersection(right_by_surface.keys())
+    for surface in shared_surfaces:
+        combined = left_by_surface[surface] + right_by_surface[surface]
+        candidate = 0.88
+        if not any(mention.is_shared for mention in combined):
+            candidate += 0.05
+        if any(mention.is_acronym for mention in combined):
+            candidate += 0.02
+        if any(mention.has_digit for mention in combined):
+            candidate += 0.01
+
+        years = [mention.first_seen_year for mention in combined if mention.first_seen_year]
+        if years:
+            diff = max(years) - min(years)
+            if diff <= 1:
+                candidate += 0.03
+            elif diff > 5:
+                candidate -= 0.05
+
+        context_scores: list[float] = []
+        for left_signal in left_by_surface[surface]:
+            if not left_signal.context_embedding:
+                continue
+            for right_signal in right_by_surface[surface]:
+                if not right_signal.context_embedding:
+                    continue
+                context_scores.append(
+                    _cosine_similarity(left_signal.context_embedding, right_signal.context_embedding)
+                )
+        if context_scores:
+            candidate = max(candidate, 0.75 + 0.2 * max(context_scores))
+
+        best = max(best, max(0.0, min(1.0, candidate)))
+
+    if best >= 0.9:
+        return best
+
+    shared_papers = {
+        mention.paper_id
+        for mention in left.mentions
+        if mention.paper_id is not None
+    }.intersection(
+        {
+            mention.paper_id
+            for mention in right.mentions
+            if mention.paper_id is not None
+        }
+    )
+    if shared_papers:
+        best = max(best, 0.82)
+
+    return max(0.0, min(1.0, best))
+
+
+def _score_pair(
+    left: _OntologyRecord,
+    right: _OntologyRecord,
+    embeddings: Dict[str, Sequence[float]],
+) -> float:
+    base = _compute_similarity(left.name, right.name, embeddings)
+    mention_score = _compute_mention_similarity(left, right)
+    return max(base, mention_score)
+
+
 def get_embedding_backend() -> EmbeddingBackend:
     global _embedding_backend
     if _embedding_backend is None:
@@ -151,6 +351,7 @@ def get_embedding_backend() -> EmbeddingBackend:
 
 async def canonicalize(
     types: Optional[Sequence[ConceptResolutionType]] = None,
+    adjudicator: Optional[CanonicalizationAdjudicator] = None,
 ) -> CanonicalizationReport:
     selected = list(types) if types else list(_TYPE_CONFIG.keys())
     pool = get_pool()
@@ -158,7 +359,7 @@ async def canonicalize(
     async with pool.acquire() as conn:
         for resolution_type in selected:
             config = _TYPE_CONFIG[resolution_type]
-            records = await _load_records(conn, config)
+            records = await _load_records(conn, config, resolution_type)
             if not records:
                 summary.append(
                     CanonicalizationTypeReport(
@@ -171,7 +372,11 @@ async def canonicalize(
                 )
                 continue
 
-            computation = await _compute_canonicalization(records, resolution_type)
+            computation = await _compute_canonicalization(
+                records,
+                resolution_type,
+                adjudicator=adjudicator,
+            )
             async with conn.transaction():
                 await _persist_concept_resolutions(conn, resolution_type, computation)
                 await _update_aliases(conn, config, computation)
@@ -190,32 +395,91 @@ async def canonicalize(
     return CanonicalizationReport(summary=summary)
 
 
-async def _load_records(conn, config: _TypeConfig) -> list[_OntologyRecord]:
-    query = f"SELECT id, name, aliases, created_at FROM {config.table}"
-    rows = await conn.fetch(query)
-    records: list[_OntologyRecord] = []
+async def _load_records(
+    conn,
+    config: _TypeConfig,
+    resolution_type: ConceptResolutionType,
+) -> list[_OntologyRecord]:
+    query = f"""
+        SELECT
+            base.id AS entity_id,
+            base.name AS entity_name,
+            base.aliases AS entity_aliases,
+            base.created_at AS entity_created_at,
+            mention.surface AS mention_surface,
+            mention.normalized_surface AS mention_normalized_surface,
+            mention.mention_type AS mention_type,
+            mention.paper_id AS mention_paper_id,
+            mention.section_id AS mention_section_id,
+            mention.evidence_start AS mention_start,
+            mention.evidence_end AS mention_end,
+            mention.first_seen_year AS mention_first_seen_year,
+            mention.is_acronym AS mention_is_acronym,
+            mention.has_digit AS mention_has_digit,
+            mention.is_shared AS mention_is_shared,
+            mention.context_embedding AS mention_context_embedding
+        FROM {config.table} AS base
+        LEFT JOIN ontology_mentions AS mention
+            ON mention.entity_id = base.id
+           AND mention.resolution_type = $1::concept_resolution_type
+        ORDER BY base.id
+    """
+    rows = await conn.fetch(query, resolution_type.value)
+    records: Dict[UUID, _OntologyRecord] = {}
     for row in rows:
-        name = _prepare_text(str(row["name"]))
-        alias_values = row.get("aliases", []) if isinstance(row, dict) else row["aliases"]
-        aliases = [
-            alias
-            for alias in (_prepare_text(str(value)) for value in alias_values or [])
-            if alias
-        ]
-        records.append(
-            _OntologyRecord(
-                id=row["id"],
+        payload = dict(row)
+        record_id: UUID = payload["entity_id"]
+        record = records.get(record_id)
+        if record is None:
+            name = _prepare_text(str(payload["entity_name"]))
+            alias_values = payload.get("entity_aliases") or []
+            aliases = [
+                alias
+                for alias in (_prepare_text(str(value)) for value in alias_values)
+                if alias
+            ]
+            record = _OntologyRecord(
+                id=record_id,
                 name=name,
                 aliases=aliases,
-                created_at=row["created_at"],
+                created_at=payload["entity_created_at"],
+                mentions=[],
             )
-        )
-    return records
+            records[record_id] = record
+
+        surface = payload.get("mention_surface")
+        if surface:
+            normalized_surface = payload.get("mention_normalized_surface") or _normalise_key(
+                str(surface)
+            )
+            raw_embedding = payload.get("mention_context_embedding")
+            vector: Optional[list[float]] = None
+            if isinstance(raw_embedding, (list, tuple)):
+                vector = [float(value) for value in raw_embedding]
+            record.mentions.append(
+                _MentionSignal(
+                    surface=_prepare_text(str(surface)),
+                    normalized_surface=normalized_surface,
+                    mention_type=payload.get("mention_type"),
+                    paper_id=payload.get("mention_paper_id"),
+                    section_id=payload.get("mention_section_id"),
+                    start=payload.get("mention_start"),
+                    end=payload.get("mention_end"),
+                    first_seen_year=payload.get("mention_first_seen_year"),
+                    is_acronym=bool(payload.get("mention_is_acronym")),
+                    has_digit=bool(payload.get("mention_has_digit")),
+                    is_shared=bool(payload.get("mention_is_shared")),
+                    context_embedding=vector,
+                )
+            )
+
+    return list(records.values())
 
 
 async def _compute_canonicalization(
     records: Sequence[_OntologyRecord],
     resolution_type: ConceptResolutionType,
+    adjudicator: Optional[CanonicalizationAdjudicator] = None,
 ) -> _CanonicalizationComputation:
     record_by_id: Dict[UUID, _OntologyRecord] = {record.id: record for record in records}
     texts: list[str] = []
@@ -248,12 +512,55 @@ async def _compute_canonicalization(
             uf.union(base, other)
 
     threshold = _SIMILARITY_THRESHOLDS[resolution_type]
+
+    borderline_window = _SIMILARITY_BORDERLINE_WINDOWS.get(resolution_type)
+    pending_adjudications: list[tuple[_OntologyRecord, _OntologyRecord, float]] = []
     for idx, left in enumerate(records):
         for right in records[idx + 1 :]:
             if uf.find(left.id) == uf.find(right.id):
                 continue
             score = _compute_similarity(left.name, right.name, embeddings)
+            is_borderline = False
+            if borderline_window:
+                lower, upper = borderline_window
+                if lower <= score <= upper:
+                    is_borderline = True
+            if is_borderline:
+                pending_adjudications.append((left, right, score))
+                continue
             if score >= threshold:
+                uf.union(left.id, right.id)
+
+    candidate_pairs = _generate_candidate_pairs(records)
+    for left_id, right_id in candidate_pairs:
+        if uf.find(left_id) == uf.find(right_id):
+            continue
+        left_record = record_by_id[left_id]
+        right_record = record_by_id[right_id]
+        score = _score_pair(left_record, right_record, embeddings)
+        if score >= threshold:
+            uf.union(left_id, right_id)
+
+
+    if pending_adjudications:
+        for left, right, score in pending_adjudications:
+            if uf.find(left.id) == uf.find(right.id):
+                continue
+            if adjudicator is None:
+                uf.union(left.id, right.id)
+                continue
+            request = CanonicalizationAdjudicationRequest(
+                resolution_type=resolution_type,
+                left_id=left.id,
+                left_name=left.name,
+                left_aliases=tuple(left.aliases),
+                right_id=right.id,
+                right_name=right.name,
+                right_aliases=tuple(right.aliases),
+                similarity=float(score),
+            )
+            result = await adjudicator.adjudicate(request)
+            if result.approved:
                 uf.union(left.id, right.id)
 
     groups: Dict[UUID, list[UUID]] = defaultdict(list)
