@@ -640,8 +640,15 @@ async def _compute_canonicalization(
         alias_entries = sorted(
             variant_scores.values(), key=lambda item: (-item[1], item[0])
         )
-        alias_map[canonical_id] = alias_entries
-
+        deduped_alias_entries: list[tuple[str, float]] = []
+        seen_aliases: set[str] = set()
+        for alias_text, score in alias_entries:
+            key = alias_text.casefold()
+            if not key or key in seen_aliases:
+                continue
+            seen_aliases.add(key)
+            deduped_alias_entries.append((alias_text, score))
+        alias_map[canonical_id] = deduped_alias_entries
         canonical_variants = {
             key: variant for key, (variant, _) in variant_scores.items()
         }
@@ -734,7 +741,12 @@ async def _persist_concept_resolutions(
     )
     records: list[tuple[str, UUID, str, float]] = []
     for canonical_id, alias_entries in computation.alias_map.items():
+        seen: set[str] = set()
         for alias_text, score in alias_entries:
+            key = alias_text.casefold()
+            if not key or key in seen:
+                continue
+            seen.add(key)
             records.append((resolution_type.value, canonical_id, alias_text, score))
     if records:
         await conn.executemany(
