@@ -224,7 +224,9 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
         if item is None:
             continue
         if isinstance(item, str):
-            flattened.append(item)
+            prepared = _prepare_text(item)
+            if prepared:
+                flattened.append(prepared)
             continue
         if isinstance(item, (list, tuple, set)):
             text_items: list[str] = []
@@ -236,15 +238,21 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
                     other_items.append(value)
 
             if text_items:
-                long_text_count = sum(1 for value in text_items if len(value.strip()) > 1)
-                if long_text_count <= 1:
-                    combined = _prepare_text("".join(text_items))
+                prepared_items = [_prepare_text(value) for value in text_items]
+                prepared_items = [value for value in prepared_items if value]
+                if prepared_items:
+                    long_items = [value for value in prepared_items if len(value) > 1]
+                    if len(long_items) <= 1:
+                        combined = _prepare_text("".join(prepared_items))
+                    else:
+                        combined = _prepare_text(" ".join(prepared_items))
                     if combined:
                         flattened.append(combined)
             queue.extend(other_items)
-            queue.extend(text_items)
             continue
-        flattened.append(str(item))
+        prepared = _prepare_text(str(item))
+        if prepared:
+            flattened.append(prepared)
 
     return flattened
 
@@ -527,6 +535,8 @@ async def _load_records(
                 prepared = _prepare_text(candidate)
                 if not prepared:
                     continue
+                if len(prepared) <= 1:
+                    continue
                 key = prepared.casefold()
                 if key in seen_aliases:
                     continue
@@ -721,12 +731,13 @@ async def _compute_canonicalization(
             existing_aliases: Dict[str, str] = {}
             for alias in record.aliases:
                 prepared = _prepare_text(alias)
-                if prepared:
+                if prepared and len(prepared) > 1:
                     existing_aliases.setdefault(prepared.casefold(), prepared)
 
             combined_alias_map = dict(existing_aliases)
             for variant in other_variants:
-                combined_alias_map.setdefault(variant.casefold(), variant)
+                if len(variant) > 1:
+                    combined_alias_map.setdefault(variant.casefold(), variant)
 
             combined_aliases = sorted(
                 combined_alias_map.values(), key=lambda value: (value.casefold(), value)
@@ -801,7 +812,8 @@ async def _persist_concept_resolutions(
         seen: set[str] = set()
         for alias_text, score in alias_entries:
             key = alias_text.casefold()
-            if not key or key in seen:
+
+            if not key or key in seen or len(alias_text) <= 1:
                 continue
             seen.add(key)
             records.append((resolution_type.value, canonical_id, alias_text, score))
