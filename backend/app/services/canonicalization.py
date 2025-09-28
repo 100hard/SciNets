@@ -647,7 +647,14 @@ async def _compute_canonicalization(
             other_variants = sorted(
                 variant for variant in group_variant_set if variant not in self_variants
             )
-            aliases_by_record[record_id] = other_variants
+            record = record_by_id[record_id]
+            existing_aliases = [
+                prepared
+                for prepared in (_prepare_text(alias) for alias in record.aliases)
+                if prepared
+            ]
+            combined_aliases = sorted({*other_variants, *existing_aliases})
+            aliases_by_record[record_id] = combined_aliases
             id_to_canonical[record_id] = canonical_id
 
         if len(group_ids) > 1:
