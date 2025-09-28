@@ -14,6 +14,7 @@ from uuid import UUID
 
 from app.models.ontology import (
     Claim,
+    ConceptResolutionType,
     Dataset,
     Method,
     Metric,
@@ -22,6 +23,7 @@ from app.models.ontology import (
     Task,
 )
 from app.models.section import Section
+from app.services.mentions import MentionObservation, replace_mentions_for_paper
 from app.services.ontology_store import (
     ensure_dataset,
     ensure_method,
@@ -375,7 +377,11 @@ async def run_tier1_extraction(
     artifacts = extract_signals(sections, lexicon=lexicon, table_texts=table_text_payloads)
     structural_summary = _build_structural_summary(sections, table_records)
     try:
-        summary = await _persist_artifacts(paper_id, artifacts)
+        summary = await _persist_artifacts(
+            paper_id,
+            artifacts,
+            paper_year=paper.year,
+        )
     except RuntimeError as exc:
         logger.error("[tier1] failed to persist artifacts for paper %s: %s", paper_id, exc)
         summary = _build_empty_summary(paper_id)
@@ -504,39 +510,81 @@ def _build_empty_summary(paper_id: UUID) -> dict[str, Any]:
     }
 
 
-async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[str, Any]:
+async def _persist_artifacts(
+    paper_id: UUID,
+    artifacts: Tier1Artifacts,
+    *,
+    paper_year: Optional[int] = None,
+) -> dict[str, Any]:
     method_cache: dict[str, Method] = {}
     dataset_cache: dict[str, Dataset] = {}
     metric_cache: dict[str, Metric] = {}
     task_cache: dict[str, Task] = {}
+    mention_records: list[MentionObservation] = []
 
     for key, entity in artifacts.methods.items():
-        method_cache[key] = await ensure_method(
+        method_model = await ensure_method(
             entity.name,
             aliases=entity.aliases,
             description=entity.description,
+        )
+        method_cache[key] = method_model
+        _collect_mentions_for_entity(
+            mention_records,
+            entity=entity,
+            entity_id=method_model.id,
+            resolution_type=ConceptResolutionType.METHOD,
+            paper_id=paper_id,
+            paper_year=paper_year,
         )
 
     for key, entity in artifacts.datasets.items():
-        dataset_cache[key] = await ensure_dataset(
+        dataset_model = await ensure_dataset(
             entity.name,
             aliases=entity.aliases,
             description=entity.description,
         )
+        dataset_cache[key] = dataset_model
+        _collect_mentions_for_entity(
+            mention_records,
+            entity=entity,
+            entity_id=dataset_model.id,
+            resolution_type=ConceptResolutionType.DATASET,
+            paper_id=paper_id,
+            paper_year=paper_year,
+        )
 
     for key, entity in artifacts.metrics.items():
-        metric_cache[key] = await ensure_metric(
+        metric_model = await ensure_metric(
             entity.name,
             unit=entity.unit,
             aliases=entity.aliases,
             description=entity.description,
         )
+        metric_cache[key] = metric_model
+        _collect_mentions_for_entity(
+            mention_records,
+            entity=entity,
+            entity_id=metric_model.id,
+            resolution_type=ConceptResolutionType.METRIC,
+            paper_id=paper_id,
+            paper_year=paper_year,
+        )
 
     for key, entity in artifacts.tasks.items():
-        task_cache[key] = await ensure_task(
+        task_model = await ensure_task(
             entity.name,
             aliases=entity.aliases,
             description=entity.description,
+        )
+        task_cache[key] = task_model
+        _collect_mentions_for_entity(
+            mention_records,
+            entity=entity,
+            entity_id=task_model.id,
+            resolution_type=ConceptResolutionType.TASK,
+            paper_id=paper_id,
+            paper_year=paper_year,
         )
 
     result_models: list[ResultCreate] = []
@@ -563,6 +611,14 @@ async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[
                     description=method_entity.description,
                 )
                 method_cache[method_key] = method_model
+                _collect_mentions_for_entity(
+                    mention_records,
+                    entity=method_entity,
+                    entity_id=method_model.id,
+                    resolution_type=ConceptResolutionType.METHOD,
+                    paper_id=paper_id,
+                    paper_year=paper_year,
+                )
             method_id = method_model.id
 
         if detected.dataset_name:
@@ -582,6 +638,14 @@ async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[
                     description=dataset_entity.description,
                 )
                 dataset_cache[dataset_key] = dataset_model
+                _collect_mentions_for_entity(
+                    mention_records,
+                    entity=dataset_entity,
+                    entity_id=dataset_model.id,
+                    resolution_type=ConceptResolutionType.DATASET,
+                    paper_id=paper_id,
+                    paper_year=paper_year,
+                )
             dataset_id = dataset_model.id
 
         if detected.metric_name:
@@ -603,6 +667,14 @@ async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[
                     description=metric_entity.description,
                 )
                 metric_cache[metric_key] = metric_model
+                _collect_mentions_for_entity(
+                    mention_records,
+                    entity=metric_entity,
+                    entity_id=metric_model.id,
+                    resolution_type=ConceptResolutionType.METRIC,
+                    paper_id=paper_id,
+                    paper_year=paper_year,
+                )
             metric_id = metric_model.id
 
         task_name = detected.task_name
@@ -624,6 +696,14 @@ async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[
                     description=task_entity.description,
                 )
                 task_cache[task_key] = task_model
+                _collect_mentions_for_entity(
+                    mention_records,
+                    entity=task_entity,
+                    entity_id=task_model.id,
+                    resolution_type=ConceptResolutionType.TASK,
+                    paper_id=paper_id,
+                    paper_year=paper_year,
+                )
             task_id = task_model.id
 
         value_numeric = (
@@ -654,6 +734,8 @@ async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[
     metric_by_id = {model.id: model for model in metric_cache.values()}
     task_by_id = {model.id: model for model in task_cache.values()}
 
+    await replace_mentions_for_paper(paper_id, mention_records)
+
     return {
         "paper_id": str(paper_id),
         "tiers": [1],
@@ -682,6 +764,82 @@ async def _persist_artifacts(paper_id: UUID, artifacts: Tier1Artifacts) -> dict[
             }
         },
     }
+
+
+def _safe_int(value: Any) -> Optional[int]:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_optional_uuid(value: Any) -> Optional[UUID]:
+    if not value:
+        return None
+    try:
+        return UUID(str(value))
+    except (ValueError, TypeError):
+        return None
+
+
+def _collect_mentions_for_entity(
+    mentions: list[MentionObservation],
+    *,
+    entity: DetectedEntity,
+    entity_id: UUID,
+    resolution_type: ConceptResolutionType,
+    paper_id: UUID,
+    paper_year: Optional[int],
+) -> None:
+    if not entity.evidence:
+        mentions.append(
+            MentionObservation(
+                resolution_type=resolution_type,
+                entity_id=entity_id,
+                paper_id=paper_id,
+                section_id=None,
+                surface=entity.name,
+                mention_type=resolution_type.value,
+                snippet=None,
+                start=None,
+                end=None,
+                source=None,
+                first_seen_year=paper_year,
+            )
+        )
+        return
+
+    for evidence in entity.evidence:
+        surface = evidence.get("mention_text") if isinstance(evidence, dict) else None
+        if not isinstance(surface, str) or not surface.strip():
+            surface = entity.name
+        char_range = evidence.get("char_range") if isinstance(evidence, dict) else None
+        start: Optional[int] = None
+        end: Optional[int] = None
+        if isinstance(char_range, (list, tuple)):
+            if char_range:
+                start = _safe_int(char_range[0])
+            if len(char_range) >= 2:
+                end = _safe_int(char_range[1])
+        snippet = evidence.get("snippet") if isinstance(evidence, dict) else None
+        source = evidence.get("source") if isinstance(evidence, dict) else None
+        mentions.append(
+            MentionObservation(
+                resolution_type=resolution_type,
+                entity_id=entity_id,
+                paper_id=paper_id,
+                section_id=_parse_optional_uuid(
+                    evidence.get("section_id") if isinstance(evidence, dict) else None
+                ),
+                surface=surface,
+                mention_type=resolution_type.value,
+                snippet=snippet if isinstance(snippet, str) else None,
+                start=start,
+                end=end,
+                source=source if isinstance(source, str) else None,
+                first_seen_year=paper_year,
+            )
+        )
 
 
 def _build_structural_summary(
@@ -1136,6 +1294,9 @@ def _build_evidence(
     snippet_start = max(0, start - SNIPPET_WINDOW)
     snippet_end = min(len(text), end + SNIPPET_WINDOW)
     snippet = text[snippet_start:snippet_end].strip()
+    safe_start = max(0, min(len(text), start))
+    safe_end = max(safe_start, min(len(text), end))
+    mention_text = text[safe_start:safe_end].strip()
     return {
         "section_id": str(section.id) if section else None,
         "char_range": [start, end],
@@ -1143,6 +1304,7 @@ def _build_evidence(
         "page": section.page_number if section else None,
         "section_title": section.title if section else None,
         "source": source,
+        "mention_text": mention_text,
     }
 
 
