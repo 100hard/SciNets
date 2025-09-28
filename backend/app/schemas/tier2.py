@@ -12,6 +12,7 @@ TYPE_GUESS_VALUES: tuple[str, ...] = (
     "Concept",
     "Material",
     "Organism",
+    "Model",
     "Unknown",
 )
 RELATION_GUESS_VALUES: tuple[str, ...] = (
@@ -27,7 +28,17 @@ RELATION_GUESS_VALUES: tuple[str, ...] = (
     "OTHER",
 )
 
-TypeGuess = Literal["Method", "Task", "Dataset", "Metric", "Concept", "Material", "Organism", "Unknown"]
+TypeGuess = Literal[
+    "Method",
+    "Task",
+    "Dataset",
+    "Metric",
+    "Concept",
+    "Material",
+    "Organism",
+    "Model",
+    "Unknown",
+]
 RelationGuess = Literal["IS_A", "USES", "EVALUATED_ON", "COMPARED_TO", "OUTPERFORMS", "MEASURES", "PART_OF", "CAUSES", "ASSUMES", "OTHER"]
 
 

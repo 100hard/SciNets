@@ -5,12 +5,6 @@ from dataclasses import dataclass
 from datetime import datetime
 import math
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
-
-from typing import Dict, Mapping, Optional, Protocol, Sequence, Tuple
-
-from typing import Dict, Iterable, Mapping, Optional, Sequence
-
-
 from uuid import UUID
 
 from app.core.config import settings
@@ -23,24 +17,6 @@ from app.models.ontology import (
     ConceptResolutionType,
 )
 from app.services.embeddings import EmbeddingBackend, build_embedding_backend
-
-@dataclass
-class _MentionSignal:
-    surface: str
-    normalized_surface: str
-    mention_type: Optional[str]
-    paper_id: Optional[UUID]
-    section_id: Optional[UUID]
-    start: Optional[int]
-    end: Optional[int]
-    first_seen_year: Optional[int]
-    is_acronym: bool
-    has_digit: bool
-    is_shared: bool
-    context_embedding: Optional[Sequence[float]]
-
-
-
 
 @dataclass
 class _OntologyRecord:
@@ -79,31 +55,6 @@ class _CanonicalizationComputation:
     id_to_canonical: Dict[UUID, UUID]
     decisions: list[_MergeDecision]
     examples: list[CanonicalizationExample]
-
-@dataclass(frozen=True)
-class CanonicalizationAdjudicationRequest:
-    resolution_type: ConceptResolutionType
-    left_id: UUID
-    left_name: str
-    left_aliases: Sequence[str]
-    right_id: UUID
-    right_name: str
-    right_aliases: Sequence[str]
-    similarity: float
-
-
-@dataclass(frozen=True)
-class CanonicalizationAdjudicationResult:
-    approved: bool
-    rationale: str
-
-
-class CanonicalizationAdjudicator(Protocol):
-    async def adjudicate(
-        self, request: CanonicalizationAdjudicationRequest
-    ) -> CanonicalizationAdjudicationResult:
-        ...
-
 
 
 _TYPE_CONFIG: Dict[ConceptResolutionType, _TypeConfig] = {
@@ -636,6 +587,7 @@ async def _compute_canonicalization(
                     id=member.id,
                     name=member.name,
                     score=score,
+
                 )
             )
             decisions.append(
@@ -648,6 +600,7 @@ async def _compute_canonicalization(
                     rationale=rationale,
                 )
             )
+
 
         merged_items.sort(key=lambda item: (-item.score, item.name.casefold()))
         merged_items_by_canonical[canonical_id] = merged_items
