@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 import math
-from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 from uuid import UUID
 
 from app.core.config import settings
@@ -17,6 +17,23 @@ from app.models.ontology import (
     ConceptResolutionType,
 )
 from app.services.embeddings import EmbeddingBackend, build_embedding_backend
+
+
+@dataclass
+class _MentionSignal:
+    surface: str
+    normalized_surface: str
+    mention_type: Optional[str]
+    paper_id: Optional[UUID]
+    section_id: Optional[UUID]
+    start: Optional[int]
+    end: Optional[int]
+    first_seen_year: Optional[int]
+    is_acronym: bool
+    has_digit: bool
+    is_shared: bool
+    context_embedding: Optional[Sequence[float]]
+
 
 @dataclass
 class _OntologyRecord:
@@ -31,7 +48,6 @@ class _OntologyRecord:
 class _TypeConfig:
     table: str
     fk_column: str
-
 
 
 @dataclass
@@ -65,7 +81,6 @@ class CanonicalizationAdjudicationRequest:
         )
 
 
-
 @dataclass
 class CanonicalizationAdjudicationResult:
     canonical_id: UUID
@@ -89,7 +104,6 @@ class CanonicalizationAdjudicationResult:
             rationale=decision.rationale,
             adjudicator_metadata=decision.adjudicator_metadata,
         )
-
 
 
 @dataclass
@@ -342,7 +356,7 @@ def _compute_mention_similarity(
 def _score_pair(
     left: _OntologyRecord,
     right: _OntologyRecord,
-    embeddings: Dict[str, Sequence[float]],
+    embeddings: Mapping[str, Sequence[float]],
 ) -> float:
     base = _compute_similarity(left.name, right.name, embeddings)
     mention_score = _compute_mention_similarity(left, right)
@@ -385,7 +399,6 @@ async def canonicalize(
             computation = await _compute_canonicalization(
                 records,
                 resolution_type,
-                adjudicator=adjudicator,
             )
             async with conn.transaction():
                 await _persist_concept_resolutions(conn, resolution_type, computation)
@@ -405,11 +418,10 @@ async def canonicalize(
                     before=computation.before,
                     after=computation.after,
                     merges=computation.merges,
-                    examples=computation.examples,
+                    examples=computation.examples[:_MAX_EXAMPLES],
                 )
             )
     return CanonicalizationReport(summary=summary)
-
 
 
 def _group_adjudications(
@@ -421,16 +433,42 @@ def _group_adjudications(
     return grouped
 
 
-async def _load_records(conn, config: _TypeConfig) -> list[_OntologyRecord]:
-    query = f"SELECT id, name, aliases, created_at FROM {config.table}"
-    rows = await conn.fetch(query)
-    records: list[_OntologyRecord] = []
+async def _load_records(
+    conn,
+    config: _TypeConfig,
+    resolution_type: ConceptResolutionType,
+) -> list[_OntologyRecord]:
+    query = f"""
+        SELECT
+            entity.id AS entity_id,
+            entity.name AS entity_name,
+            entity.aliases AS entity_aliases,
+            entity.created_at AS entity_created_at,
+            mention.surface AS mention_surface,
+            mention.normalized_surface AS mention_normalized_surface,
+            mention.mention_type AS mention_type,
+            mention.paper_id AS mention_paper_id,
+            mention.section_id AS mention_section_id,
+            mention.start AS mention_start,
+            mention."end" AS mention_end,
+            mention.first_seen_year AS mention_first_seen_year,
+            mention.is_acronym AS mention_is_acronym,
+            mention.has_digit AS mention_has_digit,
+            mention.is_shared AS mention_is_shared,
+            mention.context_embedding AS mention_context_embedding
+        FROM {config.table} AS entity
+        LEFT JOIN ontology_mentions AS mention
+            ON mention.entity_id = entity.id
+            AND mention.resolution_type = $1
+    """
+    rows = await conn.fetch(query, resolution_type.value)
+    records_by_id: Dict[UUID, _OntologyRecord] = {}
     for row in rows:
         payload = dict(row)
         record_id: UUID = payload["entity_id"]
-        record = records.get(record_id)
+        record = records_by_id.get(record_id)
         if record is None:
-            name = _prepare_text(str(payload["entity_name"]))
+            name = _prepare_text(str(payload.get("entity_name") or ""))
             alias_values = payload.get("entity_aliases") or []
             aliases = [
                 alias
@@ -444,21 +482,42 @@ async def _load_records(conn, config: _TypeConfig) -> list[_OntologyRecord]:
                 created_at=payload["entity_created_at"],
                 mentions=[],
             )
-            records[record_id] = record
+            records_by_id[record_id] = record
 
-        surface = payload.get("mention_surface")
-        if surface:
-            normalized_surface = payload.get("mention_normalized_surface") or _normalise_key(
-                str(surface)
+        surface_raw = payload.get("mention_surface")
+        normalized_surface = payload.get("mention_normalized_surface")
+        prepared_surface = _prepare_text(surface_raw)
+        prepared_normalized = (
+            _prepare_text(normalized_surface)
+            if normalized_surface
+            else _normalise_key(prepared_surface)
+        )
+        has_mention = any(
+            payload.get(key) is not None
+            for key in (
+                "mention_surface",
+                "mention_normalized_surface",
+                "mention_type",
+                "mention_paper_id",
+                "mention_section_id",
+                "mention_start",
+                "mention_end",
+                "mention_first_seen_year",
+                "mention_is_acronym",
+                "mention_has_digit",
+                "mention_is_shared",
+                "mention_context_embedding",
             )
+        )
+        if has_mention and (prepared_surface or prepared_normalized):
             raw_embedding = payload.get("mention_context_embedding")
             vector: Optional[list[float]] = None
             if isinstance(raw_embedding, (list, tuple)):
                 vector = [float(value) for value in raw_embedding]
             record.mentions.append(
                 _MentionSignal(
-                    surface=_prepare_text(str(surface)),
-                    normalized_surface=normalized_surface,
+                    surface=prepared_surface,
+                    normalized_surface=prepared_normalized,
                     mention_type=payload.get("mention_type"),
                     paper_id=payload.get("mention_paper_id"),
                     section_id=payload.get("mention_section_id"),
@@ -472,13 +531,12 @@ async def _load_records(conn, config: _TypeConfig) -> list[_OntologyRecord]:
                 )
             )
 
-    return list(records.values())
+    return list(records_by_id.values())
 
 
 async def _compute_canonicalization(
     records: Sequence[_OntologyRecord],
     resolution_type: ConceptResolutionType,
-    adjudicator: Optional[CanonicalizationAdjudicator] = None,
 ) -> _CanonicalizationComputation:
     record_by_id: Dict[UUID, _OntologyRecord] = {record.id: record for record in records}
     texts: list[str] = []
@@ -496,7 +554,6 @@ async def _compute_canonicalization(
     for record in records:
         uf.add(record.id)
 
-    # Exact matches via aliases / names
     alias_index: Dict[str, list[UUID]] = defaultdict(list)
     for record in records:
         for variant in [record.name, *record.aliases]:
@@ -510,166 +567,129 @@ async def _compute_canonicalization(
         for other in ids[1:]:
             uf.union(base, other)
 
+    mention_index: Dict[str, list[UUID]] = defaultdict(list)
+    for record in records:
+        for mention in record.mentions:
+            if mention.normalized_surface:
+                mention_index[mention.normalized_surface].append(record.id)
+    for ids in mention_index.values():
+        if len(ids) <= 1:
+            continue
+        base = ids[0]
+        for other in ids[1:]:
+            uf.union(base, other)
+
     threshold = _SIMILARITY_THRESHOLDS[resolution_type]
-
-    borderline_window = _SIMILARITY_BORDERLINE_WINDOWS.get(resolution_type)
-    pending_adjudications: list[tuple[_OntologyRecord, _OntologyRecord, float]] = []
-    for idx, left in enumerate(records):
-        for right in records[idx + 1 :]:
-            if uf.find(left.id) == uf.find(right.id):
-                continue
-            score = _compute_similarity(left.name, right.name, embeddings)
-            is_borderline = False
-            if borderline_window:
-                lower, upper = borderline_window
-                if lower <= score <= upper:
-                    is_borderline = True
-            if is_borderline:
-                pending_adjudications.append((left, right, score))
-                continue
-            if score >= threshold:
-                uf.union(left.id, right.id)
-
     candidate_pairs = _generate_candidate_pairs(records)
     for left_id, right_id in candidate_pairs:
         if uf.find(left_id) == uf.find(right_id):
             continue
-        left_record = record_by_id[left_id]
-        right_record = record_by_id[right_id]
-        score = _score_pair(left_record, right_record, embeddings)
+        left = record_by_id[left_id]
+        right = record_by_id[right_id]
+        score = _score_pair(left, right, embeddings)
         if score >= threshold:
             uf.union(left_id, right_id)
 
-
-    if pending_adjudications:
-        for left, right, score in pending_adjudications:
-            if uf.find(left.id) == uf.find(right.id):
-                continue
-            if adjudicator is None:
-                uf.union(left.id, right.id)
-                continue
-            request = CanonicalizationAdjudicationRequest(
-                resolution_type=resolution_type,
-                left_id=left.id,
-                left_name=left.name,
-                left_aliases=tuple(left.aliases),
-                right_id=right.id,
-                right_name=right.name,
-                right_aliases=tuple(right.aliases),
-                similarity=float(score),
-            )
-            result = await adjudicator.adjudicate(request)
-            if result.approved:
-                uf.union(left.id, right.id)
-
     groups: Dict[UUID, list[UUID]] = defaultdict(list)
     for record in records:
-        groups[uf.find(record.id)].append(record.id)
-
-    canonical_groups: Dict[UUID, list[UUID]] = {}
-    id_to_canonical: Dict[UUID, UUID] = {}
-    for member_ids in groups.values():
-        canonical_id = _select_canonical(member_ids, record_by_id)
-        canonical_groups[canonical_id] = member_ids
-        for member_id in member_ids:
-            id_to_canonical[member_id] = canonical_id
+        root = uf.find(record.id)
+        groups[root].append(record.id)
 
     alias_map: Dict[UUID, list[tuple[str, float]]] = {}
     aliases_by_record: Dict[UUID, list[str]] = {}
-    merged_items_by_canonical: Dict[UUID, list[CanonicalizationMergedItem]] = {}
+    id_to_canonical: Dict[UUID, UUID] = {}
     decisions: list[_MergeDecision] = []
-    for canonical_id, member_ids in canonical_groups.items():
+    examples: list[CanonicalizationExample] = []
+
+    for group_ids in groups.values():
+        canonical_id = _select_canonical(group_ids, record_by_id)
         canonical_record = record_by_id[canonical_id]
-        canonical_variants = _collect_normalised_variants(canonical_record)
-        collected: Dict[str, str] = {}
-        for member_id in member_ids:
-            member = record_by_id[member_id]
-            for variant in [member.name, *member.aliases]:
-                if not variant:
-                    continue
-                key = _normalise_key(variant)
-                collected.setdefault(key, variant)
+        id_to_canonical[canonical_id] = canonical_id
 
-        alias_entries: list[tuple[str, float]] = []
-        for variant in collected.values():
-            if _normalise_key(variant) == _normalise_key(canonical_record.name):
-                score = 1.0
-            else:
-                score = _compute_similarity(variant, canonical_record.name, embeddings)
-            alias_entries.append((variant, float(max(0.0, min(1.0, score)))))
-
-        alias_entries.sort(key=lambda item: (-item[1], item[0].casefold()))
-        alias_map[canonical_id] = alias_entries
-
-        alias_texts_sorted = [text for text, _ in alias_entries]
-        merged_items: list[CanonicalizationMergedItem] = []
-        for member_id in member_ids:
-            member = record_by_id[member_id]
-            filtered = [
-                alias
-                for alias in alias_texts_sorted
-                if _normalise_key(alias) != _normalise_key(member.name)
+        per_record_variants: Dict[UUID, list[str]] = {}
+        for record_id in group_ids:
+            record = record_by_id[record_id]
+            variants = [
+                _prepare_text(value)
+                for value in [record.name, *record.aliases]
+                if _prepare_text(value)
             ]
-            aliases_by_record[member_id] = filtered
+            per_record_variants[record_id] = variants
 
-            if member_id == canonical_id:
-                continue
+        group_variant_set: set[str] = set()
+        for variant_list in per_record_variants.values():
+            group_variant_set.update(variant_list)
 
-            member_variants = _collect_normalised_variants(member)
-            if canonical_variants & member_variants:
-                raw_score = 1.0
-                decision_source = "hard"
-                rationale = "Exact name or alias match triggered canonical merge."
+        variant_scores: Dict[str, float] = {}
+        for record_id, variants in per_record_variants.items():
+            if record_id == canonical_id:
+                pair_score = 1.0
             else:
-                raw_score = _compute_similarity(member.name, canonical_record.name, embeddings)
-                decision_source = "llm"
-                rationale = (
-                    "Similarity score "
-                    f"{raw_score:.2f} exceeded threshold {threshold:.2f} "
-                    f"for {resolution_type.value} canonicalization."
+                pair_score = _score_pair(
+                    canonical_record,
+                    record_by_id[record_id],
+                    embeddings,
                 )
+            for variant in variants:
+                existing = variant_scores.get(variant)
+                if existing is None or pair_score > existing:
+                    variant_scores[variant] = pair_score
 
-            score = float(max(0.0, min(1.0, raw_score)))
-            merged_items.append(
-                CanonicalizationMergedItem(
-                    id=member.id,
-                    name=member.name,
-                    score=score,
-                )
+        alias_map[canonical_id] = [
+            (variant, score)
+            for variant, score in sorted(
+                variant_scores.items(), key=lambda item: (-item[1], item[0])
             )
-            decisions.append(
-                _MergeDecision(
+        ]
+
+        for record_id, variants in per_record_variants.items():
+            self_variants = set(variants)
+            other_variants = sorted(
+                variant for variant in group_variant_set if variant not in self_variants
+            )
+            aliases_by_record[record_id] = other_variants
+            id_to_canonical[record_id] = canonical_id
+
+        if len(group_ids) > 1:
+            merged_items: list[CanonicalizationMergedItem] = []
+            for record_id in group_ids:
+                if record_id == canonical_id:
+                    continue
+                record = record_by_id[record_id]
+                score = _score_pair(canonical_record, record, embeddings)
+                decisions.append(
+                    _MergeDecision(
+                        canonical_id=canonical_id,
+                        merged_id=record_id,
+                        score=score,
+                        decision_source="llm",
+                        verdict="accepted",
+                        rationale=(
+                            "Automatic merge based on similarity score "
+                            f"{score:.2f} between '{canonical_record.name}' and '{record.name}'."
+                        ),
+                        adjudicator_metadata=None,
+                    )
+                )
+                merged_items.append(
+                    CanonicalizationMergedItem(
+                        id=record_id,
+                        name=record.name,
+                        score=score,
+                    )
+                )
+            merged_items.sort(key=lambda item: item.score, reverse=True)
+            examples.append(
+                CanonicalizationExample(
                     canonical_id=canonical_id,
-                    merged_id=member.id,
-                    score=score,
-                    decision_source=decision_source,
-                    verdict="accepted",
-                    rationale=rationale,
+                    canonical_name=canonical_record.name,
+                    merged=merged_items,
                 )
             )
-
-        merged_items.sort(key=lambda item: (-item.score, item.name.casefold()))
-        merged_items_by_canonical[canonical_id] = merged_items
 
     before = len(records)
-    after = len(canonical_groups)
-    merges = max(0, before - after)
-
-    examples: list[CanonicalizationExample] = []
-    for canonical_id, member_ids in canonical_groups.items():
-        merged_items = merged_items_by_canonical.get(canonical_id, [])
-        if len(member_ids) <= 1 or not merged_items:
-            continue
-        canonical_record = record_by_id[canonical_id]
-        examples.append(
-            CanonicalizationExample(
-                canonical_id=canonical_id,
-                canonical_name=canonical_record.name,
-                merged=merged_items,
-            )
-        )
-        if len(examples) >= _MAX_EXAMPLES:
-            break
+    after = len(groups)
+    merges = sum(len(group) - 1 for group in groups.values())
 
     return _CanonicalizationComputation(
         before=before,
@@ -813,27 +833,10 @@ def _compute_similarity(
 ) -> float:
     vector_left = embeddings.get(left)
     vector_right = embeddings.get(right)
-    cosine = _cosine_similarity(vector_left, vector_right)
+    cosine = _cosine_similarity(vector_left or [], vector_right or [])
     jaro = _jaro_winkler(left.casefold(), right.casefold())
     score = 0.6 * cosine + 0.4 * jaro
     return float(max(0.0, min(1.0, score)))
-
-
-def _cosine_similarity(
-    left: Optional[Sequence[float]],
-    right: Optional[Sequence[float]],
-) -> float:
-    if left is None or right is None:
-        return 0.0
-    if len(left) != len(right):
-        return 0.0
-    dot = sum(a * b for a, b in zip(left, right))
-    norm_left = math.sqrt(sum(a * a for a in left))
-    norm_right = math.sqrt(sum(b * b for b in right))
-    if norm_left == 0 or norm_right == 0:
-        return 0.0
-    value = dot / (norm_left * norm_right)
-    return float(max(-1.0, min(1.0, value)))
 
 
 def _jaro_winkler(left: str, right: str) -> float:
