@@ -5,7 +5,8 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
 import math
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, cast
+import re
 from uuid import UUID
 
 from app.core.config import settings
@@ -139,10 +140,10 @@ _TYPE_CONFIG: Dict[ConceptResolutionType, _TypeConfig] = {
 
 
 _SIMILARITY_THRESHOLDS: Dict[ConceptResolutionType, float] = {
-    ConceptResolutionType.METHOD: 0.85,
-    ConceptResolutionType.DATASET: 0.82,
-    ConceptResolutionType.METRIC: 0.90,
-    ConceptResolutionType.TASK: 0.80,
+    ConceptResolutionType.METHOD: 0.70,
+    ConceptResolutionType.DATASET: 0.65,
+    ConceptResolutionType.METRIC: 0.75,
+    ConceptResolutionType.TASK: 0.65,
 }
 
 
@@ -155,6 +156,23 @@ _SIMILARITY_BORDERLINE_WINDOWS: Dict[ConceptResolutionType, Tuple[float, float]]
 
 
 _MAX_EXAMPLES = 3
+
+# Simple stop/noise phrases that should not become aliases or names
+_NOISE_ALIASES: set[str] = {
+    "in table",
+    "table",
+    "at less than 1/",
+    "less than 1/",
+    "big model",
+    "big transformer model",
+}
+
+# Regex to detect WMT year + language pair in flexible forms
+_WMT_PATTERN = re.compile(
+    r"\bWMT\s*([0-9]{4})\b.*?(english|en)[\s\-→–—]*to[\s\-→–—]*?(german|de|french|fr)"
+    r"|\bWMT\s*([0-9]{4})\b.*?(german|de|french|fr)[\s\-→–—]*to[\s\-→–—]*?(english|en)",
+    re.IGNORECASE,
+)
 
 
 class _UnionFind:
@@ -196,7 +214,30 @@ _embedding_backend: Optional[EmbeddingBackend] = None
 def _prepare_text(value: Optional[str]) -> str:
     if not value:
         return ""
-    return " ".join(value.strip().split())
+    text = " ".join(value.strip().split())
+    # Normalize unicode arrows/dashes and common WMT phrasing
+    text = (
+        text.replace("→", "-")
+        .replace("↔", "-")
+        .replace("–", "-")
+        .replace("—", "-")
+        .replace("En–", "En-")
+        .replace("En—", "En-")
+        .replace("De–", "De-")
+        .replace("De—", "De-")
+        .replace("English–", "English-")
+        .replace("English—", "English-")
+    )
+    # Unify WMT year tokens
+    text = text.replace("WMT14", "WMT 2014").replace("WMT 14", "WMT 2014")
+    # Remove generic suffixes
+    lower = text.lower()
+    for noise in (" translation task", " task"):
+        if lower.endswith(noise):
+            text = text[: -len(noise)]
+            break
+    # Collapse multiple spaces again
+    return " ".join(text.split())
 
 
 def _extract_alias_values(raw_aliases: Any) -> list[str]:
@@ -226,6 +267,9 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
         if isinstance(item, str):
             prepared = _prepare_text(item)
             if prepared:
+                # Skip noise/boilerplate alias fragments
+                if prepared.casefold() in _NOISE_ALIASES:
+                    continue
                 flattened.append(prepared)
             continue
         if isinstance(item, dict):
@@ -255,6 +299,8 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
             continue
         prepared = _prepare_text(str(item))
         if prepared:
+            if prepared.casefold() in _NOISE_ALIASES:
+                continue
             flattened.append(prepared)
 
     return flattened
@@ -308,7 +354,8 @@ def _generate_candidate_pairs(records: Sequence[_OntologyRecord]) -> set[tuple[U
             for right in unique[index + 1 :]:
                 ordered = tuple(sorted((left, right), key=str))
                 if ordered[0] != ordered[1]:
-                    pairs.add(ordered)
+                    ordered_pair: tuple[UUID, UUID] = (ordered[0], ordered[1])
+                    pairs.add(ordered_pair)
 
     alias_blocks: Dict[str, list[UUID]] = defaultdict(list)
     for record in records:
@@ -342,7 +389,8 @@ def _generate_candidate_pairs(records: Sequence[_OntologyRecord]) -> set[tuple[U
             for right in records[index + 1 :]:
                 ordered = tuple(sorted((left.id, right.id), key=str))
                 if ordered[0] != ordered[1]:
-                    pairs.add(ordered)
+                    ordered_pair: tuple[UUID, UUID] = (ordered[0], ordered[1])
+                    pairs.add(ordered_pair)
 
     return pairs
 
@@ -436,7 +484,15 @@ def _score_pair(
 ) -> float:
     base = _compute_similarity(left.name, right.name, embeddings)
     mention_score = _compute_mention_similarity(left, right)
-    return max(base, mention_score)
+    score = max(base, mention_score)
+    # Heuristic boost: WMT datasets/tasks with same year and language pair
+    left_text = f"{left.name} {' '.join(left.aliases)}".lower()
+    right_text = f"{right.name} {' '.join(right.aliases)}".lower()
+    left_match = _WMT_PATTERN.search(left_text)
+    right_match = _WMT_PATTERN.search(right_text)
+    if left_match and right_match:
+        score = max(score, 0.85)
+    return score
 
 
 def get_embedding_backend() -> EmbeddingBackend:
@@ -661,19 +717,41 @@ async def _compute_canonicalization(
 
     threshold = _SIMILARITY_THRESHOLDS[resolution_type]
     candidate_pairs = _generate_candidate_pairs(records)
+    
+    print(f"[DEBUG] Processing {len(candidate_pairs)} candidate pairs for {resolution_type}")
+    print(f"[DEBUG] Similarity threshold: {threshold}")
+    print(f"[DEBUG] Total records: {len(records)}")
+    
+    merges_count = 0
     for left_id, right_id in candidate_pairs:
         if uf.find(left_id) == uf.find(right_id):
             continue
         left = record_by_id[left_id]
         right = record_by_id[right_id]
         score = _score_pair(left, right, embeddings)
+        
+        # Debug similar concepts
+        if left.name.lower() == right.name.lower() or any(alias.lower() == right.name.lower() for alias in left.aliases) or any(alias.lower() == left.name.lower() for alias in right.aliases):
+            print(f"[DEBUG] EXACT MATCH: '{left.name}' vs '{right.name}': score={score:.3f}")
+        
         if score >= threshold:
+            print(f"[DEBUG] MERGING: '{left.name}' + '{right.name}' (score={score:.3f})")
             uf.union(left_id, right_id)
+            merges_count += 1
+        elif score > 0.5:  # Show high-scoring pairs that didn't merge
+            print(f"[DEBUG] HIGH SCORE (no merge): '{left.name}' vs '{right.name}': score={score:.3f}")
+    
+    print(f"[DEBUG] Total merges: {merges_count}")
 
     groups: Dict[UUID, list[UUID]] = defaultdict(list)
     for record in records:
         root = uf.find(record.id)
         groups[root].append(record.id)
+    
+    print(f"[DEBUG] Final groups: {len(groups)} (started with {len(records)})")
+    for group_id, group_members in groups.items():
+        if len(group_members) > 1:
+            print(f"[DEBUG] Group with {len(group_members)} members: {[record_by_id[member_id].name for member_id in group_members]}")
 
     alias_map: Dict[UUID, list[tuple[str, float]]] = {}
     aliases_by_record: Dict[UUID, list[str]] = {}
@@ -829,13 +907,19 @@ async def _persist_concept_resolutions(
                 seen.add(key)
                 records.append((resolution_type.value, canonical_id, prepared, score))
     if records:
-        await conn.executemany(
-            """
-            INSERT INTO concept_resolutions (resolution_type, canonical_id, alias_text, score)
-            VALUES ($1, $2, $3, $4)
-            """,
-            records,
-        )
+        try:
+            await conn.executemany(
+                """
+                INSERT INTO concept_resolutions (resolution_type, canonical_id, alias_text, score)
+                VALUES ($1, $2, $3, $4)
+                """,
+                records,
+            )
+        except Exception as exc:
+            print(f"[DEBUG] _persist_concept_resolutions failed")
+            print(f"[DEBUG] Error: {exc}")
+            print(f"[DEBUG] First record: {records[0] if records else 'None'}")
+            raise
 
 
 async def _update_aliases(
@@ -843,16 +927,32 @@ async def _update_aliases(
     config: _TypeConfig,
     computation: _CanonicalizationComputation,
 ) -> None:
-    updates = [
-        (record_id, computation.aliases_by_record.get(record_id, []))
-        for record_id in computation.id_to_canonical.keys()
-    ]
+    updates = []
+    for record_id in computation.id_to_canonical.keys():
+        aliases_list = computation.aliases_by_record.get(record_id, [])
+        print(f"[DEBUG] Processing aliases for record {record_id}: {aliases_list}")
+        print(f"[DEBUG] Type of aliases_list: {type(aliases_list)}")
+        if aliases_list:
+            print(f"[DEBUG] Type of first alias: {type(aliases_list[0])}")
+        try:
+            json_str = json.dumps(aliases_list)
+            print(f"[DEBUG] JSON conversion successful: {json_str[:100]}...")
+            updates.append((record_id, json_str))
+        except Exception as exc:
+            print(f"[DEBUG] JSON conversion failed for {aliases_list}: {exc}")
+            raise
     if not updates:
         return
-    await conn.executemany(
-        f"UPDATE {config.table} SET aliases = $2, updated_at = NOW() WHERE id = $1",
-        updates,
-    )
+    try:
+        await conn.executemany(
+            f"UPDATE {config.table} SET aliases = $2::jsonb, updated_at = NOW() WHERE id = $1",
+            updates,
+        )
+    except Exception as exc:
+        print(f"[DEBUG] _update_aliases failed for table {config.table}")
+        print(f"[DEBUG] Error: {exc}")
+        print(f"[DEBUG] First update: {updates[0] if updates else 'None'}")
+        raise
 
 
 async def _update_results(
@@ -867,10 +967,16 @@ async def _update_results(
     ]
     if not updates:
         return
-    await conn.executemany(
-        f"UPDATE results SET {config.fk_column} = $2 WHERE {config.fk_column} = $1",
-        updates,
-    )
+    try:
+        await conn.executemany(
+            f"UPDATE results SET {config.fk_column} = $2 WHERE {config.fk_column} = $1",
+            updates,
+        )
+    except Exception as exc:
+        print(f"[DEBUG] _update_results failed for column {config.fk_column}")
+        print(f"[DEBUG] Error: {exc}")
+        print(f"[DEBUG] First update: {updates[0] if updates else 'None'}")
+        raise
 
 
 async def _record_merge_audit(
@@ -908,23 +1014,29 @@ async def _record_merge_audit(
         )
         for decision in decisions
     ]
-    await conn.executemany(
-        """
-        INSERT INTO canonicalization_merge_decisions (
-            resolution_type,
-            left_id,
-            right_id,
-            score,
-            decision_source,
-            verdict,
-            rationale,
-            mapping_version,
-            adjudicator_metadata
+    try:
+        await conn.executemany(
+            """
+            INSERT INTO canonicalization_merge_decisions (
+                resolution_type,
+                left_id,
+                right_id,
+                score,
+                decision_source,
+                verdict,
+                rationale,
+                mapping_version,
+                adjudicator_metadata
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            """,
+            records,
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        """,
-        records,
-    )
+    except Exception as exc:
+        print(f"[DEBUG] _record_merge_audit failed")
+        print(f"[DEBUG] Error: {exc}")
+        print(f"[DEBUG] First record: {records[0] if records else 'None'}")
+        raise
 
 
 async def _embed_texts(texts: Sequence[str]) -> Dict[str, Sequence[float]]:
