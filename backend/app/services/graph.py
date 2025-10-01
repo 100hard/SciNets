@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections import defaultdict
 from itertools import combinations
 from dataclasses import dataclass
@@ -224,6 +225,15 @@ def _safe_label(name: Any, fallback_prefix: str, entity_id: UUID) -> str:
     return f"{fallback_prefix} {entity_id}"
 
 
+def _normalize_graph_label(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    return " ".join(text.split()).lower()
+
+
 def _clean_metadata(payload: Mapping[str, Any]) -> Dict[str, Any]:
     return {key: value for key, value in payload.items() if value not in (None, "")}
 
@@ -275,155 +285,255 @@ async def _fetch_concept_fallback_rows(
         *params,
     )
 
-    grouped: dict[UUID, dict[str, Any]] = {}
+    papers: dict[UUID, dict[str, Any]] = {}
     for record in records:
         concept_type = (record.get("type") or "").lower()
         if concept_type not in _CONCEPT_TYPES:
             continue
         paper_id: UUID = record["paper_id"]
-        bucket = grouped.setdefault(
+        paper_payload = papers.setdefault(
             paper_id,
             {
+                "paper_id": paper_id,
                 "paper_title": record.get("paper_title"),
-                "method": [],
-                "dataset": [],
-                "metric": [],
-                "task": [],
+                "concepts": {concept: [] for concept in _CONCEPT_TYPES},
+                "lookup": {concept: {} for concept in _CONCEPT_TYPES},
             },
         )
-        bucket[concept_type].append(
-            {
-                "id": record["id"],
-                "name": str(record.get("name") or "").strip(),
-                "type": concept_type,
-                "metadata": {"concept": True},
-            }
-        )
+        if not paper_payload.get("paper_title"):
+            paper_payload["paper_title"] = record.get("paper_title")
+        concept_entry = {
+            "id": record["id"],
+            "name": str(record.get("name") or "").strip(),
+            "type": concept_type,
+            "metadata": {"concept": True},
+        }
+        paper_payload["concepts"][concept_type].append(concept_entry)
+        normalized = _normalize_graph_label(concept_entry["name"])
+        if normalized and normalized not in paper_payload["lookup"][concept_type]:
+            paper_payload["lookup"][concept_type][normalized] = concept_entry
 
-    fallback_rows: list[Mapping[str, Any]] = []
-    for paper_id, payload in grouped.items():
-        methods = payload.get("method", [])[:4]
-        if not methods:
+    if paper_ids:
+        target_papers = list(dict.fromkeys(paper_ids))
+    else:
+        target_papers = list(papers.keys())
+
+    if not target_papers:
+        return []
+
+    triple_rows = await conn.fetch(
+        """
+        SELECT
+            tc.paper_id,
+            p.title AS paper_title,
+            tc.graph_metadata,
+            tc.triple_conf,
+            tc.evidence_text,
+            tc.section_id,
+            tc.created_at
+        FROM triple_candidates tc
+        JOIN papers p ON p.id = tc.paper_id
+        WHERE tc.paper_id = ANY($1::uuid[])
+        ORDER BY p.created_at DESC, tc.created_at DESC
+        LIMIT 4000
+        """,
+        target_papers,
+    )
+
+    def _ensure_paper_payload(paper_id: UUID, paper_title: Optional[str]) -> dict[str, Any]:
+        payload = papers.setdefault(
+            paper_id,
+            {
+                "paper_id": paper_id,
+                "paper_title": paper_title,
+                "concepts": {concept: [] for concept in _CONCEPT_TYPES},
+                "lookup": {concept: {} for concept in _CONCEPT_TYPES},
+            },
+        )
+        if paper_title and not payload.get("paper_title"):
+            payload["paper_title"] = paper_title
+        return payload
+
+    def _resolve_entity(
+        paper_payload: dict[str, Any],
+        entity_type: str,
+        entity_payload: Mapping[str, Any],
+        *,
+        default_source: Optional[str] = None,
+    ) -> Optional[tuple[UUID, str, Dict[str, Any]]]:
+        text = entity_payload.get("text") or entity_payload.get("normalized")
+        normalized = entity_payload.get("normalized") or _normalize_graph_label(text)
+        if not normalized:
+            return None
+
+        lookup = paper_payload["lookup"][entity_type]
+        existing = lookup.get(normalized)
+        if existing:
+            metadata = dict(existing.get("metadata") or {})
+            label = existing.get("name") or str(text)
+            return existing["id"], label, metadata
+
+        label = str(entity_payload.get("text") or entity_payload.get("normalized") or "").strip()
+        if not label:
+            return None
+
+        paper_id = paper_payload["paper_id"]
+        entity_id = uuid5(_FALLBACK_NAMESPACE, f"{paper_id}:{entity_type}:{normalized}")
+        metadata = {
+            "fallback": True,
+            "source": entity_payload.get("source") or default_source or "tier2_triple",
+            "normalized": normalized,
+        }
+        entry = {
+            "id": entity_id,
+            "name": label,
+            "type": entity_type,
+            "metadata": metadata,
+        }
+        paper_payload["concepts"][entity_type].append(entry)
+        lookup[normalized] = entry
+        return entity_id, label, dict(metadata)
+
+    combined_rows: dict[
+        tuple[UUID, UUID, Optional[UUID], Optional[UUID], Optional[UUID]],
+        dict[str, Any],
+    ] = {}
+
+    for row in triple_rows:
+        paper_id: UUID = row["paper_id"]
+        paper_payload = _ensure_paper_payload(paper_id, row.get("paper_title"))
+        metadata_raw = row.get("graph_metadata")
+        metadata: dict[str, Any]
+        if isinstance(metadata_raw, Mapping):
+            metadata = dict(metadata_raw)
+        elif isinstance(metadata_raw, str):
+            try:
+                metadata = json.loads(metadata_raw)
+            except json.JSONDecodeError:
+                metadata = {}
+        else:
+            metadata = {}
+
+        pairs = metadata.get("pairs") if isinstance(metadata.get("pairs"), list) else []
+        entities = metadata.get("entities") if isinstance(metadata.get("entities"), Mapping) else {}
+        method_payload = entities.get("method") if isinstance(entities, Mapping) else None
+        if not isinstance(method_payload, Mapping):
             continue
 
-        datasets = payload.get("dataset", [])[:3]
-        metrics = payload.get("metric", [])[:3]
-        tasks = payload.get("task", [])[:3]
-        paper_title = payload.get("paper_title")
+        method_resolved = _resolve_entity(paper_payload, "method", method_payload)
+        if method_resolved is None:
+            continue
+        method_id, method_name, method_metadata = method_resolved
 
-        placeholder_dataset: Optional[Mapping[str, Any]] = None
-        placeholder_metric: Optional[Mapping[str, Any]] = None
+        for pair in pairs:
+            if not isinstance(pair, Mapping):
+                continue
+            target_payload = pair.get("target")
+            if not isinstance(target_payload, Mapping):
+                continue
+            target_type = (target_payload.get("type") or "").lower()
+            if target_type not in {"dataset", "metric", "task"}:
+                continue
 
-        if not datasets:
-            placeholder_dataset = {
-                "id": uuid5(_FALLBACK_NAMESPACE, f"{paper_id}:dataset"),
-                "name": "Dataset (unspecified)",
-                "type": "dataset",
-                "metadata": {"placeholder": True},
-            }
-            datasets = [placeholder_dataset]
-
-        if not metrics:
-            placeholder_metric = {
-                "id": uuid5(_FALLBACK_NAMESPACE, f"{paper_id}:metric"),
-                "name": "Metric (unspecified)",
-                "type": "metric",
-                "metadata": {"placeholder": True},
-            }
-            metrics = [placeholder_metric]
-
-        def _append_row(
-            *,
-            method: Mapping[str, Any],
-            dataset: Optional[Mapping[str, Any]],
-            metric: Optional[Mapping[str, Any]],
-            task: Optional[Mapping[str, Any]],
-        ) -> None:
-            fallback_rows.append(
-                {
-                    "result_id": uuid4(),
-                    "paper_id": paper_id,
-                    "paper_title": paper_title,
-                    "confidence": 0.8,
-                    "evidence": [],
-                    "method_id": method["id"],
-                    "method_name": method.get("name"),
-                    "method_aliases": [],
-                    "method_description": None,
-                    "method_metadata": method.get("metadata"),
-                    "dataset_id": dataset.get("id") if dataset else None,
-                    "dataset_name": dataset.get("name") if dataset else None,
-                    "dataset_aliases": [],
-                    "dataset_description": None,
-                    "dataset_metadata": dataset.get("metadata") if dataset else None,
-                    "metric_id": metric.get("id") if metric else None,
-                    "metric_name": metric.get("name") if metric else None,
-                    "metric_aliases": [],
-                    "metric_description": None,
-                    "metric_unit": None,
-                    "metric_metadata": metric.get("metadata") if metric else None,
-                    "task_id": task.get("id") if task else None,
-                    "task_name": task.get("name") if task else None,
-                    "task_aliases": [],
-                    "task_description": None,
-                    "task_metadata": task.get("metadata") if task else None,
-                }
+            resolved_target = _resolve_entity(
+                paper_payload,
+                target_type,
+                target_payload,
+                default_source=pair.get("source"),
             )
+            if resolved_target is None:
+                continue
 
-        for method in methods:
-            if datasets or metrics:
-                dataset_candidates = datasets or [None]
-                metric_candidates = metrics or [None]
-                for dataset in dataset_candidates:
-                    for metric in metric_candidates:
-                        if not dataset and not metric:
-                            continue
-                        _append_row(method=method, dataset=dataset, metric=metric, task=None)
+            target_id, target_name, target_metadata = resolved_target
+            dataset_id: Optional[UUID] = None
+            dataset_name: Optional[str] = None
+            dataset_metadata: Optional[Dict[str, Any]] = None
+            metric_id: Optional[UUID] = None
+            metric_name: Optional[str] = None
+            metric_metadata: Optional[Dict[str, Any]] = None
+            task_id: Optional[UUID] = None
+            task_name: Optional[str] = None
+            task_metadata: Optional[Dict[str, Any]] = None
 
-            if tasks:
-                for task in tasks:
-                    _append_row(method=method, dataset=None, metric=None, task=task)
+            if target_type == "dataset":
+                dataset_id, dataset_name, dataset_metadata = target_id, target_name, target_metadata
+            elif target_type == "metric":
+                metric_id, metric_name, metric_metadata = target_id, target_name, target_metadata
+            elif target_type == "task":
+                task_id, task_name, task_metadata = target_id, target_name, target_metadata
 
-        # Avoid creating placeholder-only rows when there was a single method and no
-        # additional context available.
-        if (
-            placeholder_dataset
-            and placeholder_metric
-            and not tasks
-            and len(methods) == 1
-        ):
-            # For lone methods fall back to a single generic task edge so the
-            # node appears in the graph.
-            fallback_rows.append(
-                {
-                    "result_id": uuid4(),
-                    "paper_id": paper_id,
-                    "paper_title": paper_title,
-                    "confidence": 0.8,
-                    "evidence": [],
-                    "method_id": methods[0]["id"],
-                    "method_name": methods[0].get("name"),
-                    "method_aliases": [],
-                    "method_description": None,
-                    "method_metadata": methods[0].get("metadata"),
-                    "dataset_id": None,
-                    "dataset_name": None,
-                    "dataset_aliases": [],
-                    "dataset_description": None,
-                    "metric_id": None,
-                    "metric_name": None,
-                    "metric_aliases": [],
-                    "metric_description": None,
-                    "metric_unit": None,
-                    "task_id": uuid5(_FALLBACK_NAMESPACE, f"{paper_id}:task"),
-                    "task_name": "Task (unspecified)",
-                    "task_aliases": [],
-                    "task_description": None,
-                    "task_metadata": {"placeholder": True},
-                }
-            )
+            evidence_source = pair.get("source") or "tier2_triple"
+            snippet = pair.get("evidence") or row.get("evidence_text")
+            sentence_indices = pair.get("sentence_indices")
+            if not isinstance(sentence_indices, list):
+                sentence_indices = None
+            evidence_payload: list[dict[str, Any]] = []
+            evidence_entry = {
+                "snippet": snippet,
+                "section_id": pair.get("section_id") or row.get("section_id"),
+                "sentence_indices": sentence_indices,
+                "source": evidence_source,
+            }
+            evidence_entry = {
+                key: value
+                for key, value in evidence_entry.items()
+                if value not in (None, "", [])
+            }
+            if evidence_entry:
+                evidence_payload.append(evidence_entry)
 
-    return fallback_rows
+            confidence_raw = pair.get("confidence")
+            if confidence_raw is None:
+                confidence_raw = row.get("triple_conf")
+            confidence = _confidence_value(confidence_raw)
+
+            key = (paper_id, method_id, dataset_id, metric_id, task_id)
+            existing = combined_rows.get(key)
+            if existing:
+                if evidence_payload:
+                    existing.setdefault("evidence", []).extend(evidence_payload)
+                existing_conf = existing.get("confidence")
+                if confidence is not None and (existing_conf is None or confidence > existing_conf):
+                    existing["confidence"] = confidence
+                continue
+
+            paper_title = paper_payload.get("paper_title") or row.get("paper_title")
+
+            def _meta_or_none(meta: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+                if not meta:
+                    return None
+                return dict(meta)
+
+            combined_rows[key] = {
+                "result_id": uuid4(),
+                "paper_id": paper_id,
+                "paper_title": paper_title,
+                "confidence": confidence,
+                "evidence": evidence_payload,
+                "method_id": method_id,
+                "method_name": method_name,
+                "method_aliases": [],
+                "method_description": None,
+                "method_metadata": _meta_or_none(method_metadata),
+                "dataset_id": dataset_id,
+                "dataset_name": dataset_name,
+                "dataset_aliases": [],
+                "dataset_description": None,
+                "dataset_metadata": _meta_or_none(dataset_metadata),
+                "metric_id": metric_id,
+                "metric_name": metric_name,
+                "metric_aliases": [],
+                "metric_description": None,
+                "metric_unit": None,
+                "metric_metadata": _meta_or_none(metric_metadata),
+                "task_id": task_id,
+                "task_name": task_name,
+                "task_aliases": [],
+                "task_description": None,
+                "task_metadata": _meta_or_none(task_metadata),
+            }
+
+    return list(combined_rows.values())
 
 
 async def _resolve_entity(conn: Any, entity_id: UUID) ->Optional[NodeDetail]:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 
@@ -21,3 +21,4 @@ class TripleCandidateRecord:
     triple_conf: float
     schema_match_score: float
     tier: str
+    graph_metadata: Dict[str, Any] = field(default_factory=dict)
