@@ -24,6 +24,32 @@ METHOD_D = UUID("44444444-4444-4444-4444-444444444444")
 METHOD_E = UUID("55555555-5555-5555-5555-555555555555")
 
 
+def test_extract_alias_values_filters_noise_phrases() -> None:
+    raw_aliases = [
+        "WMT 2014 English-German",
+        "one machine",
+        "these results in Table 3",
+        "recurrent or convolutional layers",
+    ]
+
+    cleaned = canonicalization_service._extract_alias_values(raw_aliases)
+
+    assert "WMT 2014 English-German" in cleaned
+    assert "one machine" not in cleaned
+    assert "these results in Table 3" not in cleaned
+    assert "recurrent or convolutional layers" not in cleaned
+
+
+def test_extract_alias_values_retains_valid_lowercase_aliases() -> None:
+    raw_aliases = ["language modeling", "Machine Translation", "this appendix"]
+
+    cleaned = canonicalization_service._extract_alias_values(raw_aliases)
+
+    assert "language modeling" in cleaned
+    assert "Machine Translation" in cleaned
+    assert "this appendix" not in cleaned
+
+
 class FakeEmbeddingBackend:
     async def embed(self, texts: Sequence[str], batch_size: int) -> list[list[float]]:  # noqa: ARG002
         vectors: list[list[float]] = []

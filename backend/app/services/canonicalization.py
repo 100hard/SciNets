@@ -167,6 +167,58 @@ _NOISE_ALIASES: set[str] = {
     "big transformer model",
 }
 
+_NOISE_PREFIXES: tuple[str, ...] = (
+    "see ",
+    "our ",
+    "their ",
+    "its ",
+    "this ",
+    "that ",
+    "these ",
+    "those ",
+)
+
+_NUMERAL_WORDS: set[str] = {
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+}
+
+
+def _is_noise_alias(value: str) -> bool:
+    text = value.strip()
+    if not text:
+        return True
+    lower = text.lower()
+    if lower in _NOISE_ALIASES:
+        return True
+    if lower.startswith(_NOISE_PREFIXES):
+        return True
+    if "appendix" in lower:
+        return True
+    if re.search(r"\btable\s+\d+", lower):
+        return True
+    if re.search(r"\bfigure\s+\d+", lower):
+        return True
+    if "results" in lower and lower.startswith(("these ", "those ", "our ", "the ")):
+        return True
+    if " or " in lower:
+        return True
+    words = [word for word in re.split(r"\s+", lower) if word]
+    if not words:
+        return True
+    if len(words) <= 3 and text == lower and all(word.isalpha() for word in words):
+        if words[0] in _NUMERAL_WORDS:
+            return True
+    return False
+
 # Regex to detect WMT year + language pair in flexible forms
 _WMT_PATTERN = re.compile(
     r"\bWMT\s*([0-9]{4})\b.*?(english|en)[\s\-→–—]*to[\s\-→–—]*?(german|de|french|fr)"
@@ -266,10 +318,7 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
             continue
         if isinstance(item, str):
             prepared = _prepare_text(item)
-            if prepared:
-                # Skip noise/boilerplate alias fragments
-                if prepared.casefold() in _NOISE_ALIASES:
-                    continue
+            if prepared and not _is_noise_alias(prepared):
                 flattened.append(prepared)
             continue
         if isinstance(item, dict):
@@ -286,21 +335,21 @@ def _extract_alias_values(raw_aliases: Any) -> list[str]:
 
             if text_items:
                 prepared_items = [_prepare_text(value) for value in text_items]
-                prepared_items = [value for value in prepared_items if value]
+                prepared_items = [
+                    value for value in prepared_items if value and not _is_noise_alias(value)
+                ]
                 if prepared_items:
 
                     if all(len(value) <= 1 for value in prepared_items):
                         combined = _prepare_text("".join(prepared_items))
-                        if combined:
+                        if combined and not _is_noise_alias(combined):
                             flattened.append(combined)
                     else:
                         flattened.extend(prepared_items)
             queue.extend(other_items)
             continue
         prepared = _prepare_text(str(item))
-        if prepared:
-            if prepared.casefold() in _NOISE_ALIASES:
-                continue
+        if prepared and not _is_noise_alias(prepared):
             flattened.append(prepared)
 
     return flattened
