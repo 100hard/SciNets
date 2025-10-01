@@ -125,6 +125,7 @@ class FakeGraphConnection:
                 "evidence": [{"snippet": "Beta comparison."}],
             },
         ]
+        self.method_relations: list[dict[str, Any]] = []
 
     # AsyncPG compatibility helpers -------------------------------------------------
     async def fetch(self, query: str, *params: Any) -> list[Mapping[str, Any]]:
@@ -135,6 +136,17 @@ class FakeGraphConnection:
                 paper_ids = params[0]
             rows = [res for res in self.results if paper_ids is None or res["paper_id"] in paper_ids]
             return [self._build_result_row(res) for res in rows]
+
+        if normalized.startswith("SELECT mr.id AS result_id"):
+            paper_ids: Sequence[UUID] | None = None
+            if "WHERE mr.paper_id = ANY($1::uuid[])" in normalized:
+                paper_ids = params[0]
+            rows = [
+                rel
+                for rel in self.method_relations
+                if paper_ids is None or rel["paper_id"] in paper_ids
+            ]
+            return [self._build_relation_row(rel) for rel in rows]
 
         if normalized.startswith("SELECT DISTINCT paper_id FROM results WHERE"):
             if "method_id" in normalized:
@@ -211,6 +223,36 @@ class FakeGraphConnection:
             "metric_aliases": metric.get("aliases") if metric else None,
             "metric_description": metric.get("description") if metric else None,
             "metric_unit": metric.get("unit") if metric else None,
+            "task_name": task.get("name") if task else None,
+            "task_aliases": task.get("aliases") if task else None,
+            "task_description": task.get("description") if task else None,
+        }
+
+    def _build_relation_row(self, relation: Mapping[str, Any]) -> dict[str, Any]:
+        paper = self.papers[relation["paper_id"]]
+        method = self.methods.get(relation.get("method_id"))
+        dataset = self.datasets.get(relation.get("dataset_id"))
+        task = self.tasks.get(relation.get("task_id"))
+        return {
+            "result_id": relation["id"],
+            "paper_id": relation["paper_id"],
+            "method_id": relation.get("method_id"),
+            "dataset_id": relation.get("dataset_id"),
+            "metric_id": None,
+            "task_id": relation.get("task_id"),
+            "confidence": relation.get("confidence"),
+            "evidence": relation.get("evidence"),
+            "paper_title": paper["title"],
+            "method_name": method.get("name") if method else None,
+            "method_aliases": method.get("aliases") if method else None,
+            "method_description": method.get("description") if method else None,
+            "dataset_name": dataset.get("name") if dataset else None,
+            "dataset_aliases": dataset.get("aliases") if dataset else None,
+            "dataset_description": dataset.get("description") if dataset else None,
+            "metric_name": None,
+            "metric_aliases": None,
+            "metric_description": None,
+            "metric_unit": None,
             "task_name": task.get("name") if task else None,
             "task_aliases": task.get("aliases") if task else None,
             "task_description": task.get("description") if task else None,
@@ -315,4 +357,42 @@ async def _run_get_graph_neighborhood_missing(monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(GraphEntityNotFoundError):
         await get_graph_neighborhood(missing_id, limit=5)
+
+
+@pytest.mark.asyncio
+async def test_get_graph_overview_uses_method_relations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conn = FakeGraphConnection()
+    conn.results = []
+    relation_id = uuid4()
+    conn.method_relations = [
+        {
+            "id": relation_id,
+            "paper_id": PAPER_A,
+            "method_id": METHOD_ALPHA,
+            "dataset_id": DATASET_X,
+            "task_id": None,
+            "confidence": 0.74,
+            "evidence": [{"snippet": "QualNet is evaluated on GLUE."}],
+        }
+    ]
+
+    pool = FakePool(conn)
+    monkeypatch.setattr("app.services.graph.get_pool", lambda: pool)
+
+    response = await get_graph_overview(limit=10, min_conf=0.6)
+
+    assert response.nodes, "Nodes should be produced from qualitative relations"
+    assert response.edges, "Edges should be produced from qualitative relations"
+    snippets = []
+    for edge in response.edges:
+        assert edge.data.metadata, "Edge metadata should include evidence"
+        evidence = edge.data.metadata.get("evidence", [])
+        snippets.extend(item.get("snippet") for item in evidence if item)
+    assert any("GLUE" in (snippet or "") for snippet in snippets)
+    assert all(
+        not node.data.metadata or not node.data.metadata.get("placeholder")
+        for node in response.nodes
+    ), "Placeholder nodes should not appear when relations exist"
 

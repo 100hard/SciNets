@@ -13,6 +13,9 @@ from app.models.ontology import (
     ClaimCreate,
     Dataset,
     Method,
+    MethodRelation,
+    MethodRelationCreate,
+    MethodRelationType,
     Metric,
     Result,
     ResultCreate,
@@ -26,6 +29,22 @@ _TASK_COLUMNS = "id, name, aliases, description, created_at, updated_at"
 
 
 _RESULTS_VERIFICATION_SUPPORTED: Optional[bool] = None
+
+
+_METHOD_RELATION_INSERT_SQL = """
+    INSERT INTO method_relations (
+        paper_id,
+        method_id,
+        dataset_id,
+        task_id,
+        relation_type,
+        confidence,
+        evidence
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+    RETURNING id, paper_id, method_id, dataset_id, task_id, relation_type,
+              confidence, evidence, created_at, updated_at
+"""
 
 
 def _clean_aliases(raw_aliases: Optional[Union[Iterable[str], str]]) -> list[str]:
@@ -92,6 +111,13 @@ def _task_from_row(row: Any) -> Task:
     payload = dict(row)
     payload["aliases"] = _clean_aliases(payload.get("aliases"))
     return Task(**payload)
+
+
+def _method_relation_from_row(row: Any) -> MethodRelation:
+    payload = dict(row)
+    payload["evidence"] = _clean_evidence(payload.get("evidence"))
+    payload["relation_type"] = MethodRelationType(payload["relation_type"])
+    return MethodRelation(**payload)
 
 
 _RESULT_INSERT_SQL = """
@@ -417,6 +443,37 @@ async def append_results(
         return inserted
 
 
+async def append_method_relations(
+    paper_id: UUID,
+    relations: Sequence[MethodRelationCreate],
+) -> list[MethodRelation]:
+    if not relations:
+        return []
+
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        existing_keys = await _fetch_method_relation_keys(conn, paper_id)
+        inserted: list[MethodRelation] = []
+        for relation in relations:
+            key = _method_relation_key_from_create(relation)
+            if key in existing_keys:
+                continue
+            existing_keys.add(key)
+
+            row = await conn.fetchrow(
+                _METHOD_RELATION_INSERT_SQL,
+                relation.paper_id,
+                relation.method_id,
+                relation.dataset_id,
+                relation.task_id,
+                relation.relation_type.value,
+                relation.confidence,
+                json.dumps(relation.evidence),
+            )
+            inserted.append(_method_relation_from_row(row))
+        return inserted
+
+
 async def _fetch_result_keys(conn: Any, paper_id: UUID) -> set[tuple[Any, ...]]:
     rows = await conn.fetch(
         """
@@ -449,6 +506,37 @@ def _result_key_from_create(result: ResultCreate) -> tuple[Any, ...]:
         result.split,
         (result.value_text or "").strip(),
         str(result.value_numeric) if result.value_numeric is not None else None,
+    )
+
+
+async def _fetch_method_relation_keys(conn: Any, paper_id: UUID) -> set[tuple[Any, ...]]:
+    rows = await conn.fetch(
+        """
+        SELECT method_id, dataset_id, task_id, relation_type
+        FROM method_relations
+        WHERE paper_id = $1
+        """,
+        paper_id,
+    )
+    return {
+        (
+            row["method_id"],
+            row["dataset_id"],
+            row["task_id"],
+            MethodRelationType(row["relation_type"]),
+        )
+        for row in rows
+    }
+
+
+def _method_relation_key_from_create(
+    relation: MethodRelationCreate,
+) -> tuple[Any, ...]:
+    return (
+        relation.method_id,
+        relation.dataset_id,
+        relation.task_id,
+        relation.relation_type,
     )
 
 

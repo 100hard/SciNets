@@ -108,6 +108,11 @@ class ConceptResolutionType(str, Enum):
     TASK = "task"
 
 
+class MethodRelationType(str, Enum):
+    EVALUATES_ON = "evaluates_on"
+    PROPOSES = "proposes"
+
+
 class ResultBase(BaseModel):
     method_id: Optional[UUID] = None
     dataset_id: Optional[UUID] = None
@@ -172,6 +177,29 @@ class PaperRelationCreate(PaperRelationBase):
 class PaperRelation(PaperRelationBase):
     id: UUID
     src_paper_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class MethodRelationBase(BaseModel):
+    method_id: UUID
+    relation_type: MethodRelationType
+    dataset_id: Optional[UUID] = None
+    task_id: Optional[UUID] = None
+    confidence: Optional[float] = None
+    evidence: EvidencePayload = Field(default_factory=list)
+
+
+class MethodRelationCreate(MethodRelationBase):
+    paper_id: UUID
+
+
+class MethodRelation(MethodRelationBase):
+    id: UUID
+    paper_id: UUID
     created_at: datetime
     updated_at: datetime
 
