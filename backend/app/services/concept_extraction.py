@@ -240,6 +240,8 @@ def extract_concepts_from_sections(
     if not candidates:
         return []
 
+    _apply_method_post_filters(candidates)
+
     ranked = sorted(
         candidates.values(), key=lambda item: (-_final_score(item), item.name.lower())
     )
@@ -318,6 +320,31 @@ def _merge_candidate(registry: Dict[str, _Candidate], candidate: _Candidate) -> 
         candidate_words == existing_words and len(candidate.name) < len(existing.name)
     ):
         existing.name = candidate.name
+
+
+def _apply_method_post_filters(registry: Dict[str, _Candidate]) -> None:
+    for candidate in registry.values():
+        if candidate.type != "method":
+            continue
+        if candidate.occurrences > 1:
+            continue
+        if _is_noisy_method_phrase(candidate.name):
+            candidate.type = "keyword"
+
+
+def _is_noisy_method_phrase(name: str) -> bool:
+    lowered = name.strip().lower()
+    if not lowered:
+        return False
+    tokens = lowered.split()
+    if not tokens:
+        return False
+    if len(tokens) > 8 or len(lowered) > 80:
+        return True
+    first_token = tokens[0]
+    if first_token in STOPWORDS or first_token in FILLER_PREFIXES:
+        return True
+    return False
 
 
 def _extract_with_scispacy(
@@ -557,7 +584,13 @@ METHOD_HINTS = {
     "gpt",
     "resnet",
     "lstm",
+    "cas9",
 }
+
+_METHOD_SUFFIX_PATTERN = re.compile(
+    r"(?:(?:auto)?encoder|decoder|network|net|transformer|former|gan|cnn|rnn|lstm|bert|gpt|resnet)$",
+    re.IGNORECASE,
+)
 
 KNOWN_DATASETS = {
     "imagenet",
@@ -584,17 +617,27 @@ KNOWN_DATASETS = {
 
 def _infer_concept_type(phrase: str) -> str:
     normalized = phrase.lower()
-
-    if any(char.isdigit() for char in phrase) and len(phrase.split()) <= 3:
-        if any(hint in normalized for hint in DATASET_HINTS) or normalized.replace("-", "") in KNOWN_DATASETS:
-            return "dataset"
-        return "identifier"
-
-    if phrase.isupper() and len(phrase) <= 12:
-        return "acronym"
-
     tokens = normalized.replace("-", " ").split()
     token_set = set(tokens)
+
+    def _has_method_cue() -> bool:
+        if not tokens:
+            return False
+        if token_set & METHOD_HINTS:
+            return True
+        last_token = tokens[-1]
+        if _METHOD_SUFFIX_PATTERN.search(last_token):
+            return True
+        if len(tokens) == 1 and _METHOD_SUFFIX_PATTERN.search(tokens[0]):
+            return True
+        return False
+
+    if any(char.isdigit() for char in phrase) and len(tokens) <= 3:
+        if any(hint in normalized for hint in DATASET_HINTS) or normalized.replace("-", "") in KNOWN_DATASETS:
+            return "dataset"
+        if _has_method_cue():
+            return "method"
+        return "identifier"
 
     if token_set & METRIC_HINTS:
         return "metric"
@@ -605,11 +648,11 @@ def _infer_concept_type(phrase: str) -> str:
     if token_set & TASK_HINTS or any(normalized.endswith(suffix) for suffix in TASK_HINTS):
         return "task"
 
-    if token_set & METHOD_HINTS:
+    if _has_method_cue():
         return "method"
 
-    if len(tokens) >= 3:
-        return "method"
+    if phrase.isupper() and len(phrase) <= 12:
+        return "acronym"
 
     return "keyword"
 
