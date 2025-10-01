@@ -8,8 +8,15 @@ from dataclasses import dataclass
 from typing import Any, Optional, Sequence
 from uuid import UUID
 
-from app.models.ontology import ResultCreate
-from app.services.ontology_store import append_results, ensure_dataset, ensure_method, ensure_metric, ensure_task
+from app.models.ontology import MethodRelationCreate, MethodRelationType, ResultCreate
+from app.services.ontology_store import (
+    append_method_relations,
+    append_results,
+    ensure_dataset,
+    ensure_method,
+    ensure_metric,
+    ensure_task,
+)
 TIER_NAME = "tier3_verifier"
 _BASE_CONFIDENCE_FALLBACK = 0.55
 _JSON_VALID_BONUS = 0.05
@@ -17,6 +24,9 @@ _COREF_BONUS = 0.04
 _TABLE_MATCH_BONUS = 0.1
 _DUPLICATE_BONUS_STEP = 0.03
 _DUPLICATE_BONUS_CAP = 0.09
+_QUALITATIVE_RELATION_CONFIDENCE = 0.65
+_DATASET_RELATION_GUESSES = {"EVALUATED_ON", "USES", "TRAINS_ON", "TESTED_ON"}
+_TASK_RELATION_GUESSES = {"PROPOSES", "ADDRESSES", "SOLVES", "TARGETS"}
 
 _COREF_HEAD_PATTERN = re.compile(
     r"^(?:this|that|these|those|our|the|its|their|it|they)\b",
@@ -153,7 +163,7 @@ async def run_tier3_verifier(
         wrapper.data for wrapper in sorted(wrapped, key=lambda item: item.original_index)
     ]
 
-    persisted_count = await _persist_structured_results(paper_id, wrapped)
+    persisted_counts = await _persist_structured_results(paper_id, wrapped)
 
     metadata = summary.setdefault("metadata", {})
     tier3_meta = {
@@ -163,8 +173,10 @@ async def run_tier3_verifier(
         "table_matches": sum(1 for wrapper in wrapped if wrapper.table_match),
         "coref_resolved": sum(1 for wrapper in wrapped if wrapper.coref_resolved),
     }
-    if persisted_count:
-        tier3_meta["persisted_results"] = persisted_count
+    if persisted_counts.get("results"):
+        tier3_meta["persisted_results"] = persisted_counts["results"]
+    if persisted_counts.get("relations"):
+        tier3_meta["persisted_relations"] = persisted_counts["relations"]
     metadata["tier3"] = tier3_meta
     return summary
 
@@ -561,31 +573,40 @@ def _update_confidences(candidates: Sequence[CandidateWrapper]) -> None:
 async def _persist_structured_results(
     paper_id: UUID,
     candidates: Sequence[CandidateWrapper],
-) -> int:
+) -> dict[str, int]:
     results: list[ResultCreate] = []
-    local_keys: set[tuple[Any, ...]] = set()
+    result_keys: set[tuple[Any, ...]] = set()
+    relations: list[MethodRelationCreate] = []
+    relation_keys: set[tuple[Any, ...]] = set()
 
     for wrapper in candidates:
-        outcome = await _candidate_to_result(paper_id, wrapper)
-        if outcome is None:
-            continue
-        result, key = outcome
-        if key in local_keys:
-            continue
-        local_keys.add(key)
-        results.append(result)
+        result_outcome, relation_outcomes = await _candidate_to_result(paper_id, wrapper)
+        if result_outcome:
+            result, key = result_outcome
+            if key not in result_keys:
+                result_keys.add(key)
+                results.append(result)
+        for relation, key in relation_outcomes:
+            if key in relation_keys:
+                continue
+            relation_keys.add(key)
+            relations.append(relation)
 
-    if not results:
-        return 0
+    inserted_results = await append_results(paper_id, results) if results else []
+    inserted_relations = (
+        await append_method_relations(paper_id, relations) if relations else []
+    )
 
-    inserted = await append_results(paper_id, results)
-    return len(inserted)
+    return {"results": len(inserted_results), "relations": len(inserted_relations)}
 
 
 async def _candidate_to_result(
     paper_id: UUID,
     wrapper: CandidateWrapper,
-) -> Optional[tuple[ResultCreate, tuple[Any, ...]]]:
+) -> tuple[
+    Optional[tuple[ResultCreate, tuple[Any, ...]]],
+    list[tuple[MethodRelationCreate, tuple[Any, ...]]],
+]:
     data = wrapper.data
     subject = (data.get("subject") or "").strip()
     obj = (data.get("object") or "").strip()
@@ -632,10 +653,10 @@ async def _candidate_to_result(
         method_name = _clean_entity_name(obj)
 
     if not method_name:
-        return None
+        return None, []
 
     if not any([dataset_name, metric_name, task_name, measurement]):
-        return None
+        return None, []
 
     method_model = await ensure_method(method_name)
     dataset_model = await ensure_dataset(dataset_name) if dataset_name else None
@@ -672,30 +693,81 @@ async def _candidate_to_result(
     except (TypeError, ValueError):
         confidence_value = None
 
-    result = ResultCreate(
-        paper_id=paper_id,
-        method_id=method_model.id,
-        dataset_id=dataset_model.id if dataset_model else None,
-        metric_id=metric_model.id if metric_model else None,
-        task_id=task_model.id if task_model else None,
-        split=measurement.split if measurement else None,
-        value_numeric=value_numeric,
-        value_text=value_text,
-        is_sota=False,
-        confidence=confidence_value,
-        evidence=evidence,
-    )
+    result_outcome: Optional[tuple[ResultCreate, tuple[Any, ...]]] = None
+    relation_outcomes: list[tuple[MethodRelationCreate, tuple[Any, ...]]] = []
 
-    key = (
-        result.method_id,
-        result.dataset_id,
-        result.metric_id,
-        result.task_id,
-        result.split,
-        (result.value_text or "").strip(),
-        str(result.value_numeric) if result.value_numeric is not None else None,
-    )
-    return result, key
+    if measurement:
+        result = ResultCreate(
+            paper_id=paper_id,
+            method_id=method_model.id,
+            dataset_id=dataset_model.id if dataset_model else None,
+            metric_id=metric_model.id if metric_model else None,
+            task_id=task_model.id if task_model else None,
+            split=measurement.split,
+            value_numeric=value_numeric,
+            value_text=value_text,
+            is_sota=False,
+            confidence=confidence_value,
+            evidence=evidence,
+        )
+
+        key = (
+            result.method_id,
+            result.dataset_id,
+            result.metric_id,
+            result.task_id,
+            result.split,
+            (result.value_text or "").strip(),
+            str(result.value_numeric) if result.value_numeric is not None else None,
+        )
+        result_outcome = (result, key)
+    else:
+        if confidence_value is None:
+            confidence_value = 0.0
+        if confidence_value >= _QUALITATIVE_RELATION_CONFIDENCE:
+            if dataset_model and (
+                relation_guess in _DATASET_RELATION_GUESSES
+                or object_type == "dataset"
+            ):
+                relation = MethodRelationCreate(
+                    paper_id=paper_id,
+                    method_id=method_model.id,
+                    dataset_id=dataset_model.id,
+                    task_id=None,
+                    relation_type=MethodRelationType.EVALUATES_ON,
+                    confidence=confidence_value,
+                    evidence=evidence,
+                )
+                key = (
+                    relation.method_id,
+                    relation.dataset_id,
+                    relation.task_id,
+                    relation.relation_type,
+                )
+                relation_outcomes.append((relation, key))
+            if task_model and (
+                relation_guess in _TASK_RELATION_GUESSES
+                or object_type == "task"
+                or subject_type == "task"
+            ):
+                relation = MethodRelationCreate(
+                    paper_id=paper_id,
+                    method_id=method_model.id,
+                    dataset_id=None,
+                    task_id=task_model.id,
+                    relation_type=MethodRelationType.PROPOSES,
+                    confidence=confidence_value,
+                    evidence=evidence,
+                )
+                key = (
+                    relation.method_id,
+                    relation.dataset_id,
+                    relation.task_id,
+                    relation.relation_type,
+                )
+                relation_outcomes.append((relation, key))
+
+    return result_outcome, relation_outcomes
 
 
 def _clean_entity_name(value: Optional[str]) -> Optional[str]:

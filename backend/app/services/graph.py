@@ -93,6 +93,37 @@ _RESULT_SELECT = """
     LEFT JOIN tasks t ON r.task_id = t.id
 """
 
+_METHOD_RELATION_SELECT = """
+    SELECT
+        mr.id AS result_id,
+        mr.paper_id,
+        mr.method_id,
+        mr.dataset_id,
+        NULL::uuid AS metric_id,
+        mr.task_id,
+        mr.confidence,
+        mr.evidence,
+        p.title AS paper_title,
+        m.name AS method_name,
+        m.aliases AS method_aliases,
+        m.description AS method_description,
+        d.name AS dataset_name,
+        d.aliases AS dataset_aliases,
+        d.description AS dataset_description,
+        NULL::text AS metric_name,
+        NULL::jsonb AS metric_aliases,
+        NULL::text AS metric_description,
+        NULL::text AS metric_unit,
+        t.name AS task_name,
+        t.aliases AS task_aliases,
+        t.description AS task_description
+    FROM method_relations mr
+    JOIN papers p ON p.id = mr.paper_id
+    LEFT JOIN methods m ON mr.method_id = m.id
+    LEFT JOIN datasets d ON mr.dataset_id = d.id
+    LEFT JOIN tasks t ON mr.task_id = t.id
+"""
+
 
 class GraphEntityNotFoundError(RuntimeError):
     """Raised when the requested graph node cannot be located."""
@@ -249,6 +280,19 @@ async def _fetch_results(
             list(paper_ids),
         )
     return await conn.fetch(_RESULT_SELECT)
+
+
+async def _fetch_method_relations(
+    conn: Any,
+    *,
+    paper_ids: Optional[Sequence[UUID]] = None,
+) -> Sequence[Mapping[str, Any]]:
+    if paper_ids:
+        return await conn.fetch(
+            f"{_METHOD_RELATION_SELECT} WHERE mr.paper_id = ANY($1::uuid[])",
+            list(paper_ids),
+        )
+    return await conn.fetch(_METHOD_RELATION_SELECT)
 
 
 async def _fetch_concept_fallback_rows(
@@ -1128,7 +1172,9 @@ async def get_graph_overview(
     pool = get_pool()
     async with pool.acquire() as conn:
         records = await _fetch_results(conn)
+        relation_records = await _fetch_method_relations(conn)
         rows = [dict(record) for record in records]
+        rows.extend(dict(record) for record in relation_records)
         node_details: dict[tuple[NodeType, UUID], NodeDetail] = {}
         aggregated_edges = _aggregate_edges(rows, allowed_types, allowed_relations, min_conf, node_details)
     response = _build_graph_response(
@@ -1186,7 +1232,9 @@ async def get_graph_neighborhood(
 
         paper_ids = await _fetch_related_papers(conn, center_detail)
         records = await _fetch_results(conn, paper_ids=paper_ids)
+        relation_records = await _fetch_method_relations(conn, paper_ids=paper_ids)
         rows = [dict(record) for record in records]
+        rows.extend(dict(record) for record in relation_records)
 
     allowed_types.add(center_detail.type)
 
