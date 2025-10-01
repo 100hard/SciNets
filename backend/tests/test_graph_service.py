@@ -93,6 +93,8 @@ class FakeGraphConnection:
                 "description": "Automatic summarisation",
             }
         }
+        self.concepts: list[dict[str, Any]] = []
+        self.triple_candidates: list[dict[str, Any]] = []
         self.results = [
             {
                 "id": uuid4(),
@@ -167,7 +169,47 @@ class FakeGraphConnection:
                 ]
 
         if normalized.startswith("SELECT c.id, c.paper_id, c.name, c.type, p.title AS paper_title"):
-            return []
+            concept_types = set(params[0]) if params else set()
+            paper_filter = set(params[1]) if len(params) > 1 else None
+            rows: list[Mapping[str, Any]] = []
+            for concept in self.concepts:
+                if concept_types and concept["type"] not in concept_types:
+                    continue
+                if paper_filter and concept["paper_id"] not in paper_filter:
+                    continue
+                paper = self.papers.get(concept["paper_id"]) or {}
+                rows.append(
+                    {
+                        "id": concept["id"],
+                        "paper_id": concept["paper_id"],
+                        "name": concept["name"],
+                        "type": concept["type"],
+                        "paper_title": paper.get("title"),
+                        "created_at": paper.get("created_at"),
+                        "concept_created_at": concept.get("created_at"),
+                    }
+                )
+            return rows
+
+        if normalized.startswith("SELECT tc.paper_id, p.title AS paper_title, tc.graph_metadata"):
+            paper_filter = set(params[0]) if params else None
+            rows: list[Mapping[str, Any]] = []
+            for candidate in self.triple_candidates:
+                if paper_filter and candidate["paper_id"] not in paper_filter:
+                    continue
+                paper = self.papers.get(candidate["paper_id"]) or {}
+                rows.append(
+                    {
+                        "paper_id": candidate["paper_id"],
+                        "paper_title": paper.get("title"),
+                        "graph_metadata": candidate.get("graph_metadata"),
+                        "triple_conf": candidate.get("triple_conf"),
+                        "evidence_text": candidate.get("evidence_text"),
+                        "section_id": candidate.get("section_id"),
+                        "created_at": candidate.get("created_at"),
+                    }
+                )
+            return rows
 
         raise AssertionError(f"Unsupported fetch query: {normalized}")
 
@@ -258,6 +300,80 @@ async def _run_get_graph_overview(monkeypatch: pytest.MonkeyPatch) -> None:
     assert compare_edge.data.weight == pytest.approx(0.65, rel=1e-5)
     assert compare_edge.data.paper_count == 1
     assert compare_edge.data.average_confidence == pytest.approx(0.65, rel=1e-5)
+
+
+def test_graph_fallback_uses_triple_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_run_graph_fallback_overview(monkeypatch))
+
+
+async def _run_graph_fallback_overview(monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = _setup_fake_pool(monkeypatch)
+    conn.results = []
+
+    method_concept_id = uuid4()
+    dataset_concept_id = uuid4()
+    conn.concepts = [
+        {
+            "id": method_concept_id,
+            "paper_id": PAPER_A,
+            "name": "AlphaNet",
+            "type": "method",
+        },
+        {
+            "id": dataset_concept_id,
+            "paper_id": PAPER_A,
+            "name": "Dataset-X",
+            "type": "dataset",
+        },
+    ]
+
+    graph_metadata = {
+        "entities": {
+            "method": {"text": "AlphaNet", "normalized": "alphanet"},
+            "dataset": {"text": "Dataset-X", "normalized": "dataset-x"},
+        },
+        "pairs": [
+            {
+                "source": {"type": "method", "text": "AlphaNet", "normalized": "alphanet"},
+                "target": {"type": "dataset", "text": "Dataset-X", "normalized": "dataset-x"},
+                "relation": "evaluates_on",
+                "confidence": 0.72,
+                "section_id": "section-1",
+                "sentence_indices": [2],
+                "evidence": "AlphaNet is evaluated on Dataset-X.",
+                "source": "tier2_triple",
+            }
+        ],
+    }
+    conn.triple_candidates = [
+        {
+            "paper_id": PAPER_A,
+            "graph_metadata": graph_metadata,
+            "triple_conf": 0.72,
+            "evidence_text": "AlphaNet is evaluated on Dataset-X.",
+            "section_id": "section-1",
+            "created_at": None,
+        }
+    ]
+
+    response = await get_graph_overview(limit=10, min_conf=0.6)
+
+    assert response.meta.node_count == 2
+    assert response.meta.edge_count == 1
+
+    method_node = next(node for node in response.nodes if node.data.label == "AlphaNet")
+    dataset_node = next(node for node in response.nodes if node.data.label == "Dataset-X")
+
+    assert method_node.data.metadata.get("concept") is True
+    assert method_node.data.metadata.get("placeholder") is not True
+    assert dataset_node.data.metadata.get("concept") is True
+    assert dataset_node.data.metadata.get("placeholder") is not True
+
+    edge = response.edges[0]
+    assert edge.data.type == "evaluates_on"
+    assert edge.data.metadata.get("evidence")
+    snippets = [item.get("snippet") for item in edge.data.metadata["evidence"]]
+    assert "AlphaNet is evaluated on Dataset-X." in snippets
 
 
 def test_get_graph_overview_respects_min_confidence(monkeypatch: pytest.MonkeyPatch) -> None:

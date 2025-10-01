@@ -36,6 +36,24 @@ _TASK_RE = re.compile(r"for\s+(?P<task>[A-Za-z][A-Za-z0-9\- ]{2,80})", re.IGNORE
 _CI_RE = re.compile(r"(?:\\u00B1\\s*\\d+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?\\s*-\\s*\\d+(?:\\.\\d+)?)")
 
 
+def _normalize_graph_text(value: str) -> str:
+    if not value:
+        return ""
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _collect_sentence_indices_from_candidate(candidate: dict[str, Any]) -> list[int]:
+    matches = candidate.get("evidence_spans") or []
+    indices: set[int] = set()
+    for match in matches:
+        if not isinstance(match, dict):
+            continue
+        index = match.get("sentence_index")
+        if isinstance(index, int):
+            indices.add(index)
+    return sorted(indices)
+
+
 @dataclass
 class NumericMeasurement:
     metric: str
@@ -279,6 +297,74 @@ def _attach_measurements(candidates: Sequence[CandidateWrapper]) -> None:
             wrapper.data["normalization"] = measurement.to_payload()
             verification = wrapper.data.setdefault("verification", {})
             verification["normalization_hash"] = measurement.normalization_hash
+        _update_graph_metadata(wrapper)
+
+
+def _update_graph_metadata(wrapper: CandidateWrapper) -> None:
+    metadata = wrapper.data.get("graph_metadata")
+    if not isinstance(metadata, dict):
+        return
+
+    entities = metadata.setdefault("entities", {})
+    pairs = metadata.setdefault("pairs", [])
+    method_entry = entities.get("method")
+    if not isinstance(method_entry, dict):
+        return
+
+    measurement = wrapper.measurement
+    if measurement is None:
+        return
+
+    def _ensure_entry(entity_type: str, text: Optional[str]) -> Optional[dict[str, str]]:
+        if not text:
+            return None
+        normalized = _normalize_graph_text(text)
+        if not normalized:
+            return None
+        lowered = normalized.lower()
+        existing = entities.get(entity_type)
+        if isinstance(existing, dict) and existing.get("normalized") == lowered:
+            return existing
+        entry = {"text": text.strip(), "normalized": lowered}
+        entities[entity_type] = entry
+        return entry
+
+    def _has_pair(target_type: str, normalized: str) -> bool:
+        for pair in pairs:
+            target = pair.get("target")
+            if not isinstance(target, dict):
+                continue
+            if target.get("type") == target_type and target.get("normalized") == normalized:
+                return True
+        return False
+
+    sentence_indices = _collect_sentence_indices_from_candidate(wrapper.data)
+    confidence = wrapper.data.get("triple_conf")
+    evidence_text = wrapper.data.get("evidence")
+
+    def _append_pair(target_type: str, text: Optional[str], relation: str) -> None:
+        entry = _ensure_entry(target_type, text)
+        if entry is None:
+            return
+        normalized = entry.get("normalized")
+        if normalized and _has_pair(target_type, normalized):
+            return
+        pairs.append(
+            {
+                "source": {"type": "method", **method_entry},
+                "target": {"type": target_type, **entry},
+                "relation": relation,
+                "confidence": confidence,
+                "section_id": wrapper.section_id,
+                "sentence_indices": sentence_indices,
+                "evidence": evidence_text,
+                "source": "tier3_measurement",
+            }
+        )
+
+    _append_pair("dataset", measurement.dataset, "evaluates_on")
+    _append_pair("metric", measurement.metric, "reports")
+    _append_pair("task", measurement.task, "proposes")
 
 
 def _extract_numeric_measure(candidate: dict[str, Any]) -> Optional[NumericMeasurement]:

@@ -6,7 +6,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, asdict
-from typing import Any, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 from uuid import UUID
 
 import httpx
@@ -269,6 +269,130 @@ def _normalize_whitespace(value: str) -> str:
     if not value:
         return ""
     return re.sub(r"\s+", " ", value).strip()
+
+
+def _normalize_graph_text(value: str) -> str:
+    return _normalize_whitespace(value)
+
+
+def _normalized_graph_key(value: str) -> str:
+    normalized = _normalize_graph_text(value)
+    return normalized.lower()
+
+
+def _collect_sentence_indices(matches: Sequence[Mapping[str, Any]]) -> list[int]:
+    indices: set[int] = set()
+    for match in matches:
+        index = match.get("sentence_index")
+        if isinstance(index, int):
+            indices.add(index)
+    return sorted(indices)
+
+
+def _extract_graph_entities(
+    subject_text: str,
+    subject_type: str,
+    object_text: str,
+    object_type: str,
+) -> dict[str, Optional[str]]:
+    subject_guess = (subject_type or "").strip().lower()
+    object_guess = (object_type or "").strip().lower()
+
+    method_text: Optional[str] = None
+    dataset_text: Optional[str] = None
+    metric_text: Optional[str] = None
+    task_text: Optional[str] = None
+
+    if subject_guess == "method":
+        method_text = subject_text
+    elif object_guess == "method":
+        method_text = object_text
+
+    if object_guess == "dataset":
+        dataset_text = object_text
+    elif subject_guess == "dataset":
+        dataset_text = subject_text
+
+    if object_guess == "metric":
+        metric_text = object_text
+    elif subject_guess == "metric":
+        metric_text = subject_text
+
+    if object_guess == "task":
+        task_text = object_text
+    elif subject_guess == "task":
+        task_text = subject_text
+
+    return {
+        "method": method_text,
+        "dataset": dataset_text,
+        "metric": metric_text,
+        "task": task_text,
+    }
+
+
+def _build_graph_metadata(
+    entities: Mapping[str, Optional[str]],
+    *,
+    matches: Sequence[Mapping[str, Any]],
+    evidence_text: str,
+    section_id: Optional[str],
+    triple_conf: float,
+) -> dict[str, Any]:
+    method_text = entities.get("method") or ""
+    normalized_method = _normalize_graph_text(method_text)
+    if not normalized_method:
+        return {}
+
+    metadata: dict[str, Any] = {
+        "entities": {},
+        "pairs": [],
+    }
+
+    def _register(entity_type: str, value: Optional[str]) -> Optional[dict[str, str]]:
+        if not value:
+            return None
+        normalized_value = _normalize_graph_text(value)
+        if not normalized_value:
+            return None
+        entry = {
+            "text": value.strip(),
+            "normalized": normalized_value.lower(),
+        }
+        metadata["entities"][entity_type] = entry
+        return entry
+
+    method_entry = _register("method", method_text)
+    if method_entry is None:
+        return {}
+
+    sentence_indices = _collect_sentence_indices(matches)
+    confidence = max(0.0, min(1.0, float(triple_conf))) if triple_conf is not None else None
+
+    def _append_pair(target_type: str, raw_value: Optional[str], relation: str) -> None:
+        target_entry = _register(target_type, raw_value)
+        if not target_entry:
+            return
+        metadata["pairs"].append(
+            {
+                "source": {"type": "method", **method_entry},
+                "target": {"type": target_type, **target_entry},
+                "relation": relation,
+                "confidence": confidence,
+                "section_id": section_id,
+                "sentence_indices": sentence_indices,
+                "evidence": evidence_text,
+                "source": "tier2_triple",
+            }
+        )
+
+    _append_pair("dataset", entities.get("dataset"), "evaluates_on")
+    _append_pair("metric", entities.get("metric"), "reports")
+    _append_pair("task", entities.get("task"), "proposes")
+
+    if metadata["pairs"]:
+        return metadata
+    return {}
 
 
 def _normalize_key_text(value: str) -> str:
@@ -943,6 +1067,22 @@ def _build_candidates(
         if pass_label:
             candidate["pass"] = pass_label
 
+        graph_entities = _extract_graph_entities(
+            subject_text,
+            triple.subject_type_guess,
+            object_text,
+            triple.object_type_guess,
+        )
+        graph_metadata = _build_graph_metadata(
+            graph_entities,
+            matches=matches,
+            evidence_text=evidence_text,
+            section_id=candidate_section_id,
+            triple_conf=triple_conf,
+        )
+        if graph_metadata:
+            candidate["graph_metadata"] = graph_metadata
+
         candidates.append(candidate)
 
         persistence_payload.append(
@@ -961,6 +1101,7 @@ def _build_candidates(
                 triple_conf=triple_conf,
                 schema_match_score=schema_score,
                 tier=TIER_NAME,
+                graph_metadata=graph_metadata,
             )
         )
 

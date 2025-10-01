@@ -74,6 +74,7 @@ def _make_candidate(paper_id: UUID, *, section_id: str | None) -> TripleCandidat
         triple_conf=0.9,
         schema_match_score=0.75,
         tier="tier2",
+        graph_metadata={},
     )
 
 

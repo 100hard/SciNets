@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS triple_candidates (
     triple_conf DOUBLE PRECISION NOT NULL,
     schema_match_score DOUBLE PRECISION NOT NULL,
     tier TEXT NOT NULL,
+    graph_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
