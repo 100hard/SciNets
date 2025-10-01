@@ -10,6 +10,9 @@ import pytest
 from app.models.concept import Concept, ConceptCreate
 from app.models.section import SectionCreate
 from app.services.concept_extraction import (
+    _Candidate,
+    _apply_method_post_filters,
+    _infer_concept_type,
     extract_and_store_concepts,
     extract_concepts_from_sections,
 )
@@ -123,3 +126,38 @@ async def test_extract_and_store_concepts_persists_and_links(monkeypatch: pytest
     lower_payloads = [name.lower() for name in captured_payloads]
     assert any("deep learning" in name for name in lower_payloads)
     assert any("cifar" in name for name in lower_payloads)
+
+
+def test_infer_concept_type_uses_strong_method_cues() -> None:
+    assert _infer_concept_type("BERT") == "method"
+    assert _infer_concept_type("Cas9") == "method"
+    assert _infer_concept_type("graph neural network") == "method"
+    assert _infer_concept_type("multi-stage curriculum") == "keyword"
+
+
+def test_method_post_filter_demotes_noisy_phrases() -> None:
+    noisy = _Candidate(
+        name="The Proposed Multi Stage Training Approach",
+        normalized="proposed multi stage training approach",
+        type="method",
+        description=None,
+        score=1.0,
+    )
+    corroborated = _Candidate(
+        name="Baseline Transformer Model",
+        normalized="baseline transformer model",
+        type="method",
+        description=None,
+        score=1.0,
+        occurrences=2,
+    )
+
+    registry = {
+        noisy.normalized: noisy,
+        corroborated.normalized: corroborated,
+    }
+
+    _apply_method_post_filters(registry)
+
+    assert registry[noisy.normalized].type == "keyword"
+    assert registry[corroborated.normalized].type == "method"
