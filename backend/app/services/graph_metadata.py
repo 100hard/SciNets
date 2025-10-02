@@ -36,18 +36,31 @@ _DEFAULT_METADATA = GraphOntologyMetadata(
         NodeType.ORGANISM,
         NodeType.FINDING,
         NodeType.PROCESS,
+        NodeType.MODEL,
     ),
     allowed_relations=(
         RelationType.PROPOSES,
         RelationType.EVALUATES_ON,
         RelationType.REPORTS,
         RelationType.COMPARES,
+        RelationType.USES,
+        RelationType.CAUSES,
+        RelationType.PART_OF,
+        RelationType.IS_A,
+        RelationType.OUTPERFORMS,
+        RelationType.ASSUMES,
     ),
     ordered_relations=(
         RelationType.PROPOSES,
         RelationType.EVALUATES_ON,
         RelationType.REPORTS,
         RelationType.COMPARES,
+        RelationType.USES,
+        RelationType.CAUSES,
+        RelationType.PART_OF,
+        RelationType.IS_A,
+        RelationType.OUTPERFORMS,
+        RelationType.ASSUMES,
     ),
     concept_types=(
         NodeType.METHOD,
@@ -59,8 +72,29 @@ _DEFAULT_METADATA = GraphOntologyMetadata(
         NodeType.ORGANISM,
         NodeType.FINDING,
         NodeType.PROCESS,
+        NodeType.MODEL,
     ),
 )
+
+
+def _coerce_node_types(values: Iterable[str]) -> tuple[NodeType, ...]:
+    coerced: list[NodeType] = []
+    for value in values:
+        try:
+            coerced.append(NodeType(str(value)))
+        except ValueError:
+            continue
+    return tuple(coerced)
+
+
+def _coerce_relation_types(values: Iterable[str]) -> tuple[RelationType, ...]:
+    coerced: list[RelationType] = []
+    for value in values:
+        try:
+            coerced.append(RelationType(str(value)))
+        except ValueError:
+            continue
+    return tuple(coerced)
 
 
 def _load_metadata_from_path(path: Path) -> GraphOntologyMetadata | None:
@@ -68,7 +102,13 @@ def _load_metadata_from_path(path: Path) -> GraphOntologyMetadata | None:
         return None
     try:
         payload = json.loads(path.read_text())
-        return GraphOntologyMetadata.model_validate(payload)
+        return GraphOntologyMetadata(
+            default_node_types=_coerce_node_types(payload.get("default_node_types", ())),
+            allowed_node_types=_coerce_node_types(payload.get("allowed_node_types", ())),
+            allowed_relations=_coerce_relation_types(payload.get("allowed_relations", ())),
+            ordered_relations=_coerce_relation_types(payload.get("ordered_relations", ())),
+            concept_types=_coerce_node_types(payload.get("concept_types", ())),
+        )
     except (OSError, json.JSONDecodeError, ValidationError):
         return None
 

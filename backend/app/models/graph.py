@@ -17,6 +17,7 @@ class NodeType(str, Enum):
     ORGANISM = "organism"
     FINDING = "finding"
     PROCESS = "process"
+    MODEL = "model"
 
     def __str__(self) -> str:  # pragma: no cover - trivial behaviour
         return str(self.value)
@@ -27,6 +28,12 @@ class RelationType(str, Enum):
     EVALUATES_ON = "evaluates_on"
     REPORTS = "reports"
     COMPARES = "compares"
+    USES = "uses"
+    CAUSES = "causes"
+    PART_OF = "part_of"
+    IS_A = "is_a"
+    OUTPERFORMS = "outperforms"
+    ASSUMES = "assumes"
 
     def __str__(self) -> str:  # pragma: no cover - trivial behaviour
         return str(self.value)

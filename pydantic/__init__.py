@@ -8,6 +8,10 @@ class ConfigDict(dict):
         super().__init__(**kwargs)
 
 
+class ValidationError(Exception):
+    pass
+
+
 class BaseModel:
     def __init__(self, **data: Any) -> None:
         for key, value in data.items():
@@ -15,6 +19,12 @@ class BaseModel:
 
     def model_dump(self) -> dict[str, Any]:
         return dict(self.__dict__)
+
+    @classmethod
+    def model_validate(cls, data: dict[str, Any]):
+        if not isinstance(data, dict):
+            raise ValidationError("Expected mapping for model validation")
+        return cls(**data)
 
 
 def Field(
