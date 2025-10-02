@@ -96,6 +96,8 @@ async def test_run_tier2_structurer_parses_llm_response(monkeypatch: pytest.Monk
     monkeypatch.setattr(extraction_tier2, "_invoke_llm", fake_invoke_llm)
     monkeypatch.setattr(extraction_tier2, "replace_triple_candidates", fake_replace)
 
+    custom_prompt = "Extract every supported claim with precise spans."
+    monkeypatch.setattr(settings, "tier2_llm_system_prompt", custom_prompt)
     monkeypatch.setattr(settings, "tier2_llm_model", "gpt-test")
     monkeypatch.setattr(settings, "tier2_llm_base_url", "https://example.com")
     monkeypatch.setattr(settings, "tier2_llm_completion_path", "/chat/completions")
@@ -120,6 +122,7 @@ async def test_run_tier2_structurer_parses_llm_response(monkeypatch: pytest.Monk
     assert guardrails["unmatched_evidence"] == 0
     assert guardrails["metrics_inferred"] == 0
     assert len(captured_messages) == 2
+    assert captured_messages[0][0]["content"] == custom_prompt
     comparison_prompt = captured_messages[1][1]["content"]
     assert "comparison" in comparison_prompt.lower()
 
