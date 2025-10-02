@@ -4,6 +4,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.config import settings
+
 TYPE_GUESS_VALUES: tuple[str, ...] = (
     "Method",
     "Task",
@@ -95,6 +97,8 @@ class TripleExtractionResponse(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    triples: list[TriplePayload] = Field(default_factory=list, max_length=15)
+    triples: list[TriplePayload] = Field(
+        default_factory=list, max_length=settings.tier2_llm_max_triples
+    )
     discarded: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
