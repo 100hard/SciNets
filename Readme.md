@@ -650,6 +650,19 @@ GET /api/search/concepts?q=&type=Dataset|Method|Metric|Task
 
 POST /api/qa/ask (returns {answer, citations[], structured})
 
+### Graph insight fields
+
+Graph node responses now surface richer metadata for trend analysis:
+
+* `metadata.papers_by_year` – array of `{year, paper_count}` objects summarizing supporting papers per calendar year.
+* `metadata.best_outcome` / `metadata.worst_outcome` – contextualized result payloads including metric name, dataset, numeric/text value, verification status, and provenance identifiers.
+
+Graph edges expose Tier-3 grounded summaries alongside existing evidence:
+
+* `metadata.insights` – list of concise natural-language findings (`summary`, `paper_id`, `paper_title`, `paper_year`, `confidence`, `claim_text`, `metric`, `dataset`, `task`, `value_text`, `value_numeric`).
+
+Clients should treat these fields as additive signals to drive UI highlights or downstream analytics; the core schema (`papers`, `contexts`, `evidence`) remains unchanged.
+
 Acceptance Criteria (what “useful for researchers” means)
 
 Typed graph only (no untyped co-occurrence edges).
