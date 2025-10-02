@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     tier2_llm_top_p: float = Field(default=1.0)
     tier2_llm_timeout_seconds: float = Field(default=120.0)
     tier2_llm_max_sections: int = Field(default=24)
+    # Maximum characters per Tier-2 section chunk after formatting "[idx] sentence" lines.
+    tier2_llm_section_chunk_chars: int = Field(default=3500)
+    # Number of sentences to overlap between successive section chunks.
+    tier2_llm_section_chunk_overlap_sentences: int = Field(default=1)
+    # Hard limit on how many chunks can be produced from a single section.
+    tier2_llm_max_chunks_per_section: int = Field(default=3)
     tier2_llm_max_section_chars: int = Field(default=3500)
     tier2_llm_force_json: bool = Field(default=True)
     tier2_llm_max_output_tokens: int = Field(default=8129)
