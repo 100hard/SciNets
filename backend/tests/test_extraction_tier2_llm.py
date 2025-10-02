@@ -528,3 +528,24 @@ def test_merge_payloads_dedupes_entries() -> None:
         "Another note",
     ]
     assert merged.discarded == ["Row 1", "Row 2", "Row 3"]
+
+
+def test_validate_payload_allows_single_value_spans() -> None:
+    payload = {
+        "triples": [
+            {
+                "subject": "AB",
+                "relation": "improves",
+                "object": "accuracy",
+                "evidence": "AB improves accuracy on the benchmark dataset.",
+                "subject_span": [11],
+                "object_span": [22],
+            }
+        ]
+    }
+
+    validated = extraction_tier2._validate_payload(payload)
+    triple = validated.triples[0]
+
+    assert triple.subject_span == [11, 11]
+    assert triple.object_span == [22, 22]
