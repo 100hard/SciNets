@@ -114,9 +114,25 @@ def _load_metadata_from_path(path: Path) -> GraphOntologyMetadata | None:
 
 
 def _resolve_metadata_path() -> Path | None:
-    raw_path = getattr(settings, "graph_metadata_path", None)
+    """Resolve the configured metadata path without assuming the setting exists."""
+
+    raw_path: str | None = None
+
+    # ``graph_metadata_path`` was added after the initial release of the settings
+    # module.  When the backend is started with an older configuration object the
+    # attribute may simply not exist which previously resulted in an
+    # ``AttributeError`` during import time.  We defensively inspect the settings
+    # instance instead of directly accessing the attribute so that the backend can
+    # fall back to the built-in metadata in that situation.
+    if hasattr(settings, "model_dump"):
+        raw_path = settings.model_dump().get("graph_metadata_path")  # type: ignore[assignment]
+
+    if not raw_path:
+        raw_path = getattr(settings, "graph_metadata_path", None)
+
     if not raw_path:
         return None
+
     candidate = Path(raw_path)
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

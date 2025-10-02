@@ -172,7 +172,7 @@ _METHOD_RELATION_SELECT = """
         NULL::text AS value_text,
         NULL::boolean AS is_sota,
         mr.confidence,
-        mr.split,
+        NULL::text AS split,
         NULL::numeric AS value_numeric,
         NULL::text AS value_text,
         NULL::boolean AS is_sota,
