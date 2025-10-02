@@ -27,10 +27,7 @@ from app.services.triple_candidates import replace_triple_candidates
 logger = logging.getLogger(__name__)
 
 TIER_NAME = "tier2_llm_openie"
-SYSTEM_PROMPT = (
-    "You extract scientific facts as (subject, relation, object) with evidence. "
-    "Use precise noun phrases. Be conservative: if unsure, omit."
-)
+SYSTEM_PROMPT = settings.tier2_llm_system_prompt
 DEFAULT_TRIPLE_CONFIDENCE = 0.55
 DEFAULT_SCHEMA_SCORE = 1.0
 MAX_LLM_ATTEMPTS = 2

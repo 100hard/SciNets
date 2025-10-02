@@ -68,9 +68,13 @@ class Settings(BaseSettings):
     tier2_llm_max_section_chars: int = Field(default=3500)
     tier2_llm_force_json: bool = Field(default=True)
     tier2_llm_max_output_tokens: int = Field(default=8129)
-    tier2_llm_max_triples: int = Field(
-        default=45,
-        description="Maximum number of triples expected from the Tier-2 LLM response.",
+    tier2_llm_system_prompt: str = Field(
+        default=(
+            "You extract scientific facts as (subject, relation, object) with evidence. "
+            "Use precise noun phrases and exact character spans. Prioritize capturing every "
+            "statement the passage explicitly supports with evidence; only skip when support is "
+            "missing or spans cannot be resolved."
+        )
     )
 
     class Config:
