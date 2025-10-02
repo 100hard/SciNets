@@ -204,7 +204,7 @@ async def test_run_tier2_structurer_omits_graph_metadata_for_citations(
 
 
 @pytest.mark.anyio
-async def test_run_tier2_structurer_filters_low_quality_graph_entities(
+async def test_run_tier2_structurer_skips_graph_metadata_for_non_eval_dataset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     paper_id = uuid4()
@@ -214,10 +214,10 @@ async def test_run_tier2_structurer_filters_low_quality_graph_entities(
         "sections": [
             _build_section(
                 "sec-1",
-                "Results",
+                "Method",
                 [
-                    "Method Alpha is evaluated on We observe a dataset.",
-                    "Method Alpha reports background equivalent to over 67 40 on evaluation.",
+                    "We introduce AlphaNet, a transformer-based model.",
+                    "AlphaNet references the WMT14 En-Fr dataset in passing.",
                 ],
             ),
         ],
@@ -227,33 +227,19 @@ async def test_run_tier2_structurer_filters_low_quality_graph_entities(
     fake_payload = {
         "triples": [
             {
-                "subject": "Method Alpha",
-                "relation": "evaluated on",
-                "object": "We observe a",
-                "evidence": "Method Alpha is evaluated on We observe a dataset.",
-                "subject_span": [0, 12],
-                "object_span": [30, 42],
+                "subject": "AlphaNet",
+                "relation": "mentions",
+                "object": "WMT14 En-Fr dataset",
+                "evidence": "AlphaNet references the WMT14 En-Fr dataset in passing.",
+                "subject_span": [0, 8],
+                "object_span": [28, 48],
                 "subject_type_guess": "Method",
-                "relation_type_guess": "EVALUATED_ON",
+                "relation_type_guess": "OTHER",
                 "object_type_guess": "Dataset",
-                "triple_conf": 0.6,
-                "schema_match_score": 0.9,
+                "triple_conf": 0.64,
+                "schema_match_score": 0.92,
                 "section_id": "sec-1",
-            },
-            {
-                "subject": "Method Alpha",
-                "relation": "reports",
-                "object": "background equivalent to over 67 40",
-                "evidence": "Method Alpha reports background equivalent to over 67 40 on evaluation.",
-                "subject_span": [0, 12],
-                "object_span": [21, 60],
-                "subject_type_guess": "Method",
-                "relation_type_guess": "MEASURES",
-                "object_type_guess": "Metric",
-                "triple_conf": 0.6,
-                "schema_match_score": 0.9,
-                "section_id": "sec-1",
-            },
+            }
         ],
         "warnings": [],
         "discarded": [],
@@ -283,20 +269,9 @@ async def test_run_tier2_structurer_filters_low_quality_graph_entities(
 
     summary = await extraction_tier2.run_tier2_structurer(paper_id, base_summary=base_summary)
 
-    assert len(summary["triple_candidates"]) == 2
-    dataset_candidate = next(
-        candidate
-        for candidate in summary["triple_candidates"]
-        if candidate["object"] == "We observe a"
-    )
-    metric_candidate = next(
-        candidate
-        for candidate in summary["triple_candidates"]
-        if candidate["object"] == "background equivalent to over 67 40"
-    )
-
-    assert "graph_metadata" not in dataset_candidate
-    assert "graph_metadata" not in metric_candidate
+    candidate = summary["triple_candidates"][0]
+    assert candidate["object"] == "WMT14 En-Fr dataset"
+    assert "graph_metadata" not in candidate
 
 
 @pytest.mark.anyio

@@ -505,9 +505,15 @@ def _extract_graph_entities(
     }
 
 
+GRAPH_DATASET_RELATIONS = {"EVALUATED_ON", "USES"}
+GRAPH_METRIC_RELATIONS = {"MEASURES", "REPORTS"}
+GRAPH_TASK_RELATIONS = {"PROPOSES"}
+
+
 def _build_graph_metadata(
     entities: Mapping[str, Optional[str]],
     *,
+    relation_type_guess: Optional[str],
     matches: Sequence[Mapping[str, Any]],
     evidence_text: str,
     section_id: Optional[str],
@@ -563,9 +569,14 @@ def _build_graph_metadata(
             }
         )
 
-    _append_pair("dataset", entities.get("dataset"), "evaluates_on")
-    _append_pair("metric", entities.get("metric"), "reports")
-    _append_pair("task", entities.get("task"), "proposes")
+    normalized_guess = (relation_type_guess or "").strip().upper()
+
+    if normalized_guess in GRAPH_DATASET_RELATIONS:
+        _append_pair("dataset", entities.get("dataset"), "evaluates_on")
+    if normalized_guess in GRAPH_METRIC_RELATIONS:
+        _append_pair("metric", entities.get("metric"), "reports")
+    if normalized_guess in GRAPH_TASK_RELATIONS:
+        _append_pair("task", entities.get("task"), "proposes")
 
     if metadata["pairs"]:
         return metadata
@@ -1252,6 +1263,7 @@ def _build_candidates(
         )
         graph_metadata = _build_graph_metadata(
             graph_entities,
+            relation_type_guess=triple.relation_type_guess,
             matches=matches,
             evidence_text=evidence_text,
             section_id=candidate_section_id,

@@ -28,6 +28,10 @@ _QUALITATIVE_RELATION_CONFIDENCE = 0.65
 _DATASET_RELATION_GUESSES = {"EVALUATED_ON", "USES", "TRAINS_ON", "TESTED_ON"}
 _TASK_RELATION_GUESSES = {"PROPOSES", "ADDRESSES", "SOLVES", "TARGETS"}
 
+_GRAPH_DATASET_RELATIONS = {"EVALUATED_ON", "USES"}
+_GRAPH_METRIC_RELATIONS = {"MEASURES", "REPORTS"}
+_GRAPH_TASK_RELATIONS = {"PROPOSES"}
+
 _COREF_HEAD_PATTERN = re.compile(
     r"^(?:this|that|these|those|our|the|its|their|it|they)\b",
     re.IGNORECASE,
@@ -327,6 +331,11 @@ def _update_graph_metadata(wrapper: CandidateWrapper) -> None:
     if measurement is None:
         return
 
+    relation_guess = (wrapper.data.get("relation_type_guess") or "").strip().upper()
+    dataset_allowed = relation_guess in _GRAPH_DATASET_RELATIONS or bool(measurement.dataset)
+    metric_allowed = relation_guess in _GRAPH_METRIC_RELATIONS or bool(measurement.metric)
+    task_allowed = relation_guess in _GRAPH_TASK_RELATIONS or bool(measurement.task)
+
     def _ensure_entry(entity_type: str, text: Optional[str]) -> Optional[dict[str, str]]:
         if not text:
             return None
@@ -354,7 +363,15 @@ def _update_graph_metadata(wrapper: CandidateWrapper) -> None:
     confidence = wrapper.data.get("triple_conf")
     evidence_text = wrapper.data.get("evidence")
 
-    def _append_pair(target_type: str, text: Optional[str], relation: str) -> None:
+    def _append_pair(
+        target_type: str,
+        text: Optional[str],
+        relation: str,
+        *,
+        allowed: bool,
+    ) -> None:
+        if not allowed:
+            return
         entry = _ensure_entry(target_type, text)
         if entry is None:
             return
@@ -374,9 +391,24 @@ def _update_graph_metadata(wrapper: CandidateWrapper) -> None:
             }
         )
 
-    _append_pair("dataset", measurement.dataset, "evaluates_on")
-    _append_pair("metric", measurement.metric, "reports")
-    _append_pair("task", measurement.task, "proposes")
+    _append_pair(
+        "dataset",
+        measurement.dataset,
+        "evaluates_on",
+        allowed=dataset_allowed,
+    )
+    _append_pair(
+        "metric",
+        measurement.metric,
+        "reports",
+        allowed=metric_allowed,
+    )
+    _append_pair(
+        "task",
+        measurement.task,
+        "proposes",
+        allowed=task_allowed,
+    )
 
 
 def _extract_numeric_measure(candidate: dict[str, Any]) -> Optional[NumericMeasurement]:
