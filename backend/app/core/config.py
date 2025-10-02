@@ -1,9 +1,231 @@
 from __future__ import annotations
-from pydantic import Field
+
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
+from typing import Dict, List, Optional
 
-from typing import Optional
+DEFAULT_STOPWORDS = [
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "if",
+    "but",
+    "on",
+    "in",
+    "into",
+    "by",
+    "for",
+    "of",
+    "with",
+    "we",
+    "our",
+    "is",
+    "are",
+    "was",
+    "were",
+    "this",
+    "that",
+    "these",
+    "those",
+    "using",
+    "used",
+    "use",
+    "can",
+    "may",
+    "might",
+    "should",
+    "could",
+    "to",
+    "from",
+    "as",
+    "at",
+    "be",
+    "been",
+    "it",
+    "its",
+    "their",
+    "they",
+    "them",
+    "than",
+    "then",
+    "also",
+    "such",
+    "however",
+    "between",
+    "within",
+    "through",
+    "across",
+    "each",
+    "both",
+    "either",
+    "neither",
+    "because",
+    "due",
+    "after",
+    "before",
+    "over",
+    "under",
+    "more",
+    "most",
+    "less",
+    "least",
+    "many",
+    "much",
+    "several",
+    "various",
+    "against",
+    "include",
+    "includes",
+    "including",
+    "based",
+    "extend",
+    "extends",
+    "extending",
+    "extended",
+    "leveraging",
+    "leverage",
+    "leverages",
+    "utilizing",
+    "utilize",
+    "utilizes",
+    "via",
+    "around",
+    "among",
+    "amongst",
+    "towards",
+    "toward",
+    "accompanying",
+    "accompanied",
+    "accompanies",
+    "compared",
+    "comparing",
+    "compare",
+    "compares",
+]
+
+DEFAULT_FILLER_PREFIXES = [
+    "baseline",
+    "baselines",
+    "compare",
+    "compares",
+    "compared",
+    "comparing",
+    "proposed",
+    "propose",
+    "proposes",
+    "introduce",
+    "introduces",
+    "introducing",
+    "novel",
+    "new",
+    "simple",
+    "improved",
+    "fast",
+    "robust",
+    "efficient",
+    "effective",
+    "powerful",
+    "general",
+]
+
+DEFAULT_FILLER_SUFFIXES = [
+    "approach",
+    "approaches",
+    "method",
+    "methods",
+    "technique",
+    "techniques",
+    "architecture",
+    "architectures",
+    "pipeline",
+    "pipelines",
+    "framework",
+    "frameworks",
+    "model",
+    "models",
+    "system",
+    "systems",
+    "strategy",
+    "strategies",
+    "procedure",
+    "procedures",
+    "scheme",
+    "schemes",
+]
+
+DEFAULT_SCISPACY_MODELS = [
+    "en_core_sci_sm",
+    "en_core_sci_md",
+    "en_core_web_sm",
+]
+
+
+class ConceptExtractionDomainOverride(BaseModel):
+    provider_priority: Optional[List[str]] = None
+    max_tokens: Optional[int] = None
+    stopwords: Optional[List[str]] = None
+    filler_prefixes: Optional[List[str]] = None
+    filler_suffixes: Optional[List[str]] = None
+    ner_model: Optional[str] = None
+    llm_prompt: Optional[str] = None
+    entity_hints: Dict[str, List[str]] = Field(default_factory=dict)
+
+
+class ConceptExtractionTuning(BaseModel):
+    max_tokens: int = 6
+    stopwords: List[str] = Field(default_factory=lambda: list(DEFAULT_STOPWORDS))
+    filler_prefixes: List[str] = Field(
+        default_factory=lambda: list(DEFAULT_FILLER_PREFIXES)
+    )
+    filler_suffixes: List[str] = Field(
+        default_factory=lambda: list(DEFAULT_FILLER_SUFFIXES)
+    )
+
+
+def _default_domain_overrides() -> Dict[str, ConceptExtractionDomainOverride]:
+    return {
+        "biology": ConceptExtractionDomainOverride(
+            provider_priority=["scispacy", "domain_ner", "llm"],
+            max_tokens=8,
+            entity_hints={
+                "organism": ["bacter", "coli", "saccharomyces", "arabidopsis"],
+                "chemical": ["enzyme", "protein", "rna", "dna"],
+            },
+        ),
+        "materials": ConceptExtractionDomainOverride(
+            provider_priority=["domain_ner", "scispacy", "llm"],
+            max_tokens=8,
+            entity_hints={
+                "material": [
+                    "perovskite",
+                    "graphene",
+                    "nanotube",
+                    "alloy",
+                    "oxide",
+                    "ceramic",
+                ],
+                "chemical": ["sulfide", "carbonate", "chloride", "lithium"],
+            },
+        ),
+    }
+
+
+class ConceptExtractionSettings(BaseModel):
+    max_concepts: int = 50
+    scispacy_models: List[str] = Field(
+        default_factory=lambda: list(DEFAULT_SCISPACY_MODELS)
+    )
+    providers: List[str] = Field(default_factory=lambda: ["scispacy", "domain_ner", "llm"])
+    llm_prompt: Optional[str] = None
+    tuning: ConceptExtractionTuning = Field(default_factory=ConceptExtractionTuning)
+    domain_overrides: Dict[str, ConceptExtractionDomainOverride] = Field(
+        default_factory=_default_domain_overrides
+    )
+
+
 class Settings(BaseSettings):
     # App
     app_name: str = "Scinets API"
@@ -76,6 +298,10 @@ class Settings(BaseSettings):
             "statement the passage explicitly supports with evidence; only skip when support is "
             "missing or spans cannot be resolved."
         )
+    )
+
+    concept_extraction: ConceptExtractionSettings = Field(
+        default_factory=ConceptExtractionSettings
     )
 
     class Config:
