@@ -272,3 +272,104 @@ async def test_run_tier3_verifier_persists_qualitative_relations(
 
     meta = summary["metadata"]["tier3"]
     assert meta.get("persisted_relations") == len(captured_relations)
+
+
+@pytest.mark.anyio
+async def test_run_tier3_verifier_allows_supported_low_confidence_dataset_relation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paper_id = uuid4()
+    sections = [
+        _build_section(
+            "sec-1",
+            [
+                "QualNet is introduced for transfer learning.",
+                "QualNet is evaluated on the GLUE benchmark in our experiments.",
+                "Results on the GLUE benchmark highlight broad coverage.",
+            ],
+        )
+    ]
+
+    triple_candidates = [
+        {
+            "candidate_id": "tier2_llm_openie_qual_002",
+            "tier": "tier2_llm_openie",
+            "subject": "QualNet",
+            "relation": "evaluated on",
+            "object": "GLUE benchmark",
+            "subject_type_guess": "method",
+            "relation_type_guess": "evaluated_on",
+            "object_type_guess": "dataset",
+            "triple_conf": 0.56,
+            "evidence": "QualNet is evaluated on the GLUE benchmark in our experiments.",
+            "evidence_spans": [
+                {"section_id": "sec-1", "sentence_index": 1, "start": 0, "end": 63},
+                {"section_id": "sec-1", "sentence_index": 2, "start": 0, "end": 59},
+            ],
+        }
+    ]
+
+    captured_relations: list = []
+    method_cache: dict[str, SimpleNamespace] = {}
+    dataset_cache: dict[str, SimpleNamespace] = {}
+
+    async def _ensure_cached(cache: dict[str, SimpleNamespace], name: str) -> SimpleNamespace:
+        key = (name or "").strip()
+        if not key:
+            raise ValueError("Name cannot be empty")
+        existing = cache.get(key)
+        if existing is None:
+            existing = SimpleNamespace(id=uuid4(), name=key, aliases=[], description=None)
+            cache[key] = existing
+        return existing
+
+    async def fake_ensure_method(name: str, **_: object) -> SimpleNamespace:
+        return await _ensure_cached(method_cache, name)
+
+    async def fake_ensure_dataset(name: str, **_: object) -> SimpleNamespace:
+        return await _ensure_cached(dataset_cache, name)
+
+    async def fake_append_results(*_: object, **__: object) -> list:
+        return []
+
+    async def fake_append_method_relations(paper_id_arg, relations):
+        if paper_id_arg != paper_id:
+            raise AssertionError("Unexpected paper_id")
+        captured_relations.extend(relations)
+        return []
+
+    async def fake_ensure_metric(*_: object, **__: object) -> None:
+        return None
+
+    async def fake_ensure_task(*_: object, **__: object) -> None:
+        return None
+
+    monkeypatch.setattr("app.services.extraction_tier3.ensure_method", fake_ensure_method)
+    monkeypatch.setattr("app.services.extraction_tier3.ensure_dataset", fake_ensure_dataset)
+    monkeypatch.setattr("app.services.extraction_tier3.ensure_metric", fake_ensure_metric)
+    monkeypatch.setattr("app.services.extraction_tier3.ensure_task", fake_ensure_task)
+    monkeypatch.setattr("app.services.extraction_tier3.append_results", fake_append_results)
+    monkeypatch.setattr(
+        "app.services.extraction_tier3.append_method_relations",
+        fake_append_method_relations,
+    )
+
+    base_summary = {
+        "paper_id": str(paper_id),
+        "tiers": [1, 2],
+        "sections": sections,
+        "tables": [],
+        "triple_candidates": triple_candidates,
+    }
+
+    summary = await run_tier3_verifier(paper_id, base_summary=base_summary)
+
+    assert captured_relations, "Qualitative relation with strong signals should persist"
+    relation = captured_relations[0]
+    assert relation.dataset_id is not None
+    assert relation.relation_type.value == "evaluates_on"
+    assert relation.confidence == pytest.approx(0.56)
+    assert relation.evidence and relation.evidence[0]["snippet"].startswith("QualNet is evaluated")
+
+    meta = summary["metadata"]["tier3"]
+    assert meta.get("persisted_relations") == len(captured_relations)

@@ -693,6 +693,24 @@ async def _candidate_to_result(
     except (TypeError, ValueError):
         confidence_value = None
 
+    valid_spans: list[tuple[str, int]] = []
+    raw_spans = data.get("evidence_spans") or []
+    if isinstance(raw_spans, list):
+        for span in raw_spans:
+            if not isinstance(span, dict):
+                continue
+            section_id = span.get("section_id")
+            sentence_index = span.get("sentence_index")
+            if section_id and isinstance(sentence_index, int):
+                valid_spans.append((str(section_id), sentence_index))
+
+    has_verified_span = bool(valid_spans)
+    distinct_span_positions = {span for span in valid_spans}
+    multi_verified_spans = len(distinct_span_positions) > 1
+
+    snippet_text = str(snippet or "")
+    snippet_lower = snippet_text.lower()
+
     result_outcome: Optional[tuple[ResultCreate, tuple[Any, ...]]] = None
     relation_outcomes: list[tuple[MethodRelationCreate, tuple[Any, ...]]] = []
 
@@ -724,50 +742,97 @@ async def _candidate_to_result(
     else:
         if confidence_value is None:
             confidence_value = 0.0
-        if confidence_value >= _QUALITATIVE_RELATION_CONFIDENCE:
-            if dataset_model and (
-                relation_guess in _DATASET_RELATION_GUESSES
-                or object_type == "dataset"
-            ):
-                relation = MethodRelationCreate(
-                    paper_id=paper_id,
-                    method_id=method_model.id,
-                    dataset_id=dataset_model.id,
-                    task_id=None,
-                    relation_type=MethodRelationType.EVALUATES_ON,
-                    confidence=confidence_value,
-                    evidence=evidence,
-                )
-                key = (
-                    relation.method_id,
-                    relation.dataset_id,
-                    relation.task_id,
-                    relation.relation_type,
-                )
-                relation_outcomes.append((relation, key))
-            if task_model and (
-                relation_guess in _TASK_RELATION_GUESSES
-                or object_type == "task"
-                or subject_type == "task"
-            ):
-                relation = MethodRelationCreate(
-                    paper_id=paper_id,
-                    method_id=method_model.id,
-                    dataset_id=None,
-                    task_id=task_model.id,
-                    relation_type=MethodRelationType.PROPOSES,
-                    confidence=confidence_value,
-                    evidence=evidence,
-                )
-                key = (
-                    relation.method_id,
-                    relation.dataset_id,
-                    relation.task_id,
-                    relation.relation_type,
-                )
-                relation_outcomes.append((relation, key))
+        dataset_signals = 0
+        if relation_guess in _DATASET_RELATION_GUESSES:
+            dataset_signals += 1
+        if object_type == "dataset":
+            dataset_signals += 1
+        if dataset_name and dataset_name.lower() in snippet_lower:
+            dataset_signals += 1
+        elif snippet_text and _DATASET_RE.search(snippet_text):
+            dataset_signals += 1
+        if multi_verified_spans:
+            dataset_signals += 1
+
+        task_signals = 0
+        if relation_guess in _TASK_RELATION_GUESSES:
+            task_signals += 1
+        if object_type == "task" or subject_type == "task":
+            task_signals += 1
+        if task_name and task_name.lower() in snippet_lower:
+            task_signals += 1
+        elif snippet_text and _TASK_RE.search(snippet_text):
+            task_signals += 1
+        if multi_verified_spans:
+            task_signals += 1
+
+        dataset_threshold = _compute_qualitative_threshold(
+            _QUALITATIVE_RELATION_CONFIDENCE,
+            has_verified_span=has_verified_span,
+            signal_strength=dataset_signals,
+            type_guard=subject_type == "method" and object_type == "dataset",
+        )
+        task_threshold = _compute_qualitative_threshold(
+            _QUALITATIVE_RELATION_CONFIDENCE,
+            has_verified_span=has_verified_span,
+            signal_strength=task_signals,
+            type_guard=(
+                (subject_type == "method" and object_type == "task")
+                or (subject_type == "task" and object_type == "method")
+            ),
+        )
+
+        if dataset_model and confidence_value >= dataset_threshold:
+            relation = MethodRelationCreate(
+                paper_id=paper_id,
+                method_id=method_model.id,
+                dataset_id=dataset_model.id,
+                task_id=None,
+                relation_type=MethodRelationType.EVALUATES_ON,
+                confidence=confidence_value,
+                evidence=evidence,
+            )
+            key = (
+                relation.method_id,
+                relation.dataset_id,
+                relation.task_id,
+                relation.relation_type,
+            )
+            relation_outcomes.append((relation, key))
+        if task_model and confidence_value >= task_threshold:
+            relation = MethodRelationCreate(
+                paper_id=paper_id,
+                method_id=method_model.id,
+                dataset_id=None,
+                task_id=task_model.id,
+                relation_type=MethodRelationType.PROPOSES,
+                confidence=confidence_value,
+                evidence=evidence,
+            )
+            key = (
+                relation.method_id,
+                relation.dataset_id,
+                relation.task_id,
+                relation.relation_type,
+            )
+            relation_outcomes.append((relation, key))
 
     return result_outcome, relation_outcomes
+
+
+def _compute_qualitative_threshold(
+    base_threshold: float,
+    *,
+    has_verified_span: bool,
+    signal_strength: int,
+    type_guard: bool,
+) -> float:
+    if not has_verified_span or not type_guard:
+        return base_threshold
+    if signal_strength < 2:
+        return base_threshold
+    reduction = 0.05 * min(signal_strength, 4)
+    return max(0.5, base_threshold - reduction)
 
 
 def _clean_entity_name(value: Optional[str]) -> Optional[str]:
