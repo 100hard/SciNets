@@ -106,6 +106,10 @@ class FakeGraphConnection:
                 "dataset_id": DATASET_X,
                 "metric_id": METRIC_F1,
                 "task_id": TASK_SUMMARY,
+                "split": "test",
+                "value_numeric": 0.81,
+                "value_text": "0.81",
+                "is_sota": True,
                 "confidence": 0.8,
                 "split": "test",
                 "value_numeric": 0.78,
@@ -121,6 +125,10 @@ class FakeGraphConnection:
                 "dataset_id": DATASET_X,
                 "metric_id": METRIC_F1,
                 "task_id": TASK_SUMMARY,
+                "split": "validation",
+                "value_numeric": 0.75,
+                "value_text": "0.75",
+                "is_sota": False,
                 "confidence": 0.6,
                 "split": "validation",
                 "value_numeric": 0.7,
@@ -136,6 +144,10 @@ class FakeGraphConnection:
                 "dataset_id": DATASET_X,
                 "metric_id": METRIC_F1,
                 "task_id": TASK_SUMMARY,
+                "split": "validation",
+                "value_numeric": 0.7,
+                "value_text": "0.70",
+                "is_sota": False,
                 "confidence": 0.7,
                 "split": "validation",
                 "value_numeric": 0.65,
@@ -164,6 +176,20 @@ class FakeGraphConnection:
             },
         ]
         self.method_relations: list[dict[str, Any]] = []
+        self.claims: list[dict[str, Any]] = [
+            {
+                "paper_id": PAPER_A,
+                "category": "contribution",
+                "text": "AlphaNet introduces a novel encoder.",
+                "confidence": 0.9,
+            },
+            {
+                "paper_id": PAPER_B,
+                "category": "limitation",
+                "text": "Dataset-X lacks diversity.",
+                "confidence": 0.6,
+            },
+        ]
 
     # AsyncPG compatibility helpers -------------------------------------------------
     async def fetch(self, query: str, *params: Any) -> list[Mapping[str, Any]]:
@@ -186,16 +212,18 @@ class FakeGraphConnection:
             ]
             return [self._build_relation_row(rel) for rel in rows]
 
-        if normalized.startswith("SELECT c.id, c.paper_id"):
-            paper_ids: Sequence[UUID] | None = None
-            if "WHERE c.paper_id = ANY($1::uuid[])" in normalized:
-                paper_ids = params[0]
-            rows = [
-                claim
+        if normalized.startswith("SELECT paper_id, category::text AS category, text, confidence FROM claims"):
+            paper_ids_param: Sequence[UUID] = params[0]
+            return [
+                {
+                    "paper_id": claim["paper_id"],
+                    "category": claim["category"],
+                    "text": claim["text"],
+                    "confidence": claim.get("confidence"),
+                }
                 for claim in self.claims
-                if paper_ids is None or claim["paper_id"] in paper_ids
+                if claim["paper_id"] in paper_ids_param
             ]
-            return [self._build_claim_row(claim) for claim in rows]
 
         if normalized.startswith("SELECT DISTINCT paper_id FROM results WHERE"):
             if "method_id" in normalized:
@@ -299,6 +327,10 @@ class FakeGraphConnection:
             "dataset_id": result.get("dataset_id"),
             "metric_id": result.get("metric_id"),
             "task_id": result.get("task_id"),
+            "split": result.get("split"),
+            "value_numeric": result.get("value_numeric"),
+            "value_text": result.get("value_text"),
+            "is_sota": result.get("is_sota"),
             "confidence": result.get("confidence"),
             "split": result.get("split"),
             "value_numeric": result.get("value_numeric"),
@@ -335,6 +367,10 @@ class FakeGraphConnection:
             "dataset_id": relation.get("dataset_id"),
             "metric_id": None,
             "task_id": relation.get("task_id"),
+            "split": None,
+            "value_numeric": None,
+            "value_text": None,
+            "is_sota": None,
             "confidence": relation.get("confidence"),
             "split": relation.get("split"),
             "value_numeric": None,
@@ -390,11 +426,20 @@ async def _run_get_graph_overview(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.meta.limit == 10
     assert response.meta.node_count >= 4
     assert response.meta.edge_count >= 4
-    assert response.meta.filters == {
-        "types": ["method", "dataset", "metric", "task"],
-        "relations": ["proposes", "evaluates_on", "reports", "compares"],
-        "min_conf": 0.6,
-    }
+    assert response.meta.filters["types"] == ["method", "dataset", "metric", "task"]
+    assert response.meta.filters["relations"] == [
+        "proposes",
+        "evaluates_on",
+        "reports",
+        "compares",
+        "uses",
+        "causes",
+        "part_of",
+        "is_a",
+        "outperforms",
+        "assumes",
+    ]
+    assert response.meta.filters["min_conf"] == 0.6
 
     node_types = {node.data.type for node in response.nodes}
     assert node_types == {"method", "dataset", "metric", "task"}
@@ -403,6 +448,15 @@ async def _run_get_graph_overview(monkeypatch: pytest.MonkeyPatch) -> None:
     assert method_node.data.paper_count == 2
     assert method_node.data.aliases == ["Alpha"]
     assert method_node.data.top_links
+    best_results = method_node.data.metadata.get("best_results")
+    assert best_results
+    assert any(pytest.approx(result.get("value"), rel=1e-6) == 0.81 for result in best_results if result.get("value") is not None)
+    claims_summary = method_node.data.metadata.get("claims")
+    assert claims_summary and claims_summary["by_category"].get("contribution") == 1
+
+    dataset_node = next(node for node in response.nodes if node.data.type == "dataset")
+    dataset_claims = dataset_node.data.metadata.get("claims")
+    assert dataset_claims and dataset_claims["by_category"].get("limitation") == 1
 
     edge_types = {edge.data.type for edge in response.edges}
     assert {"evaluates_on", "reports", "proposes", "compares"}.issubset(edge_types)
@@ -484,7 +538,7 @@ async def _run_graph_fallback_overview(monkeypatch: pytest.MonkeyPatch) -> None:
                 "section_id": "section-1",
                 "sentence_indices": [2],
                 "evidence": "AlphaNet is evaluated on Dataset-X.",
-                "source": "tier2_triple",
+                "provenance": "tier2_triple",
             }
         ],
     }
@@ -544,7 +598,7 @@ async def _run_graph_fallback_shared_nodes(monkeypatch: pytest.MonkeyPatch) -> N
                 "section_id": "section-shared",
                 "sentence_indices": [1],
                 "evidence": "Shared Method evaluates Shared Dataset.",
-                "source": "tier2_triple",
+                "provenance": "tier2_triple",
             }
         ],
     }
@@ -594,6 +648,131 @@ async def _run_graph_fallback_shared_nodes(monkeypatch: pytest.MonkeyPatch) -> N
     edge = response.edges[0]
     assert edge.data.paper_count == 2
     assert sorted(str(item.get("paper_id")) for item in edge.data.metadata.get("papers", [])) == expected_ids
+
+
+
+def test_graph_fallback_extended_relations(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_run_graph_fallback_extended_relations(monkeypatch))
+
+
+async def _run_graph_fallback_extended_relations(monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = _setup_fake_pool(monkeypatch)
+    conn.results = []
+    conn.methods.clear()
+    conn.datasets.clear()
+    conn.metrics.clear()
+    conn.tasks.clear()
+
+    conn.concepts = [
+        {"id": uuid4(), "paper_id": PAPER_A, "name": "VisionFormer", "type": "model"},
+        {"id": uuid4(), "paper_id": PAPER_A, "name": "Graphite", "type": "material"},
+        {"id": uuid4(), "paper_id": PAPER_A, "name": "Stem cell", "type": "organism"},
+        {"id": uuid4(), "paper_id": PAPER_A, "name": "Higher capacity", "type": "finding"},
+        {"id": uuid4(), "paper_id": PAPER_A, "name": "Regeneration", "type": "process"},
+        {"id": uuid4(), "paper_id": PAPER_A, "name": "Transformer", "type": "concept"},
+        {"id": uuid4(), "paper_id": PAPER_A, "name": "Neural network", "type": "concept"},
+        {"id": uuid4(), "paper_id": PAPER_A, "name": "Energy conservation", "type": "concept"},
+        {"id": uuid4(), "paper_id": PAPER_A, "name": "ResNet", "type": "method"},
+    ]
+
+    graph_metadata = {
+        "pairs": [
+            {
+                "source": {"type": "model", "text": "VisionFormer", "normalized": "visionformer"},
+                "target": {"type": "material", "text": "Graphite", "normalized": "graphite"},
+                "relation": "uses",
+                "confidence": 0.9,
+                "section_id": "sec-uses",
+                "sentence_indices": [0],
+                "evidence": "VisionFormer uses Graphite electrodes.",
+                "provenance": "tier2_triple",
+            },
+            {
+                "source": {"type": "material", "text": "Graphite", "normalized": "graphite"},
+                "target": {"type": "finding", "text": "Higher capacity", "normalized": "higher capacity"},
+                "relation": "causes",
+                "confidence": 0.88,
+                "section_id": "sec-causes",
+                "sentence_indices": [1],
+                "evidence": "Graphite causes higher capacity in cells.",
+                "provenance": "tier2_triple",
+            },
+            {
+                "source": {"type": "organism", "text": "Stem cell", "normalized": "stem cell"},
+                "target": {"type": "process", "text": "Regeneration", "normalized": "regeneration"},
+                "relation": "part_of",
+                "confidence": 0.86,
+                "section_id": "sec-part",
+                "sentence_indices": [2],
+                "evidence": "Stem cell activity is part of regeneration.",
+                "provenance": "tier2_triple",
+            },
+            {
+                "source": {"type": "concept", "text": "Transformer", "normalized": "transformer"},
+                "target": {"type": "concept", "text": "Neural network", "normalized": "neural network"},
+                "relation": "is_a",
+                "confidence": 0.84,
+                "section_id": "sec-isa",
+                "sentence_indices": [3],
+                "evidence": "Transformer is a neural network architecture.",
+                "provenance": "tier2_triple",
+            },
+            {
+                "source": {"type": "method", "text": "VisionFormer", "normalized": "visionformer"},
+                "target": {"type": "method", "text": "ResNet", "normalized": "resnet"},
+                "relation": "outperforms",
+                "confidence": 0.93,
+                "section_id": "sec-outperforms",
+                "sentence_indices": [4],
+                "evidence": "VisionFormer outperforms ResNet.",
+                "provenance": "tier2_triple",
+            },
+            {
+                "source": {"type": "process", "text": "Regeneration", "normalized": "regeneration"},
+                "target": {"type": "concept", "text": "Energy conservation", "normalized": "energy conservation"},
+                "relation": "assumes",
+                "confidence": 0.82,
+                "section_id": "sec-assumes",
+                "sentence_indices": [5],
+                "evidence": "Regeneration assumes energy conservation.",
+                "provenance": "tier2_triple",
+            },
+        ]
+    }
+
+    conn.triple_candidates = [
+        {
+            "paper_id": PAPER_A,
+            "graph_metadata": graph_metadata,
+            "triple_conf": 0.9,
+            "evidence_text": "Extended relations evidence.",
+            "section_id": "section-extended",
+            "created_at": None,
+        }
+    ]
+
+    response = await get_graph_overview(limit=20, min_conf=0.6)
+
+    node_types = {node.data.type for node in response.nodes}
+    assert {
+        "model",
+        "material",
+        "organism",
+        "finding",
+        "process",
+        "concept",
+        "method",
+    }.issubset(node_types)
+
+    relation_types = {edge.data.type for edge in response.edges}
+    assert {"uses", "causes", "part_of", "is_a", "outperforms", "assumes"}.issubset(relation_types)
+
+    uses_edge = next(edge for edge in response.edges if edge.data.type == "uses")
+    statements = uses_edge.data.metadata.get("statements") or []
+    assert any(statement.get("provenance") == "tier2_triple" for statement in statements)
+
+    outperforms_edge = next(edge for edge in response.edges if edge.data.type == "outperforms")
+    assert outperforms_edge.data.average_confidence >= 0.82
 
 
 def test_get_graph_overview_respects_min_confidence(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -653,8 +832,13 @@ async def _run_get_graph_neighborhood_missing(monkeypatch: pytest.MonkeyPatch) -
         await get_graph_neighborhood(missing_id, limit=5)
 
 
-@pytest.mark.asyncio
-async def test_get_graph_overview_uses_method_relations(
+def test_get_graph_overview_uses_method_relations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asyncio.run(_run_get_graph_overview_uses_method_relations(monkeypatch))
+
+
+async def _run_get_graph_overview_uses_method_relations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     conn = FakeGraphConnection()

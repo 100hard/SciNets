@@ -387,7 +387,7 @@ def _update_graph_metadata(wrapper: CandidateWrapper) -> None:
                 "section_id": wrapper.section_id,
                 "sentence_indices": sentence_indices,
                 "evidence": evidence_text,
-                "source": "tier3_measurement",
+                "provenance": "tier3_measurement",
             }
         )
 

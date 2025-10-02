@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import copy
 import json
 from collections import defaultdict
 from itertools import combinations
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, TypeVar, cast
 from uuid import UUID, uuid4, uuid5
 
@@ -35,6 +37,57 @@ _MAX_TOP_LINKS = 6
 _ORDERED_RELATIONS: tuple[RelationType, ...] = _GRAPH_METADATA.ordered_relations
 _CONCEPT_TYPES: tuple[NodeType, ...] = _GRAPH_METADATA.concept_types
 _FALLBACK_NAMESPACE = UUID("00000000-0000-0000-0000-000000000000")
+
+_FALLBACK_TYPE_NORMALIZATION: dict[str, str] = {
+    "method": "method",
+    "model": "model",
+    "dataset": "dataset",
+    "metric": "metric",
+    "task": "task",
+    "concept": "concept",
+    "material": "material",
+    "organism": "organism",
+    "finding": "finding",
+    "result": "finding",
+    "outcome": "finding",
+    "observation": "finding",
+    "process": "process",
+    "procedure": "process",
+    "approach": "method",
+    "algorithm": "method",
+    "technique": "method",
+    "analysis": "process",
+    "unknown": "concept",
+    "other": "concept",
+    "entity": "concept",
+    "subject": "concept",
+    "object": "concept",
+}
+
+_ALLOWED_FALLBACK_TYPES: set[str] = {str(concept) for concept in _CONCEPT_TYPES}
+
+_RELATION_NAME_LOOKUP: dict[str, RelationType] = {}
+for relation in RelationType:
+    value = relation.value
+    _RELATION_NAME_LOOKUP[value] = relation
+    _RELATION_NAME_LOOKUP[value.lower()] = relation
+    _RELATION_NAME_LOOKUP[value.upper()] = relation
+
+_RELATION_NAME_LOOKUP.update(
+    {
+        "evaluated_on": RelationType.EVALUATES_ON,
+        "evaluates_on": RelationType.EVALUATES_ON,
+        "measures": RelationType.REPORTS,
+        "reports": RelationType.REPORTS,
+        "uses": RelationType.USES,
+        "compared_to": RelationType.COMPARES,
+        "outperforms": RelationType.OUTPERFORMS,
+        "causes": RelationType.CAUSES,
+        "part_of": RelationType.PART_OF,
+        "is_a": RelationType.IS_A,
+        "assumes": RelationType.ASSUMES,
+    }
+)
 
 _CLEAR_GRAPH_TABLES_IN_ORDER: tuple[str, ...] = (
     "results",
@@ -72,6 +125,10 @@ _RESULT_SELECT = """
         r.dataset_id,
         r.metric_id,
         r.task_id,
+        r.split,
+        r.value_numeric,
+        r.value_text,
+        r.is_sota,
         r.confidence,
         r.split,
         r.value_numeric,
@@ -110,6 +167,10 @@ _METHOD_RELATION_SELECT = """
         mr.dataset_id,
         NULL::uuid AS metric_id,
         mr.task_id,
+        NULL::text AS split,
+        NULL::numeric AS value_numeric,
+        NULL::text AS value_text,
+        NULL::boolean AS is_sota,
         mr.confidence,
         mr.split,
         NULL::numeric AS value_numeric,
@@ -181,27 +242,7 @@ class EdgeInstance:
     metric_unit: Optional[str]
     task_id: Optional[UUID]
     task_label: Optional[str]
-    value_numeric: Optional[float]
-    value_text: Optional[str]
-    is_sota: Optional[bool]
-    verified: Optional[bool]
-    claims: Sequence[Mapping[str, Any]]
-
-
-@dataclass
-class NodeOutcome:
-    paper_id: UUID
-    paper_title: Optional[str]
-    paper_year: Optional[int]
-    value_numeric: Optional[float]
-    value_text: Optional[str]
-    metric_label: Optional[str]
-    dataset_label: Optional[str]
-    task_label: Optional[str]
-    metric_unit: Optional[str]
-    confidence: float
-    is_sota: Optional[bool]
-    verified: Optional[bool]
+    statement_metadata: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -518,6 +559,218 @@ def _merge_node_metadata(
     return merged
 
 
+def _normalize_fallback_type(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    if not normalized:
+        return "concept"
+    mapped = _FALLBACK_TYPE_NORMALIZATION.get(normalized, normalized)
+    if mapped not in _ALLOWED_FALLBACK_TYPES:
+        return "concept"
+    return mapped
+
+
+def _normalize_relation_name(value: Any) -> Optional[RelationType]:
+    if isinstance(value, RelationType):
+        return value
+    normalized = str(value or "").strip().lower()
+    if not normalized:
+        return None
+    return _RELATION_NAME_LOOKUP.get(normalized)
+
+
+def _coerce_node_type(value: Any) -> Optional[NodeType]:
+    if isinstance(value, NodeType):
+        return value
+    normalized = str(value or "").strip().lower()
+    if not normalized:
+        return None
+    try:
+        return NodeType(normalized)
+    except ValueError:
+        return None
+
+
+def _decimal_to_float(value: Any) -> Optional[float]:
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _result_combo_key(node_type: NodeType, row: Mapping[str, Any]) -> tuple[Any, ...]:
+    if node_type == NodeType.METHOD:
+        return (row.get("dataset_id"), row.get("metric_id"), row.get("task_id"))
+    if node_type == NodeType.DATASET:
+        return (row.get("method_id"), row.get("metric_id"), row.get("task_id"))
+    if node_type == NodeType.METRIC:
+        return (row.get("method_id"), row.get("dataset_id"), row.get("task_id"))
+    if node_type == NodeType.TASK:
+        return (row.get("method_id"), row.get("dataset_id"), row.get("metric_id"))
+    return (row.get("method_id"), row.get("dataset_id"), row.get("metric_id"), row.get("task_id"))
+
+
+def _build_result_summary(
+    row: Mapping[str, Any],
+    *,
+    paper_id: UUID,
+    paper_title: Optional[str],
+) -> Dict[str, Any]:
+    summary: Dict[str, Any] = {
+        "paper_id": str(paper_id),
+    }
+    if paper_title:
+        summary["paper_title"] = paper_title
+    numeric = _decimal_to_float(row.get("value_numeric"))
+    if numeric is not None:
+        summary["value"] = numeric
+    value_text = row.get("value_text")
+    if value_text:
+        summary["value_text"] = str(value_text)
+    split = row.get("split")
+    if split:
+        summary["split"] = str(split)
+    is_sota = row.get("is_sota")
+    if is_sota is not None:
+        summary["is_sota"] = bool(is_sota)
+    confidence = row.get("confidence")
+    if confidence is not None:
+        summary["confidence"] = _confidence_value(confidence)
+    context_fields = (
+        ("method", row.get("method_name")),
+        ("dataset", row.get("dataset_name")),
+        ("metric", row.get("metric_name")),
+        ("task", row.get("task_name")),
+        ("unit", row.get("metric_unit")),
+    )
+    for key, value in context_fields:
+        if value:
+            summary[key] = str(value)
+    return summary
+
+
+def _is_better_result(existing: Mapping[str, Any], candidate: Mapping[str, Any]) -> bool:
+    existing_value = existing.get("value")
+    candidate_value = candidate.get("value")
+    if candidate_value is not None:
+        if existing_value is None or float(candidate_value) > float(existing_value):
+            return True
+        if float(candidate_value) == float(existing_value):
+            existing_sota = bool(existing.get("is_sota")) if existing.get("is_sota") is not None else False
+            candidate_sota = bool(candidate.get("is_sota")) if candidate.get("is_sota") is not None else False
+            if candidate_sota and not existing_sota:
+                return True
+    if existing_value is None and candidate_value is None:
+        existing_sota = bool(existing.get("is_sota")) if existing.get("is_sota") is not None else False
+        candidate_sota = bool(candidate.get("is_sota")) if candidate.get("is_sota") is not None else False
+        if candidate_sota and not existing_sota:
+            return True
+    return False
+
+
+def _compute_node_analytics(
+    rows: Sequence[Mapping[str, Any]],
+    claims_by_paper: Mapping[UUID, Sequence[Mapping[str, Any]]],
+) -> Dict[tuple[NodeType, UUID], Dict[str, Any]]:
+    best_results: Dict[tuple[NodeType, UUID], Dict[tuple[Any, ...], Dict[str, Any]]] = defaultdict(dict)
+    claim_counts: Dict[tuple[NodeType, UUID], Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    claim_examples: Dict[tuple[NodeType, UUID], list[Dict[str, Any]]] = defaultdict(list)
+    claim_seen: Dict[tuple[NodeType, UUID], set[tuple[Any, Any]]] = defaultdict(set)
+
+    for row in rows:
+        paper_id: UUID = row["paper_id"]
+        paper_title = row.get("paper_title")
+        claims = claims_by_paper.get(paper_id, [])
+        for node_type, column in (
+            (NodeType.METHOD, "method_id"),
+            (NodeType.DATASET, "dataset_id"),
+            (NodeType.METRIC, "metric_id"),
+            (NodeType.TASK, "task_id"),
+        ):
+            entity_id = row.get(column)
+            if not entity_id:
+                continue
+            key = (node_type, entity_id)
+            combo_key = _result_combo_key(node_type, row)
+            candidate_summary = _build_result_summary(row, paper_id=paper_id, paper_title=paper_title)
+            existing_summary = best_results[key].get(combo_key)
+            if existing_summary is None or _is_better_result(existing_summary, candidate_summary):
+                best_results[key][combo_key] = candidate_summary
+
+            if not claims:
+                continue
+            counts = claim_counts[key]
+            for claim in claims:
+                category = str(claim.get("category") or "other")
+                signature = (claim.get("text"), category)
+                if signature in claim_seen[key]:
+                    continue
+                counts[category] += 1
+                if len(claim_examples[key]) < 8:
+                    claim_examples[key].append(
+                        {
+                            "category": category,
+                            "text": claim.get("text"),
+                            "confidence": claim.get("confidence"),
+                            "paper_id": str(paper_id),
+                            "paper_title": paper_title,
+                        }
+                    )
+                claim_seen[key].add(signature)
+
+    analytics: Dict[tuple[NodeType, UUID], Dict[str, Any]] = {}
+    for key, combos in best_results.items():
+        if not combos and key not in claim_counts:
+            continue
+        metadata: Dict[str, Any] = {}
+        if combos:
+            entries = list(combos.values())
+            entries.sort(
+                key=lambda item: (
+                    1 if item.get("value") is not None else 0,
+                    item.get("value") if item.get("value") is not None else 0.0,
+                ),
+                reverse=True,
+            )
+            metadata["best_results"] = entries[:5]
+        counts = claim_counts.get(key)
+        if counts:
+            by_category = dict(sorted(counts.items()))
+            metadata["claims"] = {
+                "by_category": by_category,
+                "examples": claim_examples.get(key, [])[:5],
+            }
+        if metadata:
+            analytics[key] = metadata
+
+    return analytics
+
+
+def _attach_node_metadata(
+    rows: Sequence[Dict[str, Any]],
+    analytics: Mapping[tuple[NodeType, UUID], Mapping[str, Any]],
+) -> None:
+    if not analytics:
+        return
+    for row in rows:
+        for node_type, column in (
+            (NodeType.METHOD, "method_id"),
+            (NodeType.DATASET, "dataset_id"),
+            (NodeType.METRIC, "metric_id"),
+            (NodeType.TASK, "task_id"),
+        ):
+            entity_id = row.get(column)
+            if not entity_id:
+                continue
+            metadata = analytics.get((node_type, entity_id))
+            if not metadata:
+                continue
+            existing = row.get(f"{node_type.value}_metadata")
+            combined: Dict[str, Any] = {}
+            if isinstance(existing, Mapping):
+                combined.update(existing)
+            combined.update(copy.deepcopy(dict(metadata)))
+            row[f"{node_type.value}_metadata"] = combined
 async def _fetch_results(
     conn: Any,
     *,
@@ -544,37 +797,28 @@ async def _fetch_method_relations(
     return await conn.fetch(_METHOD_RELATION_SELECT)
 
 
-async def _fetch_claims(
-    conn: Any,
-    *,
-    paper_ids: Optional[Sequence[UUID]] = None,
-) -> Sequence[Mapping[str, Any]]:
-    if paper_ids:
-        return await conn.fetch(
-            f"{_CLAIM_SELECT} WHERE c.paper_id = ANY($1::uuid[])",
-            list(paper_ids),
-        )
-    return await conn.fetch(_CLAIM_SELECT)
-
-
-def _group_claims_by_paper(
-    rows: Sequence[Mapping[str, Any]]
-) -> dict[UUID, list[Mapping[str, Any]]]:
-    grouped: dict[UUID, list[Mapping[str, Any]]] = defaultdict(list)
+async def _fetch_claims_by_paper(
+    conn: Any, paper_ids: Sequence[UUID]
+) -> Dict[UUID, list[Mapping[str, Any]]]:
+    if not paper_ids:
+        return {}
+    rows = await conn.fetch(
+        """
+        SELECT
+            paper_id,
+            category::text AS category,
+            text,
+            confidence
+        FROM claims
+        WHERE paper_id = ANY($1::uuid[])
+        """,
+        list(paper_ids),
+    )
+    claims: Dict[UUID, list[Mapping[str, Any]]] = defaultdict(list)
     for row in rows:
-        paper_id = row.get("paper_id")
-        if not paper_id:
-            continue
-        paper_uuid = cast(UUID, paper_id)
-        payload = {
-            "id": row.get("id"),
-            "category": row.get("category"),
-            "text": row.get("text"),
-            "confidence": row.get("confidence"),
-            "evidence": row.get("evidence"),
-        }
-        grouped[paper_uuid].append(payload)
-    return grouped
+        paper_id = row["paper_id"]
+        claims[paper_id].append(dict(row))
+    return claims
 
 
 async def _fetch_concept_fallback_rows(
@@ -613,17 +857,15 @@ async def _fetch_concept_fallback_rows(
 
     papers: dict[UUID, dict[str, Any]] = {}
     for record in records:
-        concept_type = (record.get("type") or "").lower()
-        if concept_type not in _CONCEPT_TYPES:
-            continue
+        concept_type = _normalize_fallback_type(record.get("type"))
         paper_id: UUID = record["paper_id"]
         paper_payload = papers.setdefault(
             paper_id,
             {
                 "paper_id": paper_id,
                 "paper_title": record.get("paper_title"),
-                "concepts": {str(concept): [] for concept in _CONCEPT_TYPES},
-                "lookup": {str(concept): {} for concept in _CONCEPT_TYPES},
+                "concepts": {type_name: [] for type_name in _ALLOWED_FALLBACK_TYPES},
+                "lookup": {type_name: {} for type_name in _ALLOWED_FALLBACK_TYPES},
             },
         )
         if not paper_payload.get("paper_title"):
@@ -634,7 +876,8 @@ async def _fetch_concept_fallback_rows(
             "type": concept_type,
             "metadata": {"concept": True},
         }
-        paper_payload["concepts"][concept_type].append(concept_entry)
+        paper_payload["concepts"].setdefault(concept_type, []).append(concept_entry)
+        paper_payload["lookup"].setdefault(concept_type, {})
         normalized = _normalize_graph_label(concept_entry["name"])
         if normalized and normalized not in paper_payload["lookup"][concept_type]:
             paper_payload["lookup"][concept_type][normalized] = concept_entry
@@ -690,8 +933,8 @@ async def _fetch_concept_fallback_rows(
             {
                 "paper_id": paper_id,
                 "paper_title": paper_title,
-                "concepts": {str(concept): [] for concept in _CONCEPT_TYPES},
-                "lookup": {str(concept): {} for concept in _CONCEPT_TYPES},
+                "concepts": {type_name: [] for type_name in _ALLOWED_FALLBACK_TYPES},
+                "lookup": {type_name: {} for type_name in _ALLOWED_FALLBACK_TYPES},
             },
         )
         if paper_title and not payload.get("paper_title"):
@@ -780,10 +1023,45 @@ async def _fetch_concept_fallback_rows(
         lookup[normalized] = entry
         return entity_id, label, dict(metadata)
 
-    combined_rows: dict[
-        tuple[UUID, UUID, Optional[UUID], Optional[UUID], Optional[UUID]],
-        dict[str, Any],
-    ] = {}
+    combined_rows: dict[tuple[UUID, RelationType, UUID, UUID], dict[str, Any]] = {}
+
+    def _resolve_payload(
+        candidate: Any,
+        fallback_candidates: Sequence[tuple[str, Optional[str]]],
+        entities: Mapping[str, Any],
+    ) -> Optional[dict[str, Any]]:
+        if isinstance(candidate, Mapping):
+            payload = dict(candidate)
+            if fallback_candidates:
+                payload.setdefault("type", fallback_candidates[0][1] if fallback_candidates[0][1] is not None else _normalize_fallback_type(payload.get("type")))
+            return payload
+        for key, fallback_type in fallback_candidates:
+            entry = entities.get(key)
+            if not isinstance(entry, Mapping):
+                continue
+            payload = dict(entry)
+            payload.setdefault("type", fallback_type or _normalize_fallback_type(key))
+            return payload
+        return None
+
+    def _fallback_candidates(relation: RelationType, role: str) -> list[tuple[str, Optional[str]]]:
+        if role == "source":
+            candidates: list[tuple[str, Optional[str]]] = []
+            if relation in {RelationType.EVALUATES_ON, RelationType.REPORTS, RelationType.PROPOSES, RelationType.COMPARES, RelationType.USES, RelationType.OUTPERFORMS}:
+                candidates.append(("method", "method"))
+            candidates.append(("subject", None))
+            return candidates
+        candidates = []
+        if relation in {RelationType.EVALUATES_ON, RelationType.USES}:
+            candidates.append(("dataset", "dataset"))
+        if relation == RelationType.REPORTS:
+            candidates.append(("metric", "metric"))
+        if relation == RelationType.PROPOSES:
+            candidates.append(("task", "task"))
+        if relation in {RelationType.COMPARES, RelationType.OUTPERFORMS}:
+            candidates.append(("method", "method"))
+        candidates.append(("object", None))
+        return candidates
 
     for row in triple_rows:
         paper_id: UUID = row["paper_id"]
@@ -801,59 +1079,80 @@ async def _fetch_concept_fallback_rows(
             metadata = {}
 
         pairs = metadata.get("pairs") if isinstance(metadata.get("pairs"), list) else []
+        if not pairs:
+            continue
         entities = metadata.get("entities") if isinstance(metadata.get("entities"), Mapping) else {}
-        method_payload = entities.get("method") if isinstance(entities, Mapping) else None
-        if not isinstance(method_payload, Mapping):
-            continue
-
-        method_resolved = _resolve_entity(paper_payload, "method", method_payload)
-        if method_resolved is None:
-            continue
-        method_id, method_name, method_metadata = method_resolved
 
         for pair in pairs:
             if not isinstance(pair, Mapping):
                 continue
-            target_payload = pair.get("target")
-            if not isinstance(target_payload, Mapping):
-                continue
-            target_type = (target_payload.get("type") or "").lower()
-            if target_type not in {"dataset", "metric", "task"}:
+            relation = _normalize_relation_name(pair.get("relation"))
+            if relation is None:
                 continue
 
-            resolved_target = _resolve_entity(
+            provenance = pair.get("provenance")
+            if provenance is None and isinstance(pair.get("source"), str):
+                provenance = str(pair.get("source"))
+
+            source_payload = _resolve_payload(
+                pair.get("source"),
+                _fallback_candidates(relation, "source"),
+                entities,
+            )
+            target_payload = _resolve_payload(
+                pair.get("target"),
+                _fallback_candidates(relation, "target"),
+                entities,
+            )
+            if not isinstance(source_payload, Mapping) or not isinstance(target_payload, Mapping):
+                continue
+
+            source_type = _normalize_fallback_type(source_payload.get("type"))
+            target_type = _normalize_fallback_type(target_payload.get("type"))
+            source_payload = dict(source_payload)
+            target_payload = dict(target_payload)
+            source_payload["type"] = source_type
+            target_payload["type"] = target_type
+            if "normalized" not in source_payload and source_payload.get("text"):
+                normalized = _normalize_graph_label(source_payload.get("text"))
+                if normalized:
+                    source_payload["normalized"] = normalized
+            if "normalized" not in target_payload and target_payload.get("text"):
+                normalized = _normalize_graph_label(target_payload.get("text"))
+                if normalized:
+                    target_payload["normalized"] = normalized
+
+            source_resolved = _resolve_entity(
+                paper_payload,
+                source_type,
+                source_payload,
+                default_source=provenance,
+            )
+            if source_resolved is None:
+                continue
+            target_resolved = _resolve_entity(
                 paper_payload,
                 target_type,
                 target_payload,
-                default_source=pair.get("source"),
+                default_source=provenance,
             )
-            if resolved_target is None:
+            if target_resolved is None:
                 continue
 
-            target_id, target_name, target_metadata = resolved_target
-            dataset_id: Optional[UUID] = None
-            dataset_name: Optional[str] = None
-            dataset_metadata: Optional[Dict[str, Any]] = None
-            metric_id: Optional[UUID] = None
-            metric_name: Optional[str] = None
-            metric_metadata: Optional[Dict[str, Any]] = None
-            task_id: Optional[UUID] = None
-            task_name: Optional[str] = None
-            task_metadata: Optional[Dict[str, Any]] = None
+            source_id, source_label, source_metadata = source_resolved
+            target_id, target_label, target_metadata = target_resolved
 
-            if target_type == "dataset":
-                dataset_id, dataset_name, dataset_metadata = target_id, target_name, target_metadata
-            elif target_type == "metric":
-                metric_id, metric_name, metric_metadata = target_id, target_name, target_metadata
-            elif target_type == "task":
-                task_id, task_name, task_metadata = target_id, target_name, target_metadata
+            confidence = _confidence_value(
+                pair.get("confidence")
+                or row.get("triple_conf")
+                or row.get("confidence")
+            )
 
-            evidence_source = pair.get("source") or "tier2_triple"
-            snippet = pair.get("evidence") or row.get("evidence_text")
             sentence_indices = pair.get("sentence_indices")
             if not isinstance(sentence_indices, list):
                 sentence_indices = None
-            evidence_payload: list[dict[str, Any]] = []
+            snippet = pair.get("evidence") or row.get("evidence_text")
+            evidence_source = provenance or "tier2_triple"
             evidence_entry = {
                 "snippet": snippet,
                 "section_id": pair.get("section_id") or row.get("section_id"),
@@ -865,61 +1164,65 @@ async def _fetch_concept_fallback_rows(
                 for key, value in evidence_entry.items()
                 if value not in (None, "", [])
             }
+            evidence_payload: list[dict[str, Any]] = []
             if evidence_entry:
                 evidence_payload.append(evidence_entry)
 
-            confidence_raw = pair.get("confidence")
-            if confidence_raw is None:
-                confidence_raw = row.get("triple_conf")
-            confidence = _confidence_value(confidence_raw)
-
-            key = (paper_id, method_id, dataset_id, metric_id, task_id)
-            existing = combined_rows.get(key)
-            if existing:
-                if evidence_payload:
-                    existing.setdefault("evidence", []).extend(evidence_payload)
-                existing_conf = existing.get("confidence")
-                if confidence is not None and (existing_conf is None or confidence > existing_conf):
-                    existing["confidence"] = confidence
-                continue
-
-            paper_title = paper_payload.get("paper_title") or row.get("paper_title")
-
-            def _meta_or_none(meta: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-                if not meta:
-                    return None
-                return dict(meta)
-
-            combined_rows[key] = {
-                "result_id": uuid4(),
-                "paper_id": paper_id,
-                "paper_title": paper_title,
-                "confidence": confidence,
-                "evidence": evidence_payload,
-                "method_id": method_id,
-                "method_name": method_name,
-                "method_aliases": [],
-                "method_description": None,
-                "method_metadata": _meta_or_none(method_metadata),
-                "dataset_id": dataset_id,
-                "dataset_name": dataset_name,
-                "dataset_aliases": [],
-                "dataset_description": None,
-                "dataset_metadata": _meta_or_none(dataset_metadata),
-                "metric_id": metric_id,
-                "metric_name": metric_name,
-                "metric_aliases": [],
-                "metric_description": None,
-                "metric_unit": None,
-                "metric_metadata": _meta_or_none(metric_metadata),
-                "task_id": task_id,
-                "task_name": task_name,
-                "task_aliases": [],
-                "task_description": None,
-                "task_metadata": _meta_or_none(task_metadata),
+            statement_metadata = {
+                "provenance": evidence_source,
             }
+            section_id = pair.get("section_id") or row.get("section_id")
+            if section_id:
+                statement_metadata["section_id"] = section_id
+            if sentence_indices:
+                statement_metadata["sentence_indices"] = sentence_indices
 
-    return list(combined_rows.values())
+            key = (paper_id, relation, source_id, target_id)
+            entry = combined_rows.setdefault(
+                key,
+                {
+                    "result_id": uuid4(),
+                    "paper_id": paper_id,
+                    "paper_title": paper_payload.get("paper_title") or row.get("paper_title"),
+                    "confidence_values": [],
+                    "evidence": [],
+                    "relation_instances": [],
+                },
+            )
+            entry["evidence"].extend(evidence_payload)
+            entry["confidence_values"].append(confidence)
+            relation_instance: dict[str, Any] = {
+                "relation": relation,
+                "source": {
+                    "type": source_type,
+                    "id": source_id,
+                    "label": source_label,
+                    "metadata": dict(source_metadata or {}),
+                },
+                "target": {
+                    "type": target_type,
+                    "id": target_id,
+                    "label": target_label,
+                    "metadata": dict(target_metadata or {}),
+                },
+                "confidence": confidence,
+                "metadata": {key: value for key, value in statement_metadata.items() if value not in (None, "", [])},
+            }
+            if evidence_payload:
+                relation_instance["evidence"] = evidence_payload
+            entry["relation_instances"].append(relation_instance)
+
+    fallback_rows: list[dict[str, Any]] = []
+    for entry in combined_rows.values():
+        confidences = entry.pop("confidence_values", [])
+        if confidences:
+            entry["confidence"] = sum(confidences) / len(confidences)
+        else:
+            entry["confidence"] = _DEFAULT_MIN_CONFIDENCE
+        entry.setdefault("evidence", [])
+        fallback_rows.append(entry)
+
+    return fallback_rows
 
 
 async def _resolve_entity(conn: Any, entity_id: UUID) ->Optional[NodeDetail]:
@@ -1006,19 +1309,21 @@ async def _resolve_entity(conn: Any, entity_id: UUID) ->Optional[NodeDetail]:
 
 
 async def _fetch_related_papers(conn: Any, center: NodeDetail) -> list[UUID]:
-    column = {
-        "method": "method_id",
-        "dataset": "dataset_id",
-        "metric": "metric_id",
-        "task": "task_id",
-    }[center.type]
-    rows = await conn.fetch(
-        f"SELECT DISTINCT paper_id FROM results WHERE {column} = $1",
-        center.id,
-    )
-    paper_ids = [row["paper_id"] for row in rows]
-    if paper_ids:
-        return paper_ids
+    column_map = {
+        NodeType.METHOD: "method_id",
+        NodeType.DATASET: "dataset_id",
+        NodeType.METRIC: "metric_id",
+        NodeType.TASK: "task_id",
+    }
+    column = column_map.get(center.type)
+    if column:
+        rows = await conn.fetch(
+            f"SELECT DISTINCT paper_id FROM results WHERE {column} = $1",
+            center.id,
+        )
+        paper_ids = [row["paper_id"] for row in rows]
+        if paper_ids:
+            return paper_ids
 
     concept_row = await conn.fetchrow(
         "SELECT paper_id FROM concepts WHERE id = $1",
@@ -1275,6 +1580,95 @@ def _aggregate_edges(
                 )
             )
 
+        relation_instances = (
+            row.get("relation_instances") if isinstance(row.get("relation_instances"), list) else []
+        )
+        for relation_instance in relation_instances:
+            if not isinstance(relation_instance, Mapping):
+                continue
+            relation = _normalize_relation_name(relation_instance.get("relation"))
+            if relation is None:
+                continue
+            source_info = relation_instance.get("source")
+            target_info = relation_instance.get("target")
+            if not isinstance(source_info, Mapping) or not isinstance(target_info, Mapping):
+                continue
+            source_type = _coerce_node_type(source_info.get("type"))
+            target_type = _coerce_node_type(target_info.get("type"))
+            if source_type is None or target_type is None:
+                continue
+            source_id_raw = source_info.get("id")
+            target_id_raw = target_info.get("id")
+            try:
+                source_entity_id = source_id_raw if isinstance(source_id_raw, UUID) else UUID(str(source_id_raw))
+                target_entity_id = target_id_raw if isinstance(target_id_raw, UUID) else UUID(str(target_id_raw))
+            except (TypeError, ValueError):
+                continue
+
+            source_label = source_info.get("label") or source_info.get("text")
+            target_label = target_info.get("label") or target_info.get("text")
+            _build_node_detail(
+                node_details,
+                node_type=source_type,
+                entity_id=source_entity_id,
+                name=source_label,
+                aliases=source_info.get("aliases"),
+                description=None,
+                metadata=source_info.get("metadata"),
+            )
+            _build_node_detail(
+                node_details,
+                node_type=target_type,
+                entity_id=target_entity_id,
+                name=target_label,
+                aliases=target_info.get("aliases"),
+                description=None,
+                metadata=target_info.get("metadata"),
+            )
+
+            relation_confidence = _confidence_value(
+                relation_instance.get("confidence") if relation_instance.get("confidence") is not None else confidence
+            )
+            relation_evidence = relation_instance.get("evidence")
+            relation_evidence_payload: list[dict[str, Any]] = []
+            if isinstance(relation_evidence, list):
+                relation_evidence_payload = [
+                    dict(item)
+                    for item in relation_evidence
+                    if isinstance(item, Mapping)
+                ]
+            elif isinstance(relation_evidence, Mapping):
+                relation_evidence_payload = [dict(relation_evidence)]
+            elif isinstance(relation_evidence, str):
+                relation_evidence_payload = [{"snippet": relation_evidence}]
+
+            statement_metadata = (
+                dict(relation_instance.get("metadata"))
+                if isinstance(relation_instance.get("metadata"), Mapping)
+                else None
+            )
+
+            edge_key = (
+                relation,
+                _node_key(source_type, source_entity_id),
+                _node_key(target_type, target_entity_id),
+            )
+            edges[edge_key].append(
+                EdgeInstance(
+                    paper_id=paper_id,
+                    paper_title=paper_title,
+                    confidence=relation_confidence,
+                    evidence=relation_evidence_payload if relation_evidence_payload else evidence,
+                    dataset_id=None,
+                    dataset_label=None,
+                    metric_id=None,
+                    metric_label=None,
+                    task_id=None,
+                    task_label=None,
+                    statement_metadata=statement_metadata,
+                )
+            )
+
         if method_id and dataset_id and metric_id:
             compare_contexts[(paper_id, dataset_id, metric_id)].append(
                 MethodContext(
@@ -1347,10 +1741,13 @@ def _aggregate_edges(
         paper_titles: dict[UUID, str] = {}
         contexts_map: dict[tuple[UUID, Optional[UUID], Optional[UUID], Optional[UUID]], dict[str, Any]] = {}
         evidence_items: list[dict[str, Any]] = []
+        statements: list[dict[str, Any]] = []
+        all_confidences: list[float] = []
 
         for instance in instances:
             paper_confidences[instance.paper_id].append(instance.confidence)
             paper_titles.setdefault(instance.paper_id, instance.paper_title)
+            all_confidences.append(instance.confidence)
             context_key = (
                 instance.paper_id,
                 instance.dataset_id,
@@ -1384,6 +1781,14 @@ def _aggregate_edges(
                         "relation": relation,
                     }
                 )
+            if instance.statement_metadata:
+                statement_payload = dict(instance.statement_metadata)
+                statement_payload.setdefault("paper_id", instance.paper_id)
+                if instance.paper_title:
+                    statement_payload.setdefault("paper_title", instance.paper_title)
+                statement_payload.setdefault("relation", relation)
+                statement_payload.setdefault("confidence", instance.confidence)
+                statements.append(statement_payload)
 
         if not paper_confidences:
             continue
@@ -1405,6 +1810,12 @@ def _aggregate_edges(
         metadata: dict[str, Any] = {"papers": paper_details}
         if contexts_map:
             metadata["contexts"] = list(contexts_map.values())
+        if all_confidences:
+            metadata["confidence"] = {
+                "min": min(all_confidences),
+                "max": max(all_confidences),
+                "average": average_confidence,
+            }
 
         insights = _build_edge_insights(instances)
         if insights:
@@ -1413,6 +1824,8 @@ def _aggregate_edges(
         evidence_items = evidence_items[:_MAX_EDGE_EVIDENCE]
         if evidence_items:
             metadata["evidence"] = evidence_items
+        if statements:
+            metadata["statements"] = statements[:_MAX_EDGE_EVIDENCE]
 
         aggregated.append(
             AggregatedEdge(
@@ -1647,6 +2060,7 @@ async def get_graph_overview(
 ) -> GraphResponse:
     normalized_limit = _normalize_limit(limit, maximum=MAX_GRAPH_LIMIT)
     allowed_types = _parse_selection(types, _ALLOWED_TYPES, _DEFAULT_TYPES)
+    edge_allowed_types = set(_ALLOWED_TYPES) if not types else set(allowed_types)
     allowed_relations = _parse_selection(relations, _ALLOWED_RELATIONS, _ALLOWED_RELATIONS)
 
     pool = get_pool()
@@ -1656,16 +2070,12 @@ async def get_graph_overview(
         claim_records = await _fetch_claims(conn)
         rows = [dict(record) for record in records]
         rows.extend(dict(record) for record in relation_records)
-        claims_map = _group_claims_by_paper(claim_records)
+        paper_ids = {row["paper_id"] for row in rows if row.get("paper_id")}
+        claims_by_paper = await _fetch_claims_by_paper(conn, list(paper_ids))
+        analytics = _compute_node_analytics(rows, claims_by_paper)
+        _attach_node_metadata(rows, analytics)
         node_details: dict[tuple[NodeType, UUID], NodeDetail] = {}
-        aggregated_edges = _aggregate_edges(
-            rows,
-            allowed_types,
-            allowed_relations,
-            min_conf,
-            node_details,
-            claims_map,
-        )
+        aggregated_edges = _aggregate_edges(rows, edge_allowed_types, allowed_relations, min_conf, node_details)
     response = _build_graph_response(
         aggregated_edges,
         node_details,
@@ -1687,12 +2097,7 @@ async def get_graph_overview(
     combined_rows = fallback_rows + rows
     node_details = {}
     fallback_edges = _aggregate_edges(
-        combined_rows,
-        allowed_types,
-        allowed_relations,
-        min_conf,
-        node_details,
-        claims_map,
+        combined_rows, edge_allowed_types, allowed_relations, min_conf, node_details
     )
     fallback_response = _build_graph_response(
         fallback_edges,
@@ -1718,6 +2123,7 @@ async def get_graph_neighborhood(
 ) -> GraphResponse:
     normalized_limit = _normalize_limit(limit, maximum=MAX_GRAPH_LIMIT)
     allowed_types = _parse_selection(types, _ALLOWED_TYPES, _DEFAULT_TYPES)
+    edge_allowed_types = set(_ALLOWED_TYPES) if not types else set(allowed_types)
     allowed_relations = _parse_selection(relations, _ALLOWED_RELATIONS, _ALLOWED_RELATIONS)
 
     pool = get_pool()
@@ -1732,18 +2138,18 @@ async def get_graph_neighborhood(
         claim_records = await _fetch_claims(conn, paper_ids=paper_ids)
         rows = [dict(record) for record in records]
         rows.extend(dict(record) for record in relation_records)
-        claims_map = _group_claims_by_paper(claim_records)
+        claims_map = await _fetch_claims_by_paper(conn, list({row["paper_id"] for row in rows if row.get("paper_id")}))
 
     allowed_types.add(center_detail.type)
+    edge_allowed_types.add(center_detail.type)
 
-    node_details: dict[tuple[NodeType, UUID], NodeDetail] = {(_node_key(center_detail.type, center_detail.id)): center_detail}
+    _attach_node_metadata(rows, _compute_node_analytics(rows, claims_map))
+
+    node_details: dict[tuple[NodeType, UUID], NodeDetail] = {
+        (_node_key(center_detail.type, center_detail.id)): center_detail
+    }
     aggregated_edges = _aggregate_edges(
-        rows,
-        allowed_types,
-        allowed_relations,
-        min_conf,
-        node_details,
-        claims_map,
+        rows, edge_allowed_types, allowed_relations, min_conf, node_details
     )
     response = _build_graph_response(
         aggregated_edges,
@@ -1771,12 +2177,8 @@ async def get_graph_neighborhood(
     combined_rows = fallback_rows + rows
     node_details = {(_node_key(center_detail.type, center_detail.id)): center_detail}
     fallback_edges = _aggregate_edges(
-        combined_rows,
-        allowed_types,
-        allowed_relations,
-        min_conf,
-        node_details,
-        claims_map,
+        combined_rows, edge_allowed_types, allowed_relations, min_conf, node_details
+
     )
     fallback_response = _build_graph_response(
         fallback_edges,

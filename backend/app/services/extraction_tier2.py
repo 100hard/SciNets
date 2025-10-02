@@ -491,50 +491,84 @@ def _extract_graph_entities(
     subject_type: str,
     object_text: str,
     object_type: str,
-) -> dict[str, Optional[str]]:
-    subject_guess = (subject_type or "").strip().lower()
-    object_guess = (object_type or "").strip().lower()
+) -> dict[str, Optional[dict[str, str]]]:
+    subject_entry = _build_entity_entry(subject_text, subject_type, role="subject")
+    object_entry = _build_entity_entry(object_text, object_type, role="object")
 
-    method_text: Optional[str] = None
-    dataset_text: Optional[str] = None
-    metric_text: Optional[str] = None
-    task_text: Optional[str] = None
-
-    if subject_guess == "method":
-        method_text = subject_text
-    elif object_guess == "method":
-        method_text = object_text
-
-    if object_guess == "dataset":
-        dataset_text = object_text
-    elif subject_guess == "dataset":
-        dataset_text = subject_text
-
-    if object_guess == "metric":
-        metric_text = object_text
-    elif subject_guess == "metric":
-        metric_text = subject_text
-
-    if object_guess == "task":
-        task_text = object_text
-    elif subject_guess == "task":
-        task_text = subject_text
-
-    return {
-        "method": method_text,
-        "dataset": dataset_text,
-        "metric": metric_text,
-        "task": task_text,
+    entities: dict[str, Optional[dict[str, str]]] = {
+        "subject": subject_entry,
+        "object": object_entry,
     }
+
+    for entry in (subject_entry, object_entry):
+        if not entry:
+            continue
+        entity_key = entry.get("type")
+        if entity_key:
+            entities.setdefault(entity_key, {"text": entry.get("text"), "normalized": entry.get("normalized"), "type": entity_key, "role": entry.get("role")})
+
+    return entities
 
 
 GRAPH_DATASET_RELATIONS = {"EVALUATED_ON", "USES"}
 GRAPH_METRIC_RELATIONS = {"MEASURES", "REPORTS"}
 GRAPH_TASK_RELATIONS = {"PROPOSES"}
 
+_TYPE_GUESS_NORMALIZATION: dict[str, str] = {
+    "method": "method",
+    "model": "model",
+    "dataset": "dataset",
+    "metric": "metric",
+    "task": "task",
+    "concept": "concept",
+    "material": "material",
+    "organism": "organism",
+    "finding": "finding",
+    "process": "process",
+    "result": "finding",
+    "outcome": "finding",
+    "unknown": "concept",
+}
+
+_RELATION_GUESS_TO_RELATION: dict[str, str] = {
+    "EVALUATED_ON": "evaluates_on",
+    "USES": "uses",
+    "MEASURES": "reports",
+    "REPORTS": "reports",
+    "PROPOSES": "proposes",
+    "COMPARED_TO": "compares",
+    "OUTPERFORMS": "outperforms",
+    "CAUSES": "causes",
+    "PART_OF": "part_of",
+    "IS_A": "is_a",
+    "ASSUMES": "assumes",
+}
+
+
+def _normalize_entity_type_guess(type_guess: str) -> str:
+    normalized = (type_guess or "").strip().lower()
+    return _TYPE_GUESS_NORMALIZATION.get(normalized, "concept")
+
+
+def _build_entity_entry(value: str, type_guess: str, *, role: str) -> Optional[dict[str, str]]:
+    normalized_type = _normalize_entity_type_guess(type_guess)
+    if not value:
+        return None
+    cleaned_value = _strip_citation_fragments(value)
+    normalized_value = _normalize_graph_text(cleaned_value)
+    if not normalized_value:
+        return None
+    entry = {
+        "type": normalized_type,
+        "text": cleaned_value,
+        "normalized": normalized_value.lower(),
+        "role": role,
+    }
+    return entry
+
 
 def _build_graph_metadata(
-    entities: Mapping[str, Optional[str]],
+    entities: Mapping[str, Any],
     *,
     relation_type_guess: Optional[str],
     matches: Sequence[Mapping[str, Any]],
@@ -542,68 +576,73 @@ def _build_graph_metadata(
     section_id: Optional[str],
     triple_conf: float,
 ) -> dict[str, Any]:
-    method_text = entities.get("method") or ""
-    normalized_method = _normalize_graph_text(method_text)
-    if not normalized_method:
+    metadata: dict[str, Any] = {"entities": {}, "pairs": []}
+
+    subject_entry = entities.get("subject")
+    object_entry = entities.get("object")
+    if not isinstance(subject_entry, Mapping) or not isinstance(object_entry, Mapping):
         return {}
 
-    metadata: dict[str, Any] = {
-        "entities": {},
-        "pairs": [],
-    }
+    def _store_entity(entry: Mapping[str, Any]) -> None:
+        entry_type = entry.get("type")
+        if not entry_type:
+            return
+        normalized_value = entry.get("normalized")
+        if not _graph_value_valid_for_type(normalized_value, str(entry_type)):
+            return
+        metadata["entities"].setdefault(
+            entry_type,
+            {k: entry[k] for k in ("text", "normalized", "type") if k in entry},
+        )
 
-    def _register(entity_type: str, value: Optional[str]) -> Optional[dict[str, str]]:
-        if not value:
-            return None
-        cleaned_value = _strip_citation_fragments(value)
-        normalized_value = _normalize_graph_text(cleaned_value)
-        if not normalized_value:
-            return None
-        if not _graph_value_valid_for_type(normalized_value, entity_type):
-            return None
-        entry = {
-            "text": cleaned_value,
-            "normalized": normalized_value.lower(),
-        }
-        metadata["entities"][entity_type] = entry
-        return entry
+    _store_entity(subject_entry)
+    _store_entity(object_entry)
 
-    method_entry = _register("method", method_text)
-    if method_entry is None:
+    normalized_guess = (relation_type_guess or "").strip().upper()
+    relation = _RELATION_GUESS_TO_RELATION.get(normalized_guess)
+
+    if relation is None:
+        subject_type = str(subject_entry.get("type") or "")
+        object_type = str(object_entry.get("type") or "")
+        if subject_type == "method" and object_type == "dataset":
+            relation = "evaluates_on"
+        elif subject_type == "method" and object_type == "metric":
+            relation = "reports"
+        elif subject_type == "method" and object_type == "task":
+            relation = "proposes"
+
+    if relation is None:
+        return {}
+
+    if not _graph_value_valid_for_type(subject_entry.get("normalized"), str(subject_entry.get("type")))):
+        return {}
+    if not _graph_value_valid_for_type(object_entry.get("normalized"), str(object_entry.get("type")))):
         return {}
 
     sentence_indices = _collect_sentence_indices(matches)
     confidence = max(0.0, min(1.0, float(triple_conf))) if triple_conf is not None else None
 
-    def _append_pair(target_type: str, raw_value: Optional[str], relation: str) -> None:
-        target_entry = _register(target_type, raw_value)
-        if not target_entry:
-            return
-        metadata["pairs"].append(
-            {
-                "source": {"type": "method", **method_entry},
-                "target": {"type": target_type, **target_entry},
-                "relation": relation,
-                "confidence": confidence,
-                "section_id": section_id,
-                "sentence_indices": sentence_indices,
-                "evidence": evidence_text,
-                "source": "tier2_triple",
-            }
-        )
+    def _build_endpoint(entry: Mapping[str, Any]) -> dict[str, Any]:
+        payload = {
+            "type": entry.get("type"),
+            "text": entry.get("text"),
+            "normalized": entry.get("normalized"),
+        }
+        return {key: value for key, value in payload.items() if value}
 
-    normalized_guess = (relation_type_guess or "").strip().upper()
+    pair_payload: dict[str, Any] = {
+        "source": _build_endpoint(subject_entry),
+        "target": _build_endpoint(object_entry),
+        "relation": relation,
+        "confidence": confidence,
+        "section_id": section_id,
+        "sentence_indices": sentence_indices,
+        "evidence": evidence_text,
+        "provenance": "tier2_triple",
+    }
 
-    if normalized_guess in GRAPH_DATASET_RELATIONS:
-        _append_pair("dataset", entities.get("dataset"), "evaluates_on")
-    if normalized_guess in GRAPH_METRIC_RELATIONS:
-        _append_pair("metric", entities.get("metric"), "reports")
-    if normalized_guess in GRAPH_TASK_RELATIONS:
-        _append_pair("task", entities.get("task"), "proposes")
-
-    if metadata["pairs"]:
-        return metadata
-    return {}
+    metadata["pairs"].append(pair_payload)
+    return metadata
 
 
 def _normalize_key_text(value: str) -> str:

@@ -9,10 +9,33 @@
     "material",
     "organism",
     "finding",
-    "process"
+    "process",
+    "model"
   ],
-  "allowed_relations": ["proposes", "evaluates_on", "reports", "compares"],
-  "ordered_relations": ["proposes", "evaluates_on", "reports", "compares"],
+  "allowed_relations": [
+    "proposes",
+    "evaluates_on",
+    "reports",
+    "compares",
+    "uses",
+    "causes",
+    "part_of",
+    "is_a",
+    "outperforms",
+    "assumes"
+  ],
+  "ordered_relations": [
+    "proposes",
+    "evaluates_on",
+    "reports",
+    "compares",
+    "uses",
+    "causes",
+    "part_of",
+    "is_a",
+    "outperforms",
+    "assumes"
+  ],
   "concept_types": [
     "method",
     "dataset",
@@ -22,6 +45,7 @@
     "material",
     "organism",
     "finding",
-    "process"
+    "process",
+    "model"
   ]
 }
