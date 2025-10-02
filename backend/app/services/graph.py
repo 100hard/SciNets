@@ -410,27 +410,45 @@ async def _fetch_concept_fallback_rows(
     else:
         target_papers = list(papers.keys())
 
-    if not target_papers:
-        return []
-
-    triple_rows = await conn.fetch(
-        """
-        SELECT
-            tc.paper_id,
-            p.title AS paper_title,
-            tc.graph_metadata,
-            tc.triple_conf,
-            tc.evidence_text,
-            tc.section_id,
-            tc.created_at
-        FROM triple_candidates tc
-        JOIN papers p ON p.id = tc.paper_id
-        WHERE tc.paper_id = ANY($1::uuid[])
-        ORDER BY p.created_at DESC, tc.created_at DESC
-        LIMIT 4000
-        """,
-        target_papers,
-    )
+    if target_papers:
+        triple_rows = await conn.fetch(
+            """
+            SELECT
+                tc.paper_id,
+                p.title AS paper_title,
+                tc.graph_metadata,
+                tc.triple_conf,
+                tc.evidence_text,
+                tc.section_id,
+                tc.created_at
+            FROM triple_candidates tc
+            JOIN papers p ON p.id = tc.paper_id
+            WHERE tc.paper_id = ANY($1::uuid[])
+            ORDER BY p.created_at DESC, tc.created_at DESC
+            LIMIT 4000
+            """,
+            target_papers,
+        )
+    else:
+        triple_rows = await conn.fetch(
+            """
+            SELECT
+                tc.paper_id,
+                p.title AS paper_title,
+                tc.graph_metadata,
+                tc.triple_conf,
+                tc.evidence_text,
+                tc.section_id,
+                tc.created_at
+            FROM triple_candidates tc
+            JOIN papers p ON p.id = tc.paper_id
+            ORDER BY p.created_at DESC, tc.created_at DESC
+            LIMIT 4000
+            """,
+        )
+        target_papers = list(dict.fromkeys(row["paper_id"] for row in triple_rows))
+        if not target_papers:
+            return []
 
     def _ensure_paper_payload(paper_id: UUID, paper_title: Optional[str]) -> dict[str, Any]:
         payload = papers.setdefault(

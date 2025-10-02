@@ -9,6 +9,11 @@ from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, cast
 import re
 from uuid import UUID
 
+try:  # pragma: no cover - optional dependency in tests
+    from asyncpg.pgproto import pgproto  # type: ignore
+except Exception:  # pragma: no cover - asyncpg may be absent in tests
+    pgproto = None  # type: ignore[assignment]
+
 from app.core.config import settings
 from app.db.pool import get_pool
 from app.models.ontology import (
@@ -976,20 +981,17 @@ async def _update_aliases(
     config: _TypeConfig,
     computation: _CanonicalizationComputation,
 ) -> None:
-    updates = []
+    updates: list[tuple[UUID, Any]] = []
     for record_id in computation.id_to_canonical.keys():
         aliases_list = computation.aliases_by_record.get(record_id, [])
-        print(f"[DEBUG] Processing aliases for record {record_id}: {aliases_list}")
-        print(f"[DEBUG] Type of aliases_list: {type(aliases_list)}")
-        if aliases_list:
-            print(f"[DEBUG] Type of first alias: {type(aliases_list[0])}")
-        try:
-            json_str = json.dumps(aliases_list)
-            print(f"[DEBUG] JSON conversion successful: {json_str[:100]}...")
-            updates.append((record_id, json_str))
-        except Exception as exc:
-            print(f"[DEBUG] JSON conversion failed for {aliases_list}: {exc}")
-            raise
+        normalized_aliases = [alias for alias in aliases_list if isinstance(alias, str) and alias]
+        payload: Any
+        jsonb_factory = getattr(pgproto, "Jsonb", None) if pgproto is not None else None
+        if jsonb_factory is not None:
+            payload = jsonb_factory(normalized_aliases)
+        else:
+            payload = normalized_aliases
+        updates.append((record_id, payload))
     if not updates:
         return
     try:
