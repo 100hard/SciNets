@@ -114,7 +114,7 @@ def _load_metadata_from_path(path: Path) -> GraphOntologyMetadata | None:
 
 
 def _resolve_metadata_path() -> Path | None:
-    raw_path = settings.graph_metadata_path
+    raw_path = getattr(settings, "graph_metadata_path", None)
     if not raw_path:
         return None
     candidate = Path(raw_path)
