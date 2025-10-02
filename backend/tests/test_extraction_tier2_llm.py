@@ -132,6 +132,76 @@ async def test_run_tier2_structurer_parses_llm_response(monkeypatch: pytest.Monk
     assert stored_candidate.object_span == [18, 48]
 
 
+@pytest.mark.anyio
+async def test_run_tier2_structurer_omits_graph_metadata_for_citations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paper_id = uuid4()
+    base_summary = {
+        "paper_id": str(paper_id),
+        "tiers": [1],
+        "sections": [
+            _build_section(
+                "sec-1",
+                "Results",
+                [
+                    "AlphaNet references Phys. Rev. Lett. 120, 123456 (2018).",
+                ],
+            ),
+        ],
+        "tables": [],
+    }
+
+    fake_payload = {
+        "triples": [
+            {
+                "subject": "AlphaNet",
+                "relation": "evaluated on",
+                "object": "Phys. Rev. Lett. 120, 123456 (2018)",
+                "evidence": "AlphaNet references Phys. Rev. Lett. 120, 123456 (2018).",
+                "subject_span": [0, 8],
+                "object_span": [21, 60],
+                "subject_type_guess": "Method",
+                "relation_type_guess": "EVALUATED_ON",
+                "object_type_guess": "Dataset",
+                "triple_conf": 0.6,
+                "schema_match_score": 0.9,
+                "section_id": "sec-1",
+            }
+        ],
+        "warnings": [],
+        "discarded": [],
+    }
+
+    payload_iter = iter([
+        fake_payload,
+        {"triples": [], "warnings": [], "discarded": []},
+    ])
+
+    async def fake_invoke_llm(_: list[dict[str, str]]) -> str:
+        payload = next(payload_iter, {"triples": [], "warnings": [], "discarded": []})
+        return json.dumps(payload)
+
+    async def fake_replace(_: UUID, __: list) -> None:
+        return None
+
+    monkeypatch.setattr(extraction_tier2, "_invoke_llm", fake_invoke_llm)
+    monkeypatch.setattr(extraction_tier2, "replace_triple_candidates", fake_replace)
+
+    monkeypatch.setattr(settings, "tier2_llm_model", "gpt-test")
+    monkeypatch.setattr(settings, "tier2_llm_base_url", "https://example.com")
+    monkeypatch.setattr(settings, "tier2_llm_completion_path", "/chat/completions")
+    monkeypatch.setattr(settings, "tier2_llm_force_json", True)
+    monkeypatch.setattr(settings, "openai_api_key", None)
+    monkeypatch.setattr(settings, "openai_organization", None)
+
+    summary = await extraction_tier2.run_tier2_structurer(paper_id, base_summary=base_summary)
+
+    assert len(summary["triple_candidates"]) == 1
+    candidate = summary["triple_candidates"][0]
+    assert candidate["object"] == "Phys. Rev. Lett. 120, 123456 (2018)"
+    assert "graph_metadata" not in candidate
+
 
 @pytest.mark.anyio
 async def test_run_tier2_structurer_resolves_pronoun_subject(

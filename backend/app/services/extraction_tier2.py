@@ -5,6 +5,7 @@ import difflib
 import json
 import logging
 import re
+import string
 from dataclasses import dataclass, asdict
 from typing import Any, Mapping, Optional, Sequence
 from uuid import UUID
@@ -264,6 +265,41 @@ ANTECEDENT_QUOTE_RE = re.compile('["\'“”‘’]([^"\'“”‘’]{3,})["\'�
 
 ANTECEDENT_CAPITAL_RE = re.compile(r'([A-Z][A-Za-z0-9]*(?:[\s-][A-Z][A-Za-z0-9]*){0,4})')
 
+CITATION_SUFFIX_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\s*\[[^\]]+\]\s*$"),
+    re.compile(
+        r"\s*\((?:[^)]*\b(?:doi|arxiv|vol\.|volume|no\.|issue|pp\.|pages|proc\.|conf\.|phys\.|rev\.|lett\.|\d{4})[^)]*)\)\s*$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:\b[A-Z][A-Za-z]{0,10}\.\s*){2,}(?:\b[A-Z][A-Za-z]{0,10}\.?)?(?:\s+\d{1,4}(?:[,;]\s*\d{1,6})*)?(?:\s*\(\d{4}\))?\s*$"
+    ),
+    re.compile(r"\b(?:vol|volume|no|issue)\.?\s*\d+(?:[,;]\s*\d+)?\s*$", re.IGNORECASE),
+)
+
+CITATION_ABBREVIATION_RE = re.compile(
+    r"^(?:\b[A-Z][A-Za-z]{0,10}\.\s*){2,}(?:\b[A-Z][A-Za-z]{0,10}\.?)?(?:\s+\d{1,4}(?:[,;]\s*\d{1,6})*)?(?:\s*\(\d{4}\))?$"
+)
+
+CITATION_LOW_INFO_TOKENS = frozenset(
+    {
+        "acta",
+        "adv",
+        "conf",
+        "ieee",
+        "int",
+        "j",
+        "lett",
+        "letters",
+        "nat",
+        "phys",
+        "proc",
+        "rev",
+        "symp",
+        "trans",
+    }
+)
+
 
 def _normalize_whitespace(value: str) -> str:
     if not value:
@@ -273,6 +309,55 @@ def _normalize_whitespace(value: str) -> str:
 
 def _normalize_graph_text(value: str) -> str:
     return _normalize_whitespace(value)
+
+
+def _strip_citation_fragments(value: str) -> str:
+    if not value:
+        return ""
+    stripped = value.strip()
+    previous = None
+    while previous != stripped:
+        previous = stripped
+        for pattern in CITATION_SUFFIX_PATTERNS:
+            stripped = pattern.sub("", stripped)
+        stripped = stripped.strip()
+    stripped = _normalize_whitespace(stripped)
+    if CITATION_ABBREVIATION_RE.match(stripped):
+        return ""
+    return stripped
+
+
+GRAPH_PUNCTUATION = frozenset(set(string.punctuation) - {"-", "_", "/"})
+
+
+def _graph_value_passes_quality(value: str) -> bool:
+    if not value:
+        return False
+    if _is_low_info_text(value):
+        return False
+    if not re.search(r"[A-Za-z]", value):
+        return False
+
+    tokens = re.findall(r"[A-Za-z]+", value)
+    if not tokens:
+        return False
+
+    lowered_tokens = [token.lower() for token in tokens]
+    if lowered_tokens and all(token in CITATION_LOW_INFO_TOKENS for token in lowered_tokens):
+        return False
+
+    letters = sum(len(token) for token in tokens)
+    alnum_chars = sum(1 for char in value if char.isalnum())
+    if alnum_chars == 0:
+        return False
+    if letters < max(2, int(alnum_chars * 0.35)):
+        return False
+
+    punctuation_heavy = sum(1 for char in value if char in GRAPH_PUNCTUATION)
+    if letters <= punctuation_heavy:
+        return False
+
+    return True
 
 
 def _normalized_graph_key(value: str) -> str:
@@ -352,11 +437,14 @@ def _build_graph_metadata(
     def _register(entity_type: str, value: Optional[str]) -> Optional[dict[str, str]]:
         if not value:
             return None
-        normalized_value = _normalize_graph_text(value)
+        cleaned_value = _strip_citation_fragments(value)
+        normalized_value = _normalize_graph_text(cleaned_value)
         if not normalized_value:
             return None
+        if not _graph_value_passes_quality(normalized_value):
+            return None
         entry = {
-            "text": value.strip(),
+            "text": cleaned_value,
             "normalized": normalized_value.lower(),
         }
         metadata["entities"][entity_type] = entry
