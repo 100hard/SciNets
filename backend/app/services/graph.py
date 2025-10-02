@@ -102,6 +102,8 @@ _CLEAR_GRAPH_TABLES_IN_ORDER: tuple[str, ...] = (
     "datasets",
     "metrics",
     "tasks",
+    "applications",
+    "research_areas",
 )
 
 
@@ -128,8 +130,14 @@ _RESULT_SELECT = """
         r.value_text,
         r.is_sota,
         r.confidence,
+        r.split,
+        r.value_numeric,
+        r.value_text,
+        r.is_sota,
+        (to_jsonb(r) ->> 'verified')::boolean AS verified,
         r.evidence,
         p.title AS paper_title,
+        p.year AS paper_year,
         m.name AS method_name,
         m.aliases AS method_aliases,
         m.description AS method_description,
@@ -164,8 +172,14 @@ _METHOD_RELATION_SELECT = """
         NULL::text AS value_text,
         NULL::boolean AS is_sota,
         mr.confidence,
+        mr.split,
+        NULL::numeric AS value_numeric,
+        NULL::text AS value_text,
+        NULL::boolean AS is_sota,
+        NULL::boolean AS verified,
         mr.evidence,
         p.title AS paper_title,
+        p.year AS paper_year,
         m.name AS method_name,
         m.aliases AS method_aliases,
         m.description AS method_description,
@@ -187,6 +201,18 @@ _METHOD_RELATION_SELECT = """
 """
 
 
+_CLAIM_SELECT = """
+    SELECT
+        c.id,
+        c.paper_id,
+        c.category,
+        c.text,
+        c.confidence,
+        c.evidence
+    FROM claims c
+"""
+
+
 class GraphEntityNotFoundError(RuntimeError):
     """Raised when the requested graph node cannot be located."""
 
@@ -203,14 +229,17 @@ class NodeDetail:
 
 @dataclass
 class EdgeInstance:
+    relation: RelationType
     paper_id: UUID
     paper_title: Optional[str]
+    paper_year: Optional[int]
     confidence: float
     evidence: list[dict[str, Any]]
     dataset_id: Optional[UUID]
     dataset_label: Optional[str]
     metric_id: Optional[UUID]
     metric_label: Optional[str]
+    metric_unit: Optional[str]
     task_id: Optional[UUID]
     task_label: Optional[str]
     statement_metadata: Optional[Dict[str, Any]] = None
@@ -224,12 +253,19 @@ class MethodContext:
     evidence: list[dict[str, Any]]
     paper_id: UUID
     paper_title: Optional[str]
+    paper_year: Optional[int]
     dataset_id: Optional[UUID]
     dataset_label: Optional[str]
     metric_id: Optional[UUID]
     metric_label: Optional[str]
     task_id: Optional[UUID]
     task_label: Optional[str]
+    metric_unit: Optional[str]
+    value_numeric: Optional[float]
+    value_text: Optional[str]
+    is_sota: Optional[bool]
+    verified: Optional[bool]
+    claims: Sequence[Mapping[str, Any]]
 
 
 @dataclass
@@ -335,6 +371,144 @@ def _normalize_graph_label(value: Any) -> str:
 
 def _clean_metadata(payload: Mapping[str, Any]) -> Dict[str, Any]:
     return {key: value for key, value in payload.items() if value not in (None, "")}
+
+
+def _coerce_float(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _serialize_outcome(outcome: NodeOutcome) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "paper_id": str(outcome.paper_id),
+        "paper_title": outcome.paper_title,
+        "paper_year": outcome.paper_year,
+        "value_numeric": outcome.value_numeric,
+        "value_text": outcome.value_text,
+        "metric": outcome.metric_label,
+        "metric_unit": outcome.metric_unit,
+        "dataset": outcome.dataset_label,
+        "task": outcome.task_label,
+        "confidence": outcome.confidence,
+        "is_sota": outcome.is_sota,
+        "verified": outcome.verified,
+    }
+    return _clean_metadata(payload)
+
+
+def _select_outcome(
+    outcomes: Sequence[NodeOutcome], *, prefer_max: bool
+) -> Optional[Dict[str, Any]]:
+    if not outcomes:
+        return None
+    numeric = [outcome for outcome in outcomes if outcome.value_numeric is not None]
+    if numeric:
+        verified_numeric = [item for item in numeric if item.verified]
+        pool = verified_numeric or numeric
+        key_func = (lambda item: cast(float, item.value_numeric))
+        selected = max(pool, key=key_func) if prefer_max else min(pool, key=key_func)
+        return _serialize_outcome(selected)
+    text_only = [item for item in outcomes if item.value_text]
+    if not text_only:
+        return None
+    verified_text = [item for item in text_only if item.verified]
+    pool_text = verified_text or text_only
+    selected = pool_text[0]
+    return _serialize_outcome(selected)
+
+
+def _select_claim_text(claims: Sequence[Mapping[str, Any]]) -> Optional[str]:
+    best_text: Optional[str] = None
+    best_confidence = float("-inf")
+    for claim in claims:
+        text_raw = claim.get("text")
+        text = str(text_raw).strip() if text_raw else ""
+        if not text:
+            continue
+        confidence_raw = claim.get("confidence")
+        try:
+            confidence = float(confidence_raw) if confidence_raw is not None else 0.0
+        except (TypeError, ValueError):
+            confidence = 0.0
+        if confidence > best_confidence:
+            best_confidence = confidence
+            best_text = text
+    return best_text
+
+
+def _format_edge_summary(instance: EdgeInstance) -> Optional[tuple[str, Optional[str]]]:
+    if instance.verified is False:
+        return None
+    summary_parts: list[str] = []
+    if instance.relation == "reports":
+        value_text = instance.value_text
+        if value_text is None and instance.value_numeric is not None:
+            value_text = str(instance.value_numeric)
+        metric_label = instance.metric_label or "Metric"
+        if value_text:
+            unit = instance.metric_unit or ""
+            value_phrase = f"{value_text}{unit}".strip()
+            summary = f"{metric_label} {value_phrase}".strip()
+        else:
+            summary = metric_label
+        if instance.dataset_label:
+            summary = f"{summary} on {instance.dataset_label}".strip()
+        elif instance.task_label:
+            summary = f"{summary} for {instance.task_label}".strip()
+        summary_parts.append(summary)
+    elif instance.relation == "evaluates_on" and instance.dataset_label:
+        summary_parts.append(f"Evaluated on {instance.dataset_label}")
+    elif instance.relation == "proposes" and instance.task_label:
+        summary_parts.append(f"Targets {instance.task_label}")
+    elif instance.relation == "compares" and instance.dataset_label:
+        comparison_metric = instance.metric_label or "performance"
+        summary_parts.append(
+            f"Comparison on {instance.dataset_label} ({comparison_metric})"
+        )
+    if not summary_parts:
+        return None
+    claim_text = _select_claim_text(instance.claims)
+    base_summary = "; ".join(part for part in summary_parts if part)
+    if claim_text:
+        combined = f"{claim_text} — {base_summary}"
+        return combined, claim_text
+    return base_summary, claim_text
+
+
+def _build_edge_insights(instances: Sequence[EdgeInstance]) -> list[Dict[str, Any]]:
+    insights: list[Dict[str, Any]] = []
+    seen: set[tuple[str, UUID]] = set()
+    for instance in instances:
+        formatted = _format_edge_summary(instance)
+        if not formatted:
+            continue
+        summary_text, claim_text = formatted
+        if not summary_text:
+            continue
+        key = (summary_text, instance.paper_id)
+        if key in seen:
+            continue
+        payload: Dict[str, Any] = {
+            "summary": summary_text,
+            "paper_id": str(instance.paper_id),
+            "paper_title": instance.paper_title,
+            "paper_year": instance.paper_year,
+            "confidence": instance.confidence,
+            "claim_text": claim_text,
+            "relation": instance.relation,
+            "metric": instance.metric_label,
+            "dataset": instance.dataset_label,
+            "task": instance.task_label,
+            "value_text": instance.value_text,
+            "value_numeric": instance.value_numeric,
+        }
+        insights.append(_clean_metadata(payload))
+        seen.add(key)
+    return insights[:_MAX_EDGE_EVIDENCE]
 
 
 def _merge_node_metadata(
@@ -1193,6 +1367,7 @@ def _aggregate_edges(
     allowed_relations: set[RelationType],
     min_conf: float,
     node_details: dict[tuple[NodeType, UUID], NodeDetail],
+    claims_by_paper: Optional[Mapping[UUID, Sequence[Mapping[str, Any]]]] = None,
 ) -> list[AggregatedEdge]:
     edges: dict[
         tuple[RelationType, tuple[NodeType, UUID], tuple[NodeType, UUID]],
@@ -1202,11 +1377,33 @@ def _aggregate_edges(
         tuple[UUID, UUID, UUID],
         list[MethodContext],
     ] = defaultdict(list)
+    claims_lookup: Mapping[UUID, Sequence[Mapping[str, Any]]] = (
+        claims_by_paper or {}
+    )
+    node_year_counts: dict[tuple[NodeType, UUID], dict[int, set[UUID]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
+    node_outcomes: dict[tuple[NodeType, UUID], list[NodeOutcome]] = defaultdict(list)
 
     for row in rows:
         paper_id: UUID = row["paper_id"]
         paper_title = row.get("paper_title")
         confidence = _confidence_value(row.get("confidence"))
+        paper_year_raw = row.get("paper_year")
+        try:
+            paper_year = int(paper_year_raw) if paper_year_raw is not None else None
+        except (TypeError, ValueError):
+            paper_year = None
+        value_numeric = _coerce_float(row.get("value_numeric"))
+        value_text_raw = row.get("value_text")
+        value_text = str(value_text_raw).strip() if value_text_raw else None
+        is_sota = bool(row.get("is_sota")) if row.get("is_sota") is not None else None
+        verified = row.get("verified")
+        if isinstance(verified, str):
+            verified = verified.lower() in {"true", "t", "1"}
+        elif verified is not None:
+            verified = bool(verified)
+        claims = claims_lookup.get(paper_id, ())
         evidence = list(row.get("evidence") or [])
 
         method_id: Optional[UUID] = row.get("method_id")
@@ -1259,18 +1456,42 @@ def _aggregate_edges(
                 metadata=task_metadata,
             )
 
-        dataset_label = None
+        dataset_label = node_details.get(("dataset", dataset_id)).label if dataset_id and ("dataset", dataset_id) in node_details else None
+        metric_label = node_details.get(("metric", metric_id)).label if metric_id and ("metric", metric_id) in node_details else None
+        task_label = node_details.get(("task", task_id)).label if task_id and ("task", task_id) in node_details else None
+        metric_unit = row.get("metric_unit")
+
+        node_keys: list[tuple[NodeType, UUID]] = []
+        if method_id:
+            node_keys.append(_node_key("method", method_id))
         if dataset_id:
-            dataset_detail = node_details.get((NodeType.DATASET, dataset_id))
-            dataset_label = dataset_detail.label if dataset_detail else None
-        metric_label = None
+            node_keys.append(_node_key("dataset", dataset_id))
         if metric_id:
-            metric_detail = node_details.get((NodeType.METRIC, metric_id))
-            metric_label = metric_detail.label if metric_detail else None
-        task_label = None
+            node_keys.append(_node_key("metric", metric_id))
         if task_id:
-            task_detail = node_details.get((NodeType.TASK, task_id))
-            task_label = task_detail.label if task_detail else None
+            node_keys.append(_node_key("task", task_id))
+
+        if paper_year is not None:
+            for key in node_keys:
+                node_year_counts[key][paper_year].add(paper_id)
+
+        if value_numeric is not None or value_text:
+            outcome = NodeOutcome(
+                paper_id=paper_id,
+                paper_title=paper_title,
+                paper_year=paper_year,
+                value_numeric=value_numeric,
+                value_text=value_text,
+                metric_label=metric_label,
+                dataset_label=dataset_label,
+                task_label=task_label,
+                metric_unit=metric_unit,
+                confidence=confidence,
+                is_sota=is_sota,
+                verified=verified if isinstance(verified, bool) else None,
+            )
+            for key in node_keys:
+                node_outcomes[key].append(outcome)
 
         if method_id and dataset_id:
             key = (
@@ -1280,16 +1501,24 @@ def _aggregate_edges(
             )
             edges[key].append(
                 EdgeInstance(
+                    relation="evaluates_on",
                     paper_id=paper_id,
                     paper_title=paper_title,
+                    paper_year=paper_year,
                     confidence=confidence,
                     evidence=evidence,
                     dataset_id=dataset_id,
                     dataset_label=dataset_label,
                     metric_id=metric_id,
                     metric_label=metric_label,
+                    metric_unit=metric_unit,
                     task_id=task_id,
                     task_label=task_label,
+                    value_numeric=value_numeric,
+                    value_text=value_text,
+                    is_sota=is_sota,
+                    verified=verified if isinstance(verified, bool) else None,
+                    claims=claims,
                 )
             )
 
@@ -1301,16 +1530,24 @@ def _aggregate_edges(
             )
             edges[key].append(
                 EdgeInstance(
+                    relation="reports",
                     paper_id=paper_id,
                     paper_title=paper_title,
+                    paper_year=paper_year,
                     confidence=confidence,
                     evidence=evidence,
                     dataset_id=dataset_id,
                     dataset_label=dataset_label,
                     metric_id=metric_id,
                     metric_label=metric_label,
+                    metric_unit=metric_unit,
                     task_id=task_id,
                     task_label=task_label,
+                    value_numeric=value_numeric,
+                    value_text=value_text,
+                    is_sota=is_sota,
+                    verified=verified if isinstance(verified, bool) else None,
+                    claims=claims,
                 )
             )
 
@@ -1322,16 +1559,24 @@ def _aggregate_edges(
             )
             edges[key].append(
                 EdgeInstance(
+                    relation="proposes",
                     paper_id=paper_id,
                     paper_title=paper_title,
+                    paper_year=paper_year,
                     confidence=confidence,
                     evidence=evidence,
                     dataset_id=dataset_id,
                     dataset_label=dataset_label,
                     metric_id=metric_id,
                     metric_label=metric_label,
+                    metric_unit=metric_unit,
                     task_id=task_id,
                     task_label=task_label,
+                    value_numeric=value_numeric,
+                    value_text=value_text,
+                    is_sota=is_sota,
+                    verified=verified if isinstance(verified, bool) else None,
+                    claims=claims,
                 )
             )
 
@@ -1433,12 +1678,19 @@ def _aggregate_edges(
                     evidence=evidence,
                     paper_id=paper_id,
                     paper_title=paper_title,
+                    paper_year=paper_year,
                     dataset_id=dataset_id,
                     dataset_label=dataset_label,
                     metric_id=metric_id,
                     metric_label=metric_label,
                     task_id=task_id,
                     task_label=task_label,
+                    metric_unit=metric_unit,
+                    value_numeric=value_numeric,
+                    value_text=value_text,
+                    is_sota=is_sota,
+                    verified=verified if isinstance(verified, bool) else None,
+                    claims=claims,
                 )
             )
 
@@ -1457,16 +1709,24 @@ def _aggregate_edges(
                 combined_evidence = list(primary.evidence) + list(secondary.evidence)
                 edges[key].append(
                     EdgeInstance(
+                        relation="compares",
                         paper_id=primary.paper_id,
                         paper_title=primary.paper_title,
+                        paper_year=primary.paper_year,
                         confidence=combined_confidence,
                         evidence=combined_evidence,
                         dataset_id=primary.dataset_id,
                         dataset_label=primary.dataset_label,
                         metric_id=primary.metric_id,
                         metric_label=primary.metric_label,
+                        metric_unit=primary.metric_unit,
                         task_id=primary.task_id,
                         task_label=primary.task_label,
+                        value_numeric=None,
+                        value_text=None,
+                        is_sota=None,
+                        verified=None,
+                        claims=primary.claims,
                     )
                 )
 
@@ -1557,6 +1817,10 @@ def _aggregate_edges(
                 "average": average_confidence,
             }
 
+        insights = _build_edge_insights(instances)
+        if insights:
+            metadata["insights"] = insights
+
         evidence_items = evidence_items[:_MAX_EDGE_EVIDENCE]
         if evidence_items:
             metadata["evidence"] = evidence_items
@@ -1575,6 +1839,24 @@ def _aggregate_edges(
                 metadata=metadata,
             )
         )
+
+    for key, detail in node_details.items():
+        metadata = dict(detail.metadata or {})
+        years = node_year_counts.get(key)
+        if years:
+            metadata["papers_by_year"] = [
+                {"year": year, "paper_count": len(papers)}
+                for year, papers in sorted(years.items(), key=lambda item: item[0], reverse=True)
+            ]
+        outcomes = node_outcomes.get(key)
+        if outcomes:
+            best = _select_outcome(outcomes, prefer_max=True)
+            worst = _select_outcome(outcomes, prefer_max=False)
+            if best:
+                metadata["best_outcome"] = best
+            if worst:
+                metadata["worst_outcome"] = worst
+        detail.metadata = _clean_metadata(metadata)
 
     return aggregated
 
@@ -1785,6 +2067,7 @@ async def get_graph_overview(
     async with pool.acquire() as conn:
         records = await _fetch_results(conn)
         relation_records = await _fetch_method_relations(conn)
+        claim_records = await _fetch_claims(conn)
         rows = [dict(record) for record in records]
         rows.extend(dict(record) for record in relation_records)
         paper_ids = {row["paper_id"] for row in rows if row.get("paper_id")}
@@ -1852,6 +2135,7 @@ async def get_graph_neighborhood(
         paper_ids = await _fetch_related_papers(conn, center_detail)
         records = await _fetch_results(conn, paper_ids=paper_ids)
         relation_records = await _fetch_method_relations(conn, paper_ids=paper_ids)
+        claim_records = await _fetch_claims(conn, paper_ids=paper_ids)
         rows = [dict(record) for record in records]
         rows.extend(dict(record) for record in relation_records)
         claims_map = await _fetch_claims_by_paper(conn, list({row["paper_id"] for row in rows if row.get("paper_id")}))
@@ -1894,6 +2178,7 @@ async def get_graph_neighborhood(
     node_details = {(_node_key(center_detail.type, center_detail.id)): center_detail}
     fallback_edges = _aggregate_edges(
         combined_rows, edge_allowed_types, allowed_relations, min_conf, node_details
+
     )
     fallback_response = _build_graph_response(
         fallback_edges,

@@ -49,10 +49,12 @@ class FakeGraphConnection:
             PAPER_A: {
                 "id": PAPER_A,
                 "title": "Structured Summarisation",
+                "year": 2021,
             },
             PAPER_B: {
                 "id": PAPER_B,
                 "title": "Benchmarking Methods",
+                "year": 2022,
             },
         }
         self.methods = {
@@ -109,6 +111,11 @@ class FakeGraphConnection:
                 "value_text": "0.81",
                 "is_sota": True,
                 "confidence": 0.8,
+                "split": "test",
+                "value_numeric": 0.78,
+                "value_text": "78",
+                "is_sota": True,
+                "verified": True,
                 "evidence": [{"snippet": "Alpha performs well."}],
             },
             {
@@ -123,6 +130,11 @@ class FakeGraphConnection:
                 "value_text": "0.75",
                 "is_sota": False,
                 "confidence": 0.6,
+                "split": "validation",
+                "value_numeric": 0.7,
+                "value_text": "70",
+                "is_sota": False,
+                "verified": True,
                 "evidence": [{"snippet": "Alpha remains competitive."}],
             },
             {
@@ -137,7 +149,30 @@ class FakeGraphConnection:
                 "value_text": "0.70",
                 "is_sota": False,
                 "confidence": 0.7,
+                "split": "validation",
+                "value_numeric": 0.65,
+                "value_text": "65",
+                "is_sota": False,
+                "verified": False,
                 "evidence": [{"snippet": "Beta comparison."}],
+            },
+        ]
+        self.claims = [
+            {
+                "id": uuid4(),
+                "paper_id": PAPER_A,
+                "category": "improvement",
+                "text": "Improves accuracy on Dataset-X by 5%",
+                "confidence": 0.9,
+                "evidence": [],
+            },
+            {
+                "id": uuid4(),
+                "paper_id": PAPER_B,
+                "category": "baseline",
+                "text": "Competitive with baselines",
+                "confidence": 0.6,
+                "evidence": [],
             },
         ]
         self.method_relations: list[dict[str, Any]] = []
@@ -297,8 +332,14 @@ class FakeGraphConnection:
             "value_text": result.get("value_text"),
             "is_sota": result.get("is_sota"),
             "confidence": result.get("confidence"),
+            "split": result.get("split"),
+            "value_numeric": result.get("value_numeric"),
+            "value_text": result.get("value_text"),
+            "is_sota": result.get("is_sota"),
+            "verified": result.get("verified"),
             "evidence": result.get("evidence"),
             "paper_title": paper.get("title"),
+            "paper_year": paper.get("year"),
             "method_name": method.get("name") if method else None,
             "method_aliases": method.get("aliases") if method else None,
             "method_description": method.get("description") if method else None,
@@ -331,8 +372,14 @@ class FakeGraphConnection:
             "value_text": None,
             "is_sota": None,
             "confidence": relation.get("confidence"),
+            "split": relation.get("split"),
+            "value_numeric": None,
+            "value_text": None,
+            "is_sota": None,
+            "verified": relation.get("verified"),
             "evidence": relation.get("evidence"),
             "paper_title": paper["title"],
+            "paper_year": paper.get("year"),
             "method_name": method.get("name") if method else None,
             "method_aliases": method.get("aliases") if method else None,
             "method_description": method.get("description") if method else None,
@@ -346,6 +393,16 @@ class FakeGraphConnection:
             "task_name": task.get("name") if task else None,
             "task_aliases": task.get("aliases") if task else None,
             "task_description": task.get("description") if task else None,
+        }
+
+    def _build_claim_row(self, claim: Mapping[str, Any]) -> dict[str, Any]:
+        return {
+            "id": claim.get("id"),
+            "paper_id": claim.get("paper_id"),
+            "category": claim.get("category"),
+            "text": claim.get("text"),
+            "confidence": claim.get("confidence"),
+            "evidence": claim.get("evidence"),
         }
 
 
@@ -403,6 +460,38 @@ async def _run_get_graph_overview(monkeypatch: pytest.MonkeyPatch) -> None:
 
     edge_types = {edge.data.type for edge in response.edges}
     assert {"evaluates_on", "reports", "proposes", "compares"}.issubset(edge_types)
+
+
+@pytest.mark.asyncio
+async def test_graph_metadata_enrichments(monkeypatch: pytest.MonkeyPatch) -> None:
+    _setup_fake_pool(monkeypatch)
+
+    response = await get_graph_overview(limit=10, min_conf=0.6)
+
+    method_node = next(
+        node
+        for node in response.nodes
+        if node.data.type == "method" and node.data.entity_id == METHOD_ALPHA
+    )
+    metadata = method_node.data.metadata or {}
+    papers_by_year = metadata.get("papers_by_year")
+    assert papers_by_year == [
+        {"year": 2022, "paper_count": 1},
+        {"year": 2021, "paper_count": 1},
+    ]
+    best_outcome = metadata.get("best_outcome")
+    worst_outcome = metadata.get("worst_outcome")
+    assert best_outcome["value_numeric"] == 0.78
+    assert best_outcome["verified"] is True
+    assert worst_outcome["value_numeric"] == 0.7
+
+    reports_edge = next(edge for edge in response.edges if edge.data.type == "reports")
+    edge_metadata = reports_edge.data.metadata or {}
+    insights = edge_metadata.get("insights")
+    assert insights is not None
+    insight_summaries = [item.get("summary") for item in insights]
+    assert "Improves accuracy on Dataset-X by 5% — F1 78% on Dataset-X" in insight_summaries
+    assert "Competitive with baselines — F1 70% on Dataset-X" in insight_summaries
 
     compare_edge = next(edge for edge in response.edges if edge.data.type == "compares")
     assert compare_edge.data.weight == pytest.approx(0.65, rel=1e-5)

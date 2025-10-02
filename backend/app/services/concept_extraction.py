@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from dataclasses import dataclass, field
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union
 from uuid import UUID
 
+from app.core.config import settings
 from app.models.concept import Concept, ConceptCreate
+from app.models.paper import Paper
 from app.models.section import SectionBase
 from app.services.concepts import replace_concepts
+from app.services.papers import get_paper
 from app.services.relations import replace_paper_concept_relations
 from app.services.sections import list_sections
 
@@ -23,8 +26,6 @@ except ImportError:  # pragma: no cover - optional dependency
     Language = None  # type: ignore[assignment]
 
 
-MAX_CONCEPTS = 50
-MAX_TOKENS = 6
 MIN_CHAR_LENGTH = 3
 SNIPPET_WINDOW = 120
 
@@ -42,164 +43,17 @@ COMMON_SECTION_TITLES = {
     "conclusions",
 }
 
-STOPWORDS = {
-    "a",
-    "an",
-    "the",
-    "and",
-    "or",
-    "if",
-    "but",
-    "on",
-    "in",
-    "into",
-    "by",
-    "for",
-    "of",
-    "with",
-    "we",
-    "our",
-    "is",
-    "are",
-    "was",
-    "were",
-    "this",
-    "that",
-    "these",
-    "those",
-    "using",
-    "used",
-    "use",
-    "can",
-    "may",
-    "might",
-    "should",
-    "could",
-    "to",
-    "from",
-    "as",
-    "at",
-    "be",
-    "been",
-    "it",
-    "its",
-    "their",
-    "they",
-    "them",
-    "than",
-    "then",
-    "also",
-    "such",
-    "however",
-    "between",
-    "within",
-    "through",
-    "across",
-    "each",
-    "both",
-    "either",
-    "neither",
-    "because",
-    "due",
-    "after",
-    "before",
-    "over",
-    "under",
-    "more",
-    "most",
-    "less",
-    "least",
-    "many",
-    "much",
-    "several",
-    "various",
-    "against",
-    "include",
-    "includes",
-    "including",
-    "based",
-    "extend",
-    "extends",
-    "extending",
-    "extended",
-    "leveraging",
-    "leverage",
-    "leverages",
-    "utilizing",
-    "utilize",
-    "utilizes",
-    "via",
-    "around",
-    "among",
-    "amongst",
-    "towards",
-    "toward",
-    "accompanying",
-    "accompanied",
-    "accompanies",
-    "compared",
-    "comparing",
-    "compare",
-    "compares",
-}
+STOPWORDS: Set[str] = set(settings.concept_extraction.tuning.stopwords)
 
-SCISPACY_MODEL_NAMES = (
-    "en_core_sci_sm",
-    "en_core_sci_md",
-    "en_core_web_sm",
+_SPACY_MODEL_CACHE: Dict[str, Union[Language, bool]] = {}
+
+FILLER_PREFIXES: Set[str] = set(
+    settings.concept_extraction.tuning.filler_prefixes
 )
 
-_SCISPACY_MODEL: Union[Language, bool, None] = None
-
-FILLER_PREFIXES = {
-    "baseline",
-    "baselines",
-    "compare",
-    "compares",
-    "compared",
-    "comparing",
-    "proposed",
-    "propose",
-    "proposes",
-    "introduce",
-    "introduces",
-    "introducing",
-    "novel",
-    "new",
-    "simple",
-    "improved",
-    "fast",
-    "robust",
-    "efficient",
-    "effective",
-    "powerful",
-    "general",
-}
-
-FILLER_SUFFIXES = {
-    "approach",
-    "approaches",
-    "method",
-    "methods",
-    "technique",
-    "techniques",
-    "architecture",
-    "architectures",
-    "pipeline",
-    "pipelines",
-    "framework",
-    "frameworks",
-    "model",
-    "models",
-    "system",
-    "systems",
-    "strategy",
-    "strategies",
-    "procedure",
-    "procedures",
-    "scheme",
-    "schemes",
-}
+FILLER_SUFFIXES: Set[str] = set(
+    settings.concept_extraction.tuning.filler_suffixes
+)
 
 
 @dataclass
@@ -220,32 +74,51 @@ class _Candidate:
     occurrences: int = 1
 
 
+@dataclass
+class ConceptExtractionRuntimeConfig:
+    max_concepts: int
+    max_tokens: int
+    stopwords: Set[str]
+    filler_prefixes: Set[str]
+    filler_suffixes: Set[str]
+    provider_priority: Tuple[str, ...]
+    scispacy_models: Tuple[str, ...]
+    domain_model: Optional[str]
+    llm_prompt: Optional[str]
+    entity_hints: Dict[str, Set[str]] = field(default_factory=dict)
+    domain_key: Optional[str] = None
+
+
 def extract_concepts_from_sections(
     sections: Sequence[SectionBase],
+    *,
+    config: Optional[ConceptExtractionRuntimeConfig] = None,
+    paper: Optional[Paper] = None,
 ) -> List[ExtractedConcept]:
     filtered = [section for section in sections if section.content.strip()]
     if not filtered:
         return []
 
+    runtime = config or _build_runtime_config(paper)
     candidates: Dict[str, _Candidate] = {}
 
-    model = _load_scispacy_model()
-    if model is not None:
-        for candidate in _extract_with_scispacy(model, filtered):
-            _merge_candidate(candidates, candidate)
-
-    for candidate in _extract_with_heuristics(filtered):
+    provider_available, provider_candidates = _collect_model_candidates(filtered, runtime)
+    for candidate in provider_candidates:
         _merge_candidate(candidates, candidate)
+
+    if not provider_available:
+        for candidate in _extract_with_heuristics(filtered, runtime):
+            _merge_candidate(candidates, candidate)
 
     if not candidates:
         return []
 
-    _apply_method_post_filters(candidates)
+    _apply_method_post_filters(candidates, runtime)
 
     ranked = sorted(
         candidates.values(), key=lambda item: (-_final_score(item), item.name.lower())
     )
-    top_ranked = ranked[:MAX_CONCEPTS]
+    top_ranked = ranked[: runtime.max_concepts]
     return [
         ExtractedConcept(
             name=candidate.name,
@@ -257,6 +130,39 @@ def extract_concepts_from_sections(
     ]
 
 
+def _collect_model_candidates(
+    sections: Sequence[SectionBase],
+    config: ConceptExtractionRuntimeConfig,
+) -> Tuple[bool, List[_Candidate]]:
+    collected: List[_Candidate] = []
+    provider_available = False
+    for provider in config.provider_priority:
+        normalized_provider = provider.lower()
+        if normalized_provider == "scispacy":
+            model = _load_scispacy_model(config)
+            if model is None:
+                continue
+            provider_available = True
+            collected.extend(_extract_with_spacy_model(model, sections, config))
+            break
+        if normalized_provider == "domain_ner":
+            if not config.domain_model:
+                continue
+            model = _load_spacy_model(config.domain_model)
+            if model is None:
+                continue
+            provider_available = True
+            collected.extend(_extract_with_spacy_model(model, sections, config))
+            break
+        if normalized_provider == "llm":
+            if not _llm_prompt_available(config):
+                continue
+            provider_available = True
+            collected.extend(_extract_with_llm(sections, config))
+            break
+    return provider_available, collected
+
+
 async def extract_and_store_concepts(
     paper_id: UUID,
     sections: Optional[Sequence[SectionBase]] = None,
@@ -264,7 +170,9 @@ async def extract_and_store_concepts(
     if sections is None:
         sections = await _load_sections_for_paper(paper_id)
 
-    concepts = extract_concepts_from_sections(sections)
+    paper = await get_paper(paper_id)
+    config = _build_runtime_config(paper)
+    concepts = extract_concepts_from_sections(sections, config=config, paper=paper)
     concept_models = [
         ConceptCreate(
             paper_id=paper_id,
@@ -282,6 +190,123 @@ async def extract_and_store_concepts(
             f"[concept_extraction] Failed to sync paper {paper_id} concept relations: {exc}"
         )
     return stored
+
+
+def _build_runtime_config(paper: Optional[Paper]) -> ConceptExtractionRuntimeConfig:
+    concept_settings = settings.concept_extraction
+    domain_key = _infer_domain_key(paper)
+    overrides = (
+        concept_settings.domain_overrides.get(domain_key)
+        if domain_key and concept_settings.domain_overrides
+        else None
+    )
+
+    max_tokens = concept_settings.tuning.max_tokens
+    if overrides and overrides.max_tokens is not None:
+        max_tokens = overrides.max_tokens
+
+    provider_priority: Tuple[str, ...]
+    if overrides and overrides.provider_priority:
+        provider_priority = tuple(overrides.provider_priority)
+    else:
+        base_providers = concept_settings.providers or ["scispacy"]
+        provider_priority = tuple(base_providers)
+
+    base_stopwords = set(concept_settings.tuning.stopwords)
+    base_filler_prefixes = set(concept_settings.tuning.filler_prefixes)
+    base_filler_suffixes = set(concept_settings.tuning.filler_suffixes)
+
+    if overrides and overrides.stopwords:
+        base_stopwords.update(word.lower() for word in overrides.stopwords)
+    if overrides and overrides.filler_prefixes:
+        base_filler_prefixes.update(word.lower() for word in overrides.filler_prefixes)
+    if overrides and overrides.filler_suffixes:
+        base_filler_suffixes.update(word.lower() for word in overrides.filler_suffixes)
+
+    llm_prompt = overrides.llm_prompt if overrides and overrides.llm_prompt else concept_settings.llm_prompt
+
+    entity_hints: Dict[str, Set[str]] = {}
+    if overrides and overrides.entity_hints:
+        for entity_type, hints in overrides.entity_hints.items():
+            entity_hints[entity_type] = {hint.lower() for hint in hints}
+
+    return ConceptExtractionRuntimeConfig(
+        max_concepts=concept_settings.max_concepts,
+        max_tokens=max(1, max_tokens),
+        stopwords=base_stopwords,
+        filler_prefixes=base_filler_prefixes,
+        filler_suffixes=base_filler_suffixes,
+        provider_priority=provider_priority,
+        scispacy_models=tuple(concept_settings.scispacy_models),
+        domain_model=overrides.ner_model if overrides else None,
+        llm_prompt=llm_prompt,
+        entity_hints=entity_hints,
+        domain_key=domain_key,
+    )
+
+
+def _infer_domain_key(paper: Optional[Paper]) -> Optional[str]:
+    if paper is None:
+        return None
+    fields = [paper.venue, paper.file_content_type, paper.title]
+    combined = " ".join(filter(None, (value or "" for value in fields))).strip()
+    if not combined:
+        return None
+    lowered = combined.lower()
+    biology_cues = (
+        "biology",
+        "biochem",
+        "genom",
+        "microbio",
+        "immun",
+        "cell",
+        "organism",
+        "protein",
+        "enzyme",
+        "med",
+    )
+    if any(cue in lowered for cue in biology_cues):
+        return "biology"
+
+    materials_cues = (
+        "material",
+        "materials",
+        "alloy",
+        "polymer",
+        "ceramic",
+        "perovskite",
+        "graphene",
+        "nanotube",
+        "battery",
+        "cathode",
+        "anode",
+        "electrode",
+        "composite",
+        "crystal",
+        "oxide",
+    )
+    if any(cue in lowered for cue in materials_cues):
+        return "materials"
+
+    return None
+
+
+def _llm_prompt_available(config: ConceptExtractionRuntimeConfig) -> bool:
+    if not config.llm_prompt:
+        return False
+    if settings.openai_api_key or settings.tier2_llm_model:
+        return True
+    return False
+
+
+def _extract_with_llm(
+    sections: Sequence[SectionBase],
+    config: ConceptExtractionRuntimeConfig,
+) -> List[_Candidate]:
+    # Placeholder hook for a future LLM-backed extractor. We currently
+    # require credentials to be configured before attempting to call an LLM.
+    # Without them, we fall back to heuristic extraction.
+    return []
 
 
 async def _load_sections_for_paper(paper_id: UUID) -> List[SectionBase]:
@@ -322,17 +347,21 @@ def _merge_candidate(registry: Dict[str, _Candidate], candidate: _Candidate) -> 
         existing.name = candidate.name
 
 
-def _apply_method_post_filters(registry: Dict[str, _Candidate]) -> None:
+def _apply_method_post_filters(
+    registry: Dict[str, _Candidate], config: ConceptExtractionRuntimeConfig
+) -> None:
     for candidate in registry.values():
         if candidate.type != "method":
             continue
         if candidate.occurrences > 1:
             continue
-        if _is_noisy_method_phrase(candidate.name):
+        if _is_noisy_method_phrase(candidate.name, config):
             candidate.type = "keyword"
 
 
-def _is_noisy_method_phrase(name: str) -> bool:
+def _is_noisy_method_phrase(
+    name: str, config: ConceptExtractionRuntimeConfig
+) -> bool:
     lowered = name.strip().lower()
     if not lowered:
         return False
@@ -342,19 +371,21 @@ def _is_noisy_method_phrase(name: str) -> bool:
     if len(tokens) > 8 or len(lowered) > 80:
         return True
     first_token = tokens[0]
-    if first_token in STOPWORDS or first_token in FILLER_PREFIXES:
+    if first_token in config.stopwords or first_token in config.filler_prefixes:
         return True
     return False
 
 
-def _extract_with_scispacy(
-    model: Language, sections: Sequence[SectionBase]
+def _extract_with_spacy_model(
+    model: Language,
+    sections: Sequence[SectionBase],
+    config: ConceptExtractionRuntimeConfig,
 ) -> Iterable[_Candidate]:
     for section in sections:
         doc = model(section.content)
         for entity in getattr(doc, "ents", []):
             name = _format_phrase(entity.text)
-            normalized = _normalize_concept_name(name)
+            normalized = _normalize_concept_name(name, config)
             if not normalized:
                 continue
             snippet = _build_snippet(section.content, entity.start_char, entity.end_char)
@@ -370,10 +401,13 @@ def _extract_with_scispacy(
             )
 
 
-def _extract_with_heuristics(sections: Sequence[SectionBase]) -> Iterable[_Candidate]:
+def _extract_with_heuristics(
+    sections: Sequence[SectionBase],
+    config: ConceptExtractionRuntimeConfig,
+) -> Iterable[_Candidate]:
     for section in sections:
-        for phrase, start, end in _iter_phrases(section.content):
-            normalized = _normalize_concept_name(phrase)
+        for phrase, start, end in _iter_phrases(section.content, config):
+            normalized = _normalize_concept_name(phrase, config)
             if not normalized:
                 continue
             snippet = _build_snippet(section.content, start, end)
@@ -384,31 +418,35 @@ def _extract_with_heuristics(sections: Sequence[SectionBase]) -> Iterable[_Candi
             yield _Candidate(
                 name=_format_phrase(phrase),
                 normalized=normalized,
-                type=_infer_concept_type(phrase),
+                type=_infer_concept_type(phrase, entity_hints=config.entity_hints),
                 description=description,
                 score=score,
             )
 
 
-def _iter_phrases(text: str) -> Iterable[Tuple[str, int, int]]:
+def _iter_phrases(
+    text: str,
+    config: ConceptExtractionRuntimeConfig,
+) -> Iterable[Tuple[str, int, int]]:
     tokens = list(re.finditer(r"[A-Za-z0-9][A-Za-z0-9\-]*", text))
     current: List[Tuple[str, int, int]] = []
     for match in tokens:
         token = match.group(0)
         normalized = token.lower()
-        if normalized in STOPWORDS:
-            yield from _flush_phrase(current)
+        if normalized in config.stopwords:
+            yield from _flush_phrase(current, config)
             current = []
             continue
         current.append((token, match.start(), match.end()))
-        if len(current) >= MAX_TOKENS:
-            yield from _flush_phrase(current)
+        if len(current) >= config.max_tokens:
+            yield from _flush_phrase(current, config)
             current = []
-    yield from _flush_phrase(current)
+    yield from _flush_phrase(current, config)
 
 
 def _flush_phrase(
-    current: List[Tuple[str, int, int]]
+    current: List[Tuple[str, int, int]],
+    config: ConceptExtractionRuntimeConfig,
 ) -> Iterable[Tuple[str, int, int]]:
     if not current:
         return []
@@ -425,7 +463,7 @@ def _flush_phrase(
             return []
     if tokens == 0:
         return []
-    cleaned = _normalize_concept_name(phrase)
+    cleaned = _normalize_concept_name(phrase, config)
     if not cleaned or len(cleaned) < MIN_CHAR_LENGTH:
         return []
     if not any(char.isalpha() for char in cleaned):
@@ -433,7 +471,9 @@ def _flush_phrase(
     return [(phrase, start, end)]
 
 
-def _normalize_concept_name(name: str) -> str:
+def _normalize_concept_name(
+    name: str, config: Optional[ConceptExtractionRuntimeConfig] = None
+) -> str:
     normalized = unicodedata.normalize("NFKC", name).strip()
     normalized = normalized.replace("-", " ")
     normalized = re.sub(r"[\(\)\[\]\{\}]+", " ", normalized)
@@ -442,7 +482,7 @@ def _normalize_concept_name(name: str) -> str:
     if not normalized:
         return ""
     parts = normalized.split()
-    trimmed = _trim_tokens(parts)
+    trimmed = _trim_tokens(parts, config)
     if trimmed:
         parts = trimmed
     stemmed = []
@@ -454,12 +494,16 @@ def _normalize_concept_name(name: str) -> str:
     return " ".join(stemmed)
 
 
-def _trim_tokens(tokens: List[str]) -> List[str]:
+def _trim_tokens(
+    tokens: List[str], config: Optional[ConceptExtractionRuntimeConfig]
+) -> List[str]:
     start = 0
     end = len(tokens)
-    while start < end and tokens[start] in FILLER_PREFIXES:
+    filler_prefixes = config.filler_prefixes if config else FILLER_PREFIXES
+    filler_suffixes = config.filler_suffixes if config else FILLER_SUFFIXES
+    while start < end and tokens[start] in filler_prefixes:
         start += 1
-    while end > start and tokens[end - 1] in FILLER_SUFFIXES:
+    while end > start and tokens[end - 1] in filler_suffixes:
         end -= 1
     trimmed = list(tokens[start:end])
     if not trimmed:
@@ -615,7 +659,9 @@ KNOWN_DATASETS = {
 }
 
 
-def _infer_concept_type(phrase: str) -> str:
+def _infer_concept_type(
+    phrase: str, *, entity_hints: Optional[Dict[str, Set[str]]] = None
+) -> str:
     normalized = phrase.lower()
     tokens = normalized.replace("-", " ").split()
     token_set = set(tokens)
@@ -654,6 +700,12 @@ def _infer_concept_type(phrase: str) -> str:
     if phrase.isupper() and len(phrase) <= 12:
         return "acronym"
 
+    if entity_hints:
+        for entity_type, hints in entity_hints.items():
+            for hint in hints:
+                if hint and hint in normalized:
+                    return entity_type
+
     return "keyword"
 
 
@@ -661,21 +713,33 @@ def _final_score(candidate: _Candidate) -> float:
     return candidate.score + 0.2 * candidate.occurrences
 
 
-def _load_scispacy_model() -> Optional[Language]:
-    global _SCISPACY_MODEL
-    if _SCISPACY_MODEL is False:
-        return None
-    if _SCISPACY_MODEL not in (None, False):
-        return _SCISPACY_MODEL  # type: ignore[return-value]
+def _load_scispacy_model(
+    config: ConceptExtractionRuntimeConfig,
+) -> Optional[Language]:
     if spacy is None or Language is None:
-        _SCISPACY_MODEL = False
         return None
-    for model_name in SCISPACY_MODEL_NAMES:
-        try:
-            model = spacy.load(model_name)  # type: ignore[call-arg]
-        except (OSError, IOError, ImportError):  # pragma: no cover - missing model
-            continue
-        _SCISPACY_MODEL = model
-        return model
-    _SCISPACY_MODEL = False
+    for model_name in config.scispacy_models:
+        model = _load_spacy_model(model_name)
+        if model is not None:
+            return model
     return None
+
+
+def _load_spacy_model(model_name: str) -> Optional[Language]:
+    if not model_name:
+        return None
+    cached = _SPACY_MODEL_CACHE.get(model_name)
+    if cached is False:
+        return None
+    if cached not in (None, False):
+        return cached  # type: ignore[return-value]
+    if spacy is None or Language is None:
+        _SPACY_MODEL_CACHE[model_name] = False
+        return None
+    try:
+        model = spacy.load(model_name)  # type: ignore[call-arg]
+    except (OSError, IOError, ImportError):  # pragma: no cover - missing model
+        _SPACY_MODEL_CACHE[model_name] = False
+        return None
+    _SPACY_MODEL_CACHE[model_name] = model
+    return model

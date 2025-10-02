@@ -81,6 +81,46 @@ type GraphEdge = {
   data: GraphEdgeData;
 };
 
+type NodePapersByYear = {
+  year: number;
+  paper_count: number;
+};
+
+type NodeOutcomeMetadata = {
+  paper_id: string;
+  paper_title?: string | null;
+  paper_year?: number | null;
+  value_numeric?: number | null;
+  value_text?: string | null;
+  metric?: string | null;
+  metric_unit?: string | null;
+  dataset?: string | null;
+  task?: string | null;
+  confidence?: number | null;
+  is_sota?: boolean | null;
+  verified?: boolean | null;
+};
+
+type EdgeInsight = {
+  summary: string;
+  paper_id: string;
+  paper_title?: string | null;
+  paper_year?: number | null;
+  confidence?: number | null;
+  claim_text?: string | null;
+  metric?: string | null;
+  dataset?: string | null;
+  task?: string | null;
+  value_text?: string | null;
+  value_numeric?: number | null;
+  relation?: RelationType;
+};
+
+type EdgeInsightWithContext = EdgeInsight & {
+  relation: RelationType;
+  connectedNodeId: string;
+};
+
 type GraphMeta = {
   limit: number;
   node_count: number;
@@ -155,6 +195,183 @@ const EDGE_COLORS: Record<RelationType, string> = {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+const toNumber = (value: unknown): number | undefined => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+};
+
+const normalizePapersByYear = (value: unknown): NodePapersByYear[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const entries: NodePapersByYear[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+    const record = entry as Record<string, unknown>;
+    const year = toNumber(record.year);
+    const paperCount = toNumber(record.paper_count);
+    if (typeof year === "number" && typeof paperCount === "number") {
+      entries.push({ year, paper_count: paperCount });
+    }
+  }
+  return entries.sort((a, b) => b.year - a.year);
+};
+
+const normalizeOutcomeMetadata = (value: unknown): NodeOutcomeMetadata | undefined => {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const paperId = typeof record.paper_id === "string" ? record.paper_id : undefined;
+  if (!paperId) {
+    return undefined;
+  }
+  const outcome: NodeOutcomeMetadata = { paper_id: paperId };
+  if (typeof record.paper_title === "string") {
+    outcome.paper_title = record.paper_title;
+  }
+  const year = toNumber(record.paper_year);
+  if (typeof year === "number") {
+    outcome.paper_year = year;
+  }
+  const valueNumeric = toNumber(record.value_numeric);
+  if (typeof valueNumeric === "number") {
+    outcome.value_numeric = valueNumeric;
+  }
+  if (typeof record.value_text === "string" && record.value_text.trim()) {
+    outcome.value_text = record.value_text.trim();
+  }
+  if (typeof record.metric === "string") {
+    outcome.metric = record.metric;
+  }
+  if (typeof record.metric_unit === "string") {
+    outcome.metric_unit = record.metric_unit;
+  }
+  if (typeof record.dataset === "string") {
+    outcome.dataset = record.dataset;
+  }
+  if (typeof record.task === "string") {
+    outcome.task = record.task;
+  }
+  const confidence = toNumber(record.confidence);
+  if (typeof confidence === "number") {
+    outcome.confidence = confidence;
+  }
+  if (typeof record.is_sota === "boolean") {
+    outcome.is_sota = record.is_sota;
+  }
+  if (typeof record.verified === "boolean") {
+    outcome.verified = record.verified;
+  }
+  return outcome;
+};
+
+const normalizeEdgeInsights = (value: unknown): EdgeInsight[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const insights: EdgeInsight[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+    const record = entry as Record<string, unknown>;
+    const summary = typeof record.summary === "string" ? record.summary.trim() : "";
+    const paperId = typeof record.paper_id === "string" ? record.paper_id : undefined;
+    if (!summary || !paperId) {
+      continue;
+    }
+    const insight: EdgeInsight = { summary, paper_id: paperId };
+    if (typeof record.paper_title === "string") {
+      insight.paper_title = record.paper_title;
+    }
+    const year = toNumber(record.paper_year);
+    if (typeof year === "number") {
+      insight.paper_year = year;
+    }
+    const confidence = toNumber(record.confidence);
+    if (typeof confidence === "number") {
+      insight.confidence = confidence;
+    }
+    if (typeof record.claim_text === "string") {
+      insight.claim_text = record.claim_text;
+    }
+    if (typeof record.metric === "string") {
+      insight.metric = record.metric;
+    }
+    if (typeof record.dataset === "string") {
+      insight.dataset = record.dataset;
+    }
+    if (typeof record.task === "string") {
+      insight.task = record.task;
+    }
+    if (typeof record.value_text === "string") {
+      insight.value_text = record.value_text;
+    }
+    const valueNumeric = toNumber(record.value_numeric);
+    if (typeof valueNumeric === "number") {
+      insight.value_numeric = valueNumeric;
+    }
+    if (typeof record.relation === "string" && (ALL_RELATIONS as string[]).includes(record.relation)) {
+      insight.relation = record.relation as RelationType;
+    }
+    insights.push(insight);
+  }
+  return insights;
+};
+
+const formatOutcomeSummary = (outcome: NodeOutcomeMetadata): string => {
+  const parts: string[] = [];
+  if (outcome.metric) {
+    parts.push(outcome.metric);
+  }
+  const valuePieces: string[] = [];
+  if (typeof outcome.value_text === "string") {
+    valuePieces.push(outcome.value_text);
+  } else if (typeof outcome.value_numeric === "number") {
+    valuePieces.push(outcome.value_numeric.toFixed(2));
+  }
+  if (outcome.metric_unit && valuePieces.length > 0) {
+    valuePieces[valuePieces.length - 1] = `${valuePieces[valuePieces.length - 1]}${outcome.metric_unit}`;
+  }
+  if (valuePieces.length > 0) {
+    parts.push(valuePieces.join(" "));
+  }
+  if (outcome.dataset) {
+    parts.push(`on ${outcome.dataset}`);
+  } else if (outcome.task) {
+    parts.push(`for ${outcome.task}`);
+  }
+  return parts.join(" ").trim();
+};
+
+const formatOutcomeDetails = (outcome: NodeOutcomeMetadata): string => {
+  const details: string[] = [];
+  if (typeof outcome.paper_year === "number") {
+    details.push(String(outcome.paper_year));
+  }
+  if (typeof outcome.confidence === "number") {
+    details.push(`${Math.round(outcome.confidence * 100)}% confidence`);
+  }
+  if (outcome.is_sota) {
+    details.push("SOTA");
+  }
+  if (outcome.verified) {
+    details.push("Tier-3 verified");
+  }
+  return details.join(" • ");
+};
 
 const isPlaceholderMetadata = (metadata?: Record<string, unknown> | null): boolean => {
   if (!metadata || typeof metadata !== "object") {
@@ -576,6 +793,52 @@ const GraphExplorer = () => {
   const selectedNode = selectedNodeId ? graph.nodes[selectedNodeId] : undefined;
   const selectedNodeIsPlaceholder = selectedNode ? isPlaceholderMetadata(selectedNode.metadata ?? undefined) : false;
 
+  const { papersByYear, bestOutcome, worstOutcome, remainingMetadata } = useMemo(() => {
+    if (!selectedNode?.metadata) {
+      return {
+        papersByYear: [] as NodePapersByYear[],
+        bestOutcome: undefined as NodeOutcomeMetadata | undefined,
+        worstOutcome: undefined as NodeOutcomeMetadata | undefined,
+        remainingMetadata: {} as Record<string, unknown>,
+      };
+    }
+    const raw = selectedNode.metadata as Record<string, unknown>;
+    const { papers_by_year: rawPapersByYear, best_outcome: rawBestOutcome, worst_outcome: rawWorstOutcome, ...rest } = raw;
+    return {
+      papersByYear: normalizePapersByYear(rawPapersByYear),
+      bestOutcome: normalizeOutcomeMetadata(rawBestOutcome),
+      worstOutcome: normalizeOutcomeMetadata(rawWorstOutcome),
+      remainingMetadata: rest,
+    };
+  }, [selectedNode?.metadata]);
+
+  const nodeEdgeInsights = useMemo(() => {
+    if (!selectedNode) {
+      return [] as EdgeInsightWithContext[];
+    }
+    const insights: EdgeInsightWithContext[] = [];
+    edges.forEach((edge) => {
+      if (edge.source !== selectedNode.id && edge.target !== selectedNode.id) {
+        return;
+      }
+      const connectedNodeId = edge.source === selectedNode.id ? edge.target : edge.source;
+      const insightSource =
+        edge.metadata && typeof edge.metadata === "object" && "insights" in edge.metadata
+          ? (edge.metadata as Record<string, unknown>).insights
+          : undefined;
+      const rawInsights = normalizeEdgeInsights(insightSource);
+      rawInsights.forEach((insight) => {
+        insights.push({ ...insight, relation: edge.type, connectedNodeId });
+      });
+    });
+    return insights;
+  }, [edges, selectedNode]);
+
+  const remainingMetadataEntries = useMemo(
+    () => Object.entries(remainingMetadata ?? {}),
+    [remainingMetadata]
+  );
+
   const neighborSet = useMemo(() => {
     if (!selectedNodeId) {
       return new Set<string>();
@@ -995,11 +1258,74 @@ const GraphExplorer = () => {
                 </div>
               ) : null}
 
-              {selectedNode.metadata && Object.keys(selectedNode.metadata).length > 0 ? (
+              {papersByYear.length > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Papers by year</p>
+                  <ul className="space-y-1 text-xs text-muted-foreground">
+                    {papersByYear.map((entry) => (
+                      <li key={entry.year} className="flex items-center justify-between rounded-md border border-border/60 bg-muted/30 px-2 py-1">
+                        <span className="font-medium text-foreground/70">{entry.year}</span>
+                        <span className="text-foreground">{entry.paper_count.toLocaleString()} papers</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {bestOutcome ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Best reported outcome</p>
+                  <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-muted-foreground">
+                    <p className="font-semibold text-foreground/80">{formatOutcomeSummary(bestOutcome) || "Reported outcome"}</p>
+                    {bestOutcome.paper_title ? (
+                      <p className="mt-1 text-[11px]">{bestOutcome.paper_title}</p>
+                    ) : null}
+                    {formatOutcomeDetails(bestOutcome) ? (
+                      <p className="mt-1 text-[10px] uppercase tracking-wide">{formatOutcomeDetails(bestOutcome)}</p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {worstOutcome && (!bestOutcome || worstOutcome.paper_id !== bestOutcome.paper_id || worstOutcome.value_numeric !== bestOutcome.value_numeric || worstOutcome.value_text !== bestOutcome.value_text) ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Worst reported outcome</p>
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-muted-foreground">
+                    <p className="font-semibold text-foreground/80">{formatOutcomeSummary(worstOutcome) || "Reported outcome"}</p>
+                    {worstOutcome.paper_title ? (
+                      <p className="mt-1 text-[11px]">{worstOutcome.paper_title}</p>
+                    ) : null}
+                    {formatOutcomeDetails(worstOutcome) ? (
+                      <p className="mt-1 text-[10px] uppercase tracking-wide">{formatOutcomeDetails(worstOutcome)}</p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {nodeEdgeInsights.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Edge insights</p>
+                  <ul className="space-y-2 text-xs text-muted-foreground">
+                    {nodeEdgeInsights.map((insight, index) => (
+                      <li key={`${insight.paper_id}-${index}`} className="rounded-md border border-border/60 bg-muted/30 p-2">
+                        <p className="font-semibold text-foreground/80">{insight.summary}</p>
+                        <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {formatRelationLabel(insight.relation)} • {insight.paper_year ?? "Year unknown"}
+                        </p>
+                        {insight.paper_title ? (
+                          <p className="mt-1 text-[11px] text-muted-foreground/90">{insight.paper_title}</p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {remainingMetadataEntries.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Metadata</p>
                   <dl className="grid gap-1 text-xs text-muted-foreground">
-                    {Object.entries(selectedNode.metadata).map(([key, value]) => (
+                    {remainingMetadataEntries.map(([key, value]) => (
                       <div key={key} className="flex justify-between gap-2">
                         <dt className="font-medium capitalize text-foreground/70">{key}</dt>
                         <dd className="text-right">{formatMetadataValue(value)}</dd>
