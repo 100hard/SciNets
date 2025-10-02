@@ -61,12 +61,11 @@ METRIC_SYNONYM_MAP: dict[str, dict[str, str]] = {
 }
 
 
-TRIPLE_JSON_SCHEMA: dict[str, Any] = {
+TRIPLE_JSON_SCHEMA_TEMPLATE: dict[str, Any] = {
     "type": "object",
     "properties": {
         "triples": {
             "type": "array",
-            "maxItems": 15,
             "items": {
                 "type": "object",
                 "required": [
@@ -128,6 +127,21 @@ TRIPLE_JSON_SCHEMA: dict[str, Any] = {
 }
 
 
+def _build_triple_json_schema(max_triples: int) -> dict[str, Any]:
+    schema = copy.deepcopy(TRIPLE_JSON_SCHEMA_TEMPLATE)
+    schema["properties"]["triples"]["maxItems"] = max_triples
+    return schema
+
+
+def get_triple_json_schema() -> dict[str, Any]:
+    """Return the triple JSON schema using the current settings."""
+
+    return _build_triple_json_schema(settings.tier2_llm_max_triples)
+
+
+TRIPLE_JSON_SCHEMA: dict[str, Any] = get_triple_json_schema()
+
+
 @dataclass
 class SectionContext:
     section_id: str
@@ -136,6 +150,7 @@ class SectionContext:
     page_number: int | None
     sentences: list[tuple[int, str]]
     captions: list[str]
+    chunk_id: str | None = None
 
     def formatted_text(self) -> str:
         lines: list[str] = []
@@ -614,12 +629,19 @@ def _is_low_info_text(value: str) -> bool:
 def _find_context_by_id(
     contexts: Sequence[SectionContext],
     section_id: Optional[str],
+    *,
+    chunk_id: Optional[str] = None,
 ) -> Optional[SectionContext]:
-    if not section_id:
-        return None
-    for context in contexts:
-        if context.section_id == section_id:
-            return context
+    if section_id:
+        for context in contexts:
+            if context.section_id == section_id and (
+                chunk_id is None or context.chunk_id == chunk_id
+            ):
+                return context
+    if chunk_id:
+        for context in contexts:
+            if context.chunk_id == chunk_id:
+                return context
     return None
 
 
@@ -648,7 +670,11 @@ def _find_antecedent(
 ) -> Optional[str]:
     for match in matches:
         section_id = match.get("section_id")
-        context = _find_context_by_id(contexts, section_id)
+        context = _find_context_by_id(
+            contexts,
+            section_id,
+            chunk_id=match.get("chunk_id"),
+        )
         if context is None:
             continue
         sentence_index = match.get("sentence_index")
@@ -980,8 +1006,17 @@ async def _request_llm_payload(
 
 
 def _prepare_section_contexts(sections: Sequence[dict[str, Any]]) -> list[SectionContext]:
-    limit = max(1, settings.tier2_llm_max_sections or 1)
-    max_chars = max(400, settings.tier2_llm_max_section_chars or 2000)
+    chunk_limit = max(1, settings.tier2_llm_max_sections or 1)
+    raw_budget = (
+        settings.tier2_llm_section_chunk_chars
+        or settings.tier2_llm_max_section_chars
+        or 2000
+    )
+    chunk_budget = max(400, raw_budget)
+    chunk_overlap = max(0, settings.tier2_llm_section_chunk_overlap_sentences or 0)
+    max_chunks_per_section = max(
+        1, settings.tier2_llm_max_chunks_per_section or 1
+    )
 
     def _section_sort_key(section: dict[str, Any]) -> tuple[int, int]:
         page = section.get("page_number")
@@ -994,7 +1029,7 @@ def _prepare_section_contexts(sections: Sequence[dict[str, Any]]) -> list[Sectio
     contexts: list[SectionContext] = []
 
     for section in ordered:
-        if len(contexts) >= limit:
+        if len(contexts) >= chunk_limit:
             break
         section_id = str(section.get("section_id") or "").strip()
         if not section_id:
@@ -1006,7 +1041,6 @@ def _prepare_section_contexts(sections: Sequence[dict[str, Any]]) -> list[Sectio
         if not isinstance(sentences_payload, list):
             continue
         sentences: list[tuple[int, str]] = []
-        running_chars = 0
         for sentence_index, sentence in enumerate(sentences_payload):
             if not isinstance(sentence, dict):
                 continue
@@ -1016,12 +1050,7 @@ def _prepare_section_contexts(sections: Sequence[dict[str, Any]]) -> list[Sectio
             text = raw_text.strip()
             if not text:
                 continue
-            formatted = f"[{sentence_index}] {text}"
-            addition = len(formatted) + 1
-            if running_chars + addition > max_chars and sentences:
-                break
             sentences.append((sentence_index, text))
-            running_chars += addition
         if not sentences:
             continue
         captions_raw = section.get("captions") or []
@@ -1030,16 +1059,53 @@ def _prepare_section_contexts(sections: Sequence[dict[str, Any]]) -> list[Sectio
             for caption in captions_raw
             if isinstance(caption, dict) and caption.get("text")
         ]
-        contexts.append(
-            SectionContext(
-                section_id=section_id,
-                section_hash=section_hash,
-                title=title,
-                page_number=page_number,
-                sentences=sentences,
-                captions=captions,
+        start_index = 0
+        chunk_index = 0
+        total_sentences = len(sentences)
+        while (
+            start_index < total_sentences
+            and chunk_index < max_chunks_per_section
+            and len(contexts) < chunk_limit
+        ):
+            idx = start_index
+            chunk_sentences: list[tuple[int, str]] = []
+            running_chars = 0
+            while idx < total_sentences:
+                sentence_entry = sentences[idx]
+                formatted = f"[{sentence_entry[0]}] {sentence_entry[1]}"
+                addition = len(formatted) + 1
+                if chunk_sentences and running_chars + addition > chunk_budget:
+                    break
+                chunk_sentences.append(sentence_entry)
+                running_chars += addition
+                idx += 1
+                if running_chars >= chunk_budget:
+                    break
+
+            if not chunk_sentences:
+                break
+
+            chunk_index += 1
+            chunk_id = f"{section_id}#chunk-{chunk_index:02d}"
+            contexts.append(
+                SectionContext(
+                    section_id=section_id,
+                    section_hash=section_hash,
+                    title=title,
+                    page_number=page_number,
+                    sentences=chunk_sentences,
+                    captions=captions,
+                    chunk_id=chunk_id,
+                )
             )
-        )
+
+            if len(contexts) >= chunk_limit or idx >= total_sentences:
+                break
+
+            next_start = max(idx - chunk_overlap, 0)
+            if next_start <= start_index:
+                next_start = idx
+            start_index = next_start
 
     return contexts
 
@@ -1079,6 +1145,8 @@ def _build_messages(contexts: Sequence[SectionContext], *, mode: str = "primary"
             header_parts.append(f"page={context.page_number}")
         if context.section_hash:
             header_parts.append(f"hash={context.section_hash}")
+        if context.chunk_id:
+            header_parts.append(f"chunk={context.chunk_id}")
         content_lines.append(" | ".join(header_parts))
         content_lines.append("---")
         content_lines.append(context.formatted_text())
@@ -1135,6 +1203,7 @@ def _build_candidates(
         if not matches:
             stats.unmatched_evidence += 1
         candidate_section_id = triple.section_id or (matches[0]["section_id"] if matches else None)
+        candidate_chunk_id = triple.chunk_id or (matches[0].get("chunk_id") if matches else None)
         primary_match_length = (
             matches[0]["end"] - matches[0]["start"] if matches else None
         )
@@ -1203,7 +1272,7 @@ def _build_candidates(
             object_text,
             evidence_text,
             candidate_section_id,
-            triple.chunk_id,
+            candidate_chunk_id,
         )
         if dedupe_key in seen_keys:
             stats.deduplicated_triples += 1
@@ -1247,8 +1316,8 @@ def _build_candidates(
 
         if candidate_section_id:
             candidate["section_id"] = candidate_section_id
-        if triple.chunk_id:
-            candidate["chunk_id"] = triple.chunk_id
+        if candidate_chunk_id:
+            candidate["chunk_id"] = candidate_chunk_id
         if pass_label:
             candidate["pass"] = pass_label
 
@@ -1331,6 +1400,7 @@ def _match_evidence(
             matches.append(
                 {
                     "section_id": context.section_id,
+                    "chunk_id": context.chunk_id,
                     "sentence_index": sentence_index,
                     "start": start,
                     "end": end,
@@ -1458,7 +1528,7 @@ async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
             "type": "json_schema",
             "json_schema": {
                 "name": "triple_extraction",
-                "schema": TRIPLE_JSON_SCHEMA,
+                "schema": get_triple_json_schema(),
             },
         }
     else:

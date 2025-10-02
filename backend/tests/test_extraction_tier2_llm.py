@@ -15,6 +15,14 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
+def test_get_triple_json_schema_respects_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "tier2_llm_max_triples", 7)
+
+    schema = extraction_tier2.get_triple_json_schema()
+
+    assert schema["properties"]["triples"]["maxItems"] == 7
+
+
 def _build_section(section_id: str, title: str, sentences: list[str]) -> dict[str, object]:
     return {
         "section_id": section_id,
@@ -28,6 +36,36 @@ def _build_section(section_id: str, title: str, sentences: list[str]) -> dict[st
             for idx, sentence in enumerate(sentences)
         ],
     }
+
+
+def test_prepare_section_contexts_splits_long_sections(monkeypatch: pytest.MonkeyPatch) -> None:
+    section = _build_section(
+        "sec-long",
+        "Analysis",
+        [
+            "Sentence 0 provides background on the approach and includes multiple clauses to be long.",
+            "Sentence 1 continues the discussion with more detail and elaboration for testing purposes.",
+            "Sentence 2 introduces additional results that ensure chunking will require a third chunk eventually.",
+            "Sentence 3 adds further elaboration so that there is enough material for more chunks in the dataset.",
+            "Sentence 4 concludes the section but is still lengthy to challenge the chunking routine effectively.",
+        ],
+    )
+    section["captions"] = [{"text": "Figure 1. Chunk demo."}]
+
+    monkeypatch.setattr(settings, "tier2_llm_section_chunk_chars", 280)
+    monkeypatch.setattr(settings, "tier2_llm_section_chunk_overlap_sentences", 1)
+    monkeypatch.setattr(settings, "tier2_llm_max_chunks_per_section", 10)
+    monkeypatch.setattr(settings, "tier2_llm_max_sections", 2)
+
+    contexts = extraction_tier2._prepare_section_contexts([section])
+
+    assert len(contexts) == 2
+    assert contexts[0].chunk_id and contexts[1].chunk_id
+    assert contexts[0].chunk_id.endswith("01")
+    assert contexts[1].chunk_id.endswith("02")
+    assert contexts[0].captions == ["Figure 1. Chunk demo."]
+    assert contexts[1].captions == contexts[0].captions
+    assert contexts[0].sentences[-1][0] == contexts[1].sentences[0][0]
 
 
 @pytest.mark.anyio
@@ -133,6 +171,92 @@ async def test_run_tier2_structurer_parses_llm_response(monkeypatch: pytest.Monk
     assert stored_candidate.subject == "AlphaNet"
     assert stored_candidate.section_id == "sec-2"
     assert stored_candidate.object_span == [18, 48]
+
+
+@pytest.mark.anyio
+async def test_run_tier2_structurer_populates_chunk_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    paper_id = uuid4()
+    sentences = [
+        "The introduction sentence elaborates on the motivation for the study and is intentionally long.",
+        "The methods sentence contains specific phrasing that will be used as evidence for chunk two.",
+        "The results sentence highlights the improvements achieved by the proposed system in extensive detail.",
+    ]
+    base_summary = {
+        "paper_id": str(paper_id),
+        "tiers": [1],
+        "sections": [
+            _build_section(
+                "sec-chunk",
+                "Methods",
+                sentences,
+            ),
+        ],
+        "tables": [],
+    }
+    base_summary["sections"][0]["captions"] = [{"text": "Table 1 summarizes results."}]
+
+    monkeypatch.setattr(settings, "tier2_llm_section_chunk_chars", 170)
+    monkeypatch.setattr(settings, "tier2_llm_section_chunk_overlap_sentences", 1)
+    monkeypatch.setattr(settings, "tier2_llm_max_chunks_per_section", 5)
+    monkeypatch.setattr(settings, "tier2_llm_max_sections", 5)
+
+    contexts = extraction_tier2._prepare_section_contexts(base_summary["sections"])
+    assert len(contexts) >= 2
+    target_chunk = contexts[1]
+    evidence_sentence = target_chunk.sentences[-1][1]
+
+    fake_payload = {
+        "triples": [
+            {
+                "subject": "ChunkNet",
+                "relation": "uses",
+                "object": "special phrasing",
+                "evidence": evidence_sentence,
+                "subject_span": [0, 8],
+                "object_span": [25, 40],
+                "subject_type_guess": "Method",
+                "relation_type_guess": "USES",
+                "object_type_guess": "OtherScientificTerm",
+                "triple_conf": 0.7,
+                "schema_match_score": 0.9,
+                "section_id": "sec-chunk",
+            }
+        ],
+        "warnings": [],
+        "discarded": [],
+    }
+
+    payload_iter = iter([
+        fake_payload,
+        {"triples": [], "warnings": [], "discarded": []},
+    ])
+
+    async def fake_invoke_llm(_: list[dict[str, str]]) -> str:
+        payload = next(payload_iter, {"triples": [], "warnings": [], "discarded": []})
+        return json.dumps(payload)
+
+    async def fake_replace(_: UUID, __: list) -> None:
+        return None
+
+    monkeypatch.setattr(extraction_tier2, "_invoke_llm", fake_invoke_llm)
+    monkeypatch.setattr(extraction_tier2, "replace_triple_candidates", fake_replace)
+
+    monkeypatch.setattr(settings, "tier2_llm_model", "gpt-test")
+    monkeypatch.setattr(settings, "tier2_llm_base_url", "https://example.com")
+    monkeypatch.setattr(settings, "tier2_llm_completion_path", "/chat/completions")
+    monkeypatch.setattr(settings, "tier2_llm_force_json", True)
+    monkeypatch.setattr(settings, "openai_api_key", None)
+    monkeypatch.setattr(settings, "openai_organization", None)
+
+    summary = await extraction_tier2.run_tier2_structurer(paper_id, base_summary=base_summary)
+
+    candidates = summary["triple_candidates"]
+    assert len(candidates) == 1
+    candidate = candidates[0]
+    assert candidate["section_id"] == "sec-chunk"
+    assert candidate["chunk_id"] == target_chunk.chunk_id
+    evidence_spans = candidate["evidence_spans"]
+    assert evidence_spans and evidence_spans[0]["chunk_id"] == target_chunk.chunk_id
 
 
 @pytest.mark.anyio
