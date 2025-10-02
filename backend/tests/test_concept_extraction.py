@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from app.models.concept import Concept, ConceptCreate
+from app.models.paper import Paper
 from app.models.section import SectionCreate
 from app.services.concept_extraction import (
     _Candidate,
@@ -32,6 +33,29 @@ def _make_section(content: str, *, title: str | None = None) -> SectionCreate:
         char_end=None,
         page_number=None,
         snippet=None,
+    )
+
+
+def _make_paper(
+    *,
+    title: str,
+    venue: str,
+    status: str = "parsed",
+) -> Paper:
+    now = datetime.now(timezone.utc)
+    return Paper(
+        id=uuid4(),
+        title=title,
+        authors=None,
+        venue=venue,
+        year=2024,
+        file_path=None,
+        file_name=None,
+        file_size=None,
+        file_content_type=None,
+        status=status,
+        created_at=now,
+        updated_at=now,
     )
 
 
@@ -64,9 +88,67 @@ def test_extract_concepts_from_sections_deduplicates_variants() -> None:
     assert any("cora dataset" in name for name in lowered)
 
 
+def test_biology_domain_labels_organisms() -> None:
+    paper = _make_paper(
+        title="Metabolic regulation in Escherichia coli",
+        venue="Journal of Molecular Biology",
+    )
+    sections = [
+        _make_section(
+            "Escherichia coli adapts to oxidative stress by inducing antioxidant enzymes.",
+            title="Abstract",
+        ),
+        _make_section(
+            "The bacterium Escherichia coli upregulates catalase and superoxide dismutase.",
+            title="Results",
+        ),
+    ]
+
+    concepts = extract_concepts_from_sections(sections, paper=paper)
+    assert concepts
+
+    organism_concepts = [
+        concept for concept in concepts if "escherichia coli" in concept.name.lower()
+    ]
+    assert organism_concepts
+    assert all(concept.type == "organism" for concept in organism_concepts)
+
+
+def test_materials_domain_labels_materials() -> None:
+    paper = _make_paper(
+        title="Graphene oxide membranes for desalination",
+        venue="Advanced Materials Research",
+    )
+    sections = [
+        _make_section(
+            "Graphene oxide membranes enabled rapid ion transport without sacrificing "
+            "mechanical integrity.",
+            title="Overview",
+        ),
+        _make_section(
+            "The perovskite oxide thin film remained stable above 500 °C in repeated cycles.",
+            title="Stability",
+        ),
+    ]
+
+    concepts = extract_concepts_from_sections(sections, paper=paper)
+    assert concepts
+
+    material_concepts = {
+        concept.name.lower(): concept.type for concept in concepts if concept.type
+    }
+    graphene_mentions = [
+        name for name in material_concepts if "graphene oxide" in name
+    ]
+    assert graphene_mentions
+    for name in graphene_mentions:
+        assert material_concepts[name] == "material"
+
+
 @pytest.mark.anyio("asyncio")
 async def test_extract_and_store_concepts_persists_and_links(monkeypatch: pytest.MonkeyPatch) -> None:
     paper_id = uuid4()
+    paper = _make_paper(title="Deep Learning Pipelines", venue="NeurIPS")
     sections = [
         _make_section(
             "Deep learning pipelines rely on large datasets like ImageNet."
@@ -117,6 +199,12 @@ async def test_extract_and_store_concepts_persists_and_links(monkeypatch: pytest
         "app.services.concept_extraction.replace_paper_concept_relations",
         fake_replace_relations,
     )
+
+    async def fake_get_paper(paper_lookup: UUID) -> Paper:
+        assert paper_lookup == paper_id
+        return paper
+
+    monkeypatch.setattr("app.services.concept_extraction.get_paper", fake_get_paper)
 
     results = await extract_and_store_concepts(paper_id, sections)
     assert results == stored_models

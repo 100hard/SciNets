@@ -21,7 +21,16 @@ const DEFAULT_DIMENSIONS = {
 const GRAPH_LIMIT = 150;
 const NEIGHBORHOOD_LIMIT = 75;
 
-type NodeType = "method" | "dataset" | "metric" | "task";
+type NodeType =
+  | "method"
+  | "dataset"
+  | "metric"
+  | "task"
+  | "concept"
+  | "material"
+  | "organism"
+  | "finding"
+  | "process";
 type RelationType = "proposes" | "evaluates_on" | "reports" | "compares";
 
 type GraphNodeLink = {
@@ -153,7 +162,17 @@ const INITIAL_GRAPH_STATE: GraphState = {
 
 const GRAPH_CLEARED_STORAGE_KEY = "scinets.graphCleared";
 
-const ALL_TYPES: NodeType[] = ["method", "dataset", "metric", "task"];
+const ALL_TYPES: NodeType[] = [
+  "method",
+  "dataset",
+  "metric",
+  "task",
+  "concept",
+  "material",
+  "organism",
+  "finding",
+  "process",
+];
 const ALL_RELATIONS: RelationType[] = ["proposes", "evaluates_on", "reports", "compares"];
 
 const NODE_COLORS: Record<NodeType, string> = {
@@ -161,6 +180,11 @@ const NODE_COLORS: Record<NodeType, string> = {
   dataset: "#22c55e",
   metric: "#8b5cf6",
   task: "#f97316",
+  concept: "#14b8a6",
+  material: "#b45309",
+  organism: "#10b981",
+  finding: "#ef4444",
+  process: "#6366f1",
 };
 
 const EDGE_COLORS: Record<RelationType, string> = {
@@ -383,6 +407,16 @@ const formatTypeLabel = (type: NodeType) => {
       return "Metric";
     case "task":
       return "Task";
+    case "concept":
+      return "Concept";
+    case "material":
+      return "Material";
+    case "organism":
+      return "Organism";
+    case "finding":
+      return "Finding";
+    case "process":
+      return "Process";
     default:
       return type;
   }
@@ -821,17 +855,14 @@ const GraphExplorer = () => {
   }, [edges, selectedNodeId]);
 
   const stats = useMemo(() => {
-    const methodCount = nodes.filter((node) => node.type === "method").length;
-    const datasetCount = nodes.filter((node) => node.type === "dataset").length;
-    const metricCount = nodes.filter((node) => node.type === "metric").length;
-    const taskCount = nodes.filter((node) => node.type === "task").length;
+    const typeStats = ALL_TYPES.map((type) => ({
+      label: `${formatTypeLabel(type)} nodes`,
+      value: nodes.filter((node) => node.type === type).length,
+    })).filter((item) => item.value > 0);
     return [
       { label: "Total nodes", value: nodes.length },
-      { label: "Methods", value: methodCount },
-      { label: "Datasets", value: datasetCount },
       { label: "Edges", value: edges.length },
-      { label: "Metrics", value: metricCount },
-      { label: "Tasks", value: taskCount },
+      ...typeStats,
     ];
   }, [edges.length, nodes]);
 
@@ -1112,7 +1143,7 @@ const GraphExplorer = () => {
                   const isSelected = node.id === selectedNodeId;
                   const isNeighbor = neighborSet.has(node.id);
                   const placeholder = isPlaceholderMetadata(node.metadata ?? undefined);
-                  const color = NODE_COLORS[node.type];
+                  const color = NODE_COLORS[node.type] ?? "#475569";
                   const radius = isSelected ? 18 : 14;
                   return (
                     <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
@@ -1161,22 +1192,15 @@ const GraphExplorer = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-card px-4 py-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full" style={{ backgroundColor: NODE_COLORS.method }} />
-            Method nodes
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full" style={{ backgroundColor: NODE_COLORS.dataset }} />
-            Dataset nodes
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full" style={{ backgroundColor: NODE_COLORS.metric }} />
-            Metric nodes
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full" style={{ backgroundColor: NODE_COLORS.task }} />
-            Task nodes
-          </div>
+          {ALL_TYPES.map((type) => (
+            <div key={type} className="flex items-center gap-2">
+              <span
+                className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full"
+                style={{ backgroundColor: NODE_COLORS[type] }}
+              />
+              {formatTypeLabel(type)} nodes
+            </div>
+          ))}
           <div className="flex items-center gap-2">
             <span className="inline-flex h-3.5 w-8 items-center justify-center rounded-full bg-muted text-[10px] font-semibold uppercase text-muted-foreground">
               Edge

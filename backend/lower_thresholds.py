@@ -10,6 +10,8 @@ old_thresholds = """_SIMILARITY_THRESHOLDS: Dict[ConceptResolutionType, float] =
     ConceptResolutionType.DATASET: 0.82,
     ConceptResolutionType.METRIC: 0.90,
     ConceptResolutionType.TASK: 0.80,
+    ConceptResolutionType.APPLICATION: 0.83,
+    ConceptResolutionType.RESEARCH_AREA: 0.84,
 }"""
 
 new_thresholds = """_SIMILARITY_THRESHOLDS: Dict[ConceptResolutionType, float] = {
@@ -17,6 +19,8 @@ new_thresholds = """_SIMILARITY_THRESHOLDS: Dict[ConceptResolutionType, float] =
     ConceptResolutionType.DATASET: 0.65,
     ConceptResolutionType.METRIC: 0.75,
     ConceptResolutionType.TASK: 0.65,
+    ConceptResolutionType.APPLICATION: 0.68,
+    ConceptResolutionType.RESEARCH_AREA: 0.70,
 }"""
 
 # Replace the thresholds
