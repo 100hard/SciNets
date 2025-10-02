@@ -4,7 +4,7 @@ import json
 from collections import defaultdict
 from itertools import combinations
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, cast
+from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, TypeVar, cast
 from uuid import UUID, uuid4, uuid5
 
 from app.db.pool import get_pool
@@ -20,19 +20,20 @@ from app.models.graph import (
     NodeType,
     RelationType,
 )
+from app.services.graph_metadata import get_graph_metadata
 
-
-from typing import Optional
 MAX_GRAPH_LIMIT = 500
-_DEFAULT_TYPES: tuple[NodeType, ...] = ("method", "dataset", "metric", "task")
-_ALLOWED_TYPES = set(_DEFAULT_TYPES)
-_ALLOWED_RELATIONS: set[RelationType] = {"proposes", "evaluates_on", "reports", "compares"}
+
+_GRAPH_METADATA = get_graph_metadata()
+_DEFAULT_TYPES: tuple[NodeType, ...] = _GRAPH_METADATA.default_node_types
+_ALLOWED_TYPES: set[NodeType] = set(_GRAPH_METADATA.allowed_node_types)
+_ALLOWED_RELATIONS: set[RelationType] = set(_GRAPH_METADATA.allowed_relations)
 _DEFAULT_MIN_CONFIDENCE = 0.6
 _MAX_NODE_EVIDENCE = 8
 _MAX_EDGE_EVIDENCE = 12
 _MAX_TOP_LINKS = 6
-_ORDERED_RELATIONS: tuple[RelationType, ...] = ("proposes", "evaluates_on", "reports", "compares")
-_CONCEPT_TYPES: tuple[str, ...] = ("method", "dataset", "metric", "task")
+_ORDERED_RELATIONS: tuple[RelationType, ...] = _GRAPH_METADATA.ordered_relations
+_CONCEPT_TYPES: tuple[NodeType, ...] = _GRAPH_METADATA.concept_types
 _FALLBACK_NAMESPACE = UUID("00000000-0000-0000-0000-000000000000")
 
 _CLEAR_GRAPH_TABLES_IN_ORDER: tuple[str, ...] = (
@@ -198,19 +199,24 @@ def _node_key(node_type: NodeType, entity_id: UUID) -> tuple[NodeType, UUID]:
 
 
 def _node_id_str(node_type: NodeType, entity_id: UUID) -> str:
-    return f"{node_type}:{entity_id}"
+    return f"{str(node_type)}:{entity_id}"
+
+
+TAllowed = TypeVar("TAllowed", bound=str)
 
 
 def _parse_selection(
     values: Optional[Sequence[str]],
-    allowed: Iterable[str],
-    default: Iterable[str],
-) -> set[str]:
-    allowed_set = {item.lower() for item in allowed}
+    allowed: Iterable[TAllowed],
+    default: Iterable[TAllowed],
+) -> set[TAllowed]:
+    allowed_lookup: Dict[str, TAllowed] = {str(item).lower(): item for item in allowed}
+    if not allowed_lookup:
+        return set()
     if not values:
-        return {item.lower() for item in default}
+        return set(default)
 
-    selection: set[str] = set()
+    selection: set[TAllowed] = set()
     for raw in values:
         if raw is None:
             continue
@@ -218,10 +224,10 @@ def _parse_selection(
             normalized = token.strip().lower()
             if not normalized:
                 continue
-            if normalized not in allowed_set:
+            if normalized not in allowed_lookup:
                 raise ValueError(f"Unsupported selection value '{token}'")
-            selection.add(normalized)
-    return selection or {item.lower() for item in default}
+            selection.add(allowed_lookup[normalized])
+    return selection or set(default)
 
 
 def _confidence_value(value: Any) -> float:
@@ -352,7 +358,7 @@ async def _fetch_concept_fallback_rows(
     if not concept_types:
         return []
 
-    params: list[Any] = [list(concept_types)]
+    params: list[Any] = [list(map(str, concept_types))]
     where_clause = "WHERE c.type = ANY($1::text[])"
     if paper_ids:
         params.append(list(paper_ids))
@@ -388,8 +394,8 @@ async def _fetch_concept_fallback_rows(
             {
                 "paper_id": paper_id,
                 "paper_title": record.get("paper_title"),
-                "concepts": {concept: [] for concept in _CONCEPT_TYPES},
-                "lookup": {concept: {} for concept in _CONCEPT_TYPES},
+                "concepts": {str(concept): [] for concept in _CONCEPT_TYPES},
+                "lookup": {str(concept): {} for concept in _CONCEPT_TYPES},
             },
         )
         if not paper_payload.get("paper_title"):
@@ -456,8 +462,8 @@ async def _fetch_concept_fallback_rows(
             {
                 "paper_id": paper_id,
                 "paper_title": paper_title,
-                "concepts": {concept: [] for concept in _CONCEPT_TYPES},
-                "lookup": {concept: {} for concept in _CONCEPT_TYPES},
+                "concepts": {str(concept): [] for concept in _CONCEPT_TYPES},
+                "lookup": {str(concept): {} for concept in _CONCEPT_TYPES},
             },
         )
         if paper_title and not payload.get("paper_title"):
@@ -696,7 +702,7 @@ async def _resolve_entity(conn: Any, entity_id: UUID) ->Optional[NodeDetail]:
     if row:
         return NodeDetail(
             id=row["id"],
-            type="method",
+            type=NodeType.METHOD,
             label=_safe_label(row.get("name"), "Method", row["id"]),
             aliases=_coerce_aliases(row.get("aliases")),
             description=row.get("description"),
@@ -710,7 +716,7 @@ async def _resolve_entity(conn: Any, entity_id: UUID) ->Optional[NodeDetail]:
     if row:
         return NodeDetail(
             id=row["id"],
-            type="dataset",
+            type=NodeType.DATASET,
             label=_safe_label(row.get("name"), "Dataset", row["id"]),
             aliases=_coerce_aliases(row.get("aliases")),
             description=row.get("description"),
@@ -725,7 +731,7 @@ async def _resolve_entity(conn: Any, entity_id: UUID) ->Optional[NodeDetail]:
         metadata = _clean_metadata({"unit": row.get("unit")})
         return NodeDetail(
             id=row["id"],
-            type="metric",
+            type=NodeType.METRIC,
             label=_safe_label(row.get("name"), "Metric", row["id"]),
             aliases=_coerce_aliases(row.get("aliases")),
             description=row.get("description"),
@@ -739,7 +745,7 @@ async def _resolve_entity(conn: Any, entity_id: UUID) ->Optional[NodeDetail]:
     if row:
         return NodeDetail(
             id=row["id"],
-            type="task",
+            type=NodeType.TASK,
             label=_safe_label(row.get("name"), "Task", row["id"]),
             aliases=_coerce_aliases(row.get("aliases")),
             description=row.get("description"),
@@ -753,7 +759,7 @@ async def _resolve_entity(conn: Any, entity_id: UUID) ->Optional[NodeDetail]:
     if row:
         concept_type = str(row.get("type") or "").lower()
         if concept_type in _CONCEPT_TYPES:
-            node_type = cast(NodeType, concept_type)
+            node_type = NodeType(concept_type)
             metadata = {
                 "concept": True,
                 "paper_id": str(row.get("paper_id")) if row.get("paper_id") else None,
@@ -824,8 +830,8 @@ def _build_node_detail(
 
 def _aggregate_edges(
     rows: Sequence[Mapping[str, Any]],
-    allowed_types: set[str],
-    allowed_relations: set[str],
+    allowed_types: set[NodeType],
+    allowed_relations: set[RelationType],
     min_conf: float,
     node_details: dict[tuple[NodeType, UUID], NodeDetail],
 ) -> list[AggregatedEdge]:
@@ -853,7 +859,7 @@ def _aggregate_edges(
         if method_id:
             _build_node_detail(
                 node_details,
-                node_type="method",
+                node_type=NodeType.METHOD,
                 entity_id=method_id,
                 name=row.get("method_name"),
                 aliases=row.get("method_aliases"),
@@ -864,7 +870,7 @@ def _aggregate_edges(
         if dataset_id:
             _build_node_detail(
                 node_details,
-                node_type="dataset",
+                node_type=NodeType.DATASET,
                 entity_id=dataset_id,
                 name=row.get("dataset_name"),
                 aliases=row.get("dataset_aliases"),
@@ -875,7 +881,7 @@ def _aggregate_edges(
         if metric_id:
             _build_node_detail(
                 node_details,
-                node_type="metric",
+                node_type=NodeType.METRIC,
                 entity_id=metric_id,
                 name=row.get("metric_name"),
                 aliases=row.get("metric_aliases"),
@@ -886,7 +892,7 @@ def _aggregate_edges(
         if task_id:
             _build_node_detail(
                 node_details,
-                node_type="task",
+                node_type=NodeType.TASK,
                 entity_id=task_id,
                 name=row.get("task_name"),
                 aliases=row.get("task_aliases"),
@@ -894,12 +900,25 @@ def _aggregate_edges(
                 metadata=task_metadata,
             )
 
-        dataset_label = node_details.get(("dataset", dataset_id)).label if dataset_id and ("dataset", dataset_id) in node_details else None
-        metric_label = node_details.get(("metric", metric_id)).label if metric_id and ("metric", metric_id) in node_details else None
-        task_label = node_details.get(("task", task_id)).label if task_id and ("task", task_id) in node_details else None
+        dataset_label = None
+        if dataset_id:
+            dataset_detail = node_details.get((NodeType.DATASET, dataset_id))
+            dataset_label = dataset_detail.label if dataset_detail else None
+        metric_label = None
+        if metric_id:
+            metric_detail = node_details.get((NodeType.METRIC, metric_id))
+            metric_label = metric_detail.label if metric_detail else None
+        task_label = None
+        if task_id:
+            task_detail = node_details.get((NodeType.TASK, task_id))
+            task_label = task_detail.label if task_detail else None
 
         if method_id and dataset_id:
-            key = ("evaluates_on", _node_key("method", method_id), _node_key("dataset", dataset_id))
+            key = (
+                RelationType.EVALUATES_ON,
+                _node_key(NodeType.METHOD, method_id),
+                _node_key(NodeType.DATASET, dataset_id),
+            )
             edges[key].append(
                 EdgeInstance(
                     paper_id=paper_id,
@@ -916,7 +935,11 @@ def _aggregate_edges(
             )
 
         if method_id and metric_id:
-            key = ("reports", _node_key("method", method_id), _node_key("metric", metric_id))
+            key = (
+                RelationType.REPORTS,
+                _node_key(NodeType.METHOD, method_id),
+                _node_key(NodeType.METRIC, metric_id),
+            )
             edges[key].append(
                 EdgeInstance(
                     paper_id=paper_id,
@@ -933,7 +956,11 @@ def _aggregate_edges(
             )
 
         if method_id and task_id:
-            key = ("proposes", _node_key("method", method_id), _node_key("task", task_id))
+            key = (
+                RelationType.PROPOSES,
+                _node_key(NodeType.METHOD, method_id),
+                _node_key(NodeType.TASK, task_id),
+            )
             edges[key].append(
                 EdgeInstance(
                     paper_id=paper_id,
@@ -953,7 +980,7 @@ def _aggregate_edges(
             compare_contexts[(paper_id, dataset_id, metric_id)].append(
                 MethodContext(
                     method_id=method_id,
-                    method_label=node_details[("method", method_id)].label,
+                    method_label=node_details[(NodeType.METHOD, method_id)].label,
                     confidence=confidence,
                     evidence=evidence,
                     paper_id=paper_id,
@@ -975,9 +1002,9 @@ def _aggregate_edges(
             for secondary in contexts[index + 1 :]:
                 if primary.method_id == secondary.method_id:
                     continue
-                source_key = _node_key("method", primary.method_id)
-                target_key = _node_key("method", secondary.method_id)
-                key = ("compares", source_key, target_key)
+                source_key = _node_key(NodeType.METHOD, primary.method_id)
+                target_key = _node_key(NodeType.METHOD, secondary.method_id)
+                key = (RelationType.COMPARES, source_key, target_key)
                 combined_confidence = (primary.confidence + secondary.confidence) / 2
                 combined_evidence = list(primary.evidence) + list(secondary.evidence)
                 edges[key].append(
@@ -1090,8 +1117,8 @@ def _build_graph_response(
     node_details: dict[tuple[NodeType, UUID], NodeDetail],
     *,
     limit: int,
-    allowed_types: set[str],
-    allowed_relations: set[str],
+    allowed_types: set[NodeType],
+    allowed_relations: set[RelationType],
     min_conf: float,
     center_key: Optional[tuple[NodeType, UUID]] = None,
 ) -> GraphResponse:
@@ -1245,10 +1272,16 @@ def _build_graph_response(
         paper_ids.update(node_papers.get(key, set()))
 
     has_more = total_nodes > len(selected)
-    ordered_types = [item for item in _DEFAULT_TYPES if item in allowed_types]
-    extra_types = sorted(allowed_types - set(_DEFAULT_TYPES))
-    ordered_relations = [item for item in _ORDERED_RELATIONS if item in allowed_relations]
-    extra_relations = sorted(allowed_relations - set(_ORDERED_RELATIONS))
+    default_type_names = {str(item) for item in _DEFAULT_TYPES}
+    ordered_types = [str(item) for item in _DEFAULT_TYPES if item in allowed_types]
+    extra_types = sorted(str(item) for item in allowed_types if str(item) not in default_type_names)
+    ordered_relations = [
+        str(item) for item in _ORDERED_RELATIONS if item in allowed_relations
+    ]
+    ordered_relation_names = {str(item) for item in _ORDERED_RELATIONS}
+    extra_relations = sorted(
+        str(item) for item in allowed_relations if str(item) not in ordered_relation_names
+    )
 
     meta = GraphMeta(
         limit=limit,

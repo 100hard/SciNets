@@ -78,6 +78,11 @@ class Settings(BaseSettings):
         )
     )
 
+    # Graph metadata
+    graph_metadata_path: Optional[str] = Field(
+        default="backend/app/data/graph_ontology.json"
+    )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

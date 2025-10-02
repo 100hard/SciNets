@@ -1,14 +1,35 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
-from typing import Optional
-NodeType = Literal["method", "dataset", "metric", "task"]
-RelationType = Literal["proposes", "evaluates_on", "reports", "compares"]
+class NodeType(str, Enum):
+    METHOD = "method"
+    DATASET = "dataset"
+    METRIC = "metric"
+    TASK = "task"
+    CONCEPT = "concept"
+    MATERIAL = "material"
+    ORGANISM = "organism"
+    FINDING = "finding"
+    PROCESS = "process"
+
+    def __str__(self) -> str:  # pragma: no cover - trivial behaviour
+        return str(self.value)
+
+
+class RelationType(str, Enum):
+    PROPOSES = "proposes"
+    EVALUATES_ON = "evaluates_on"
+    REPORTS = "reports"
+    COMPARES = "compares"
+
+    def __str__(self) -> str:  # pragma: no cover - trivial behaviour
+        return str(self.value)
 
 
 class GraphNodeLink(BaseModel):
