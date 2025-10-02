@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     tier2_llm_max_section_chars: int = Field(default=3500)
     tier2_llm_force_json: bool = Field(default=True)
     tier2_llm_max_output_tokens: int = Field(default=8129)
+    tier2_llm_max_triples: int = Field(
+        default=45,
+        description="Maximum number of triples expected from the Tier-2 LLM response.",
+    )
 
     class Config:
         env_file = ".env"

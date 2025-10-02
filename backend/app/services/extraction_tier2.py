@@ -64,12 +64,11 @@ METRIC_SYNONYM_MAP: dict[str, dict[str, str]] = {
 }
 
 
-TRIPLE_JSON_SCHEMA: dict[str, Any] = {
+TRIPLE_JSON_SCHEMA_TEMPLATE: dict[str, Any] = {
     "type": "object",
     "properties": {
         "triples": {
             "type": "array",
-            "maxItems": 15,
             "items": {
                 "type": "object",
                 "required": [
@@ -129,6 +128,21 @@ TRIPLE_JSON_SCHEMA: dict[str, Any] = {
     "required": ["triples"],
     "additionalProperties": False,
 }
+
+
+def _build_triple_json_schema(max_triples: int) -> dict[str, Any]:
+    schema = copy.deepcopy(TRIPLE_JSON_SCHEMA_TEMPLATE)
+    schema["properties"]["triples"]["maxItems"] = max_triples
+    return schema
+
+
+def get_triple_json_schema() -> dict[str, Any]:
+    """Return the triple JSON schema using the current settings."""
+
+    return _build_triple_json_schema(settings.tier2_llm_max_triples)
+
+
+TRIPLE_JSON_SCHEMA: dict[str, Any] = get_triple_json_schema()
 
 
 @dataclass
@@ -1461,7 +1475,7 @@ async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
             "type": "json_schema",
             "json_schema": {
                 "name": "triple_extraction",
-                "schema": TRIPLE_JSON_SCHEMA,
+                "schema": get_triple_json_schema(),
             },
         }
     else:

@@ -15,6 +15,14 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
+def test_get_triple_json_schema_respects_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "tier2_llm_max_triples", 7)
+
+    schema = extraction_tier2.get_triple_json_schema()
+
+    assert schema["properties"]["triples"]["maxItems"] == 7
+
+
 def _build_section(section_id: str, title: str, sentences: list[str]) -> dict[str, object]:
     return {
         "section_id": section_id,
