@@ -299,7 +299,6 @@ class Settings(BaseSettings):
             "missing or spans cannot be resolved."
         )
     )
-
     concept_extraction: ConceptExtractionSettings = Field(
         default_factory=ConceptExtractionSettings
     )

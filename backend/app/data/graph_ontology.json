@@ -1,0 +1,27 @@
+{
+  "default_node_types": ["method", "dataset", "metric", "task"],
+  "allowed_node_types": [
+    "method",
+    "dataset",
+    "metric",
+    "task",
+    "concept",
+    "material",
+    "organism",
+    "finding",
+    "process"
+  ],
+  "allowed_relations": ["proposes", "evaluates_on", "reports", "compares"],
+  "ordered_relations": ["proposes", "evaluates_on", "reports", "compares"],
+  "concept_types": [
+    "method",
+    "dataset",
+    "metric",
+    "task",
+    "concept",
+    "material",
+    "organism",
+    "finding",
+    "process"
+  ]
+}
