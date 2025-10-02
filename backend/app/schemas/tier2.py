@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 TYPE_GUESS_VALUES: tuple[str, ...] = (
     "Method",
@@ -60,6 +60,34 @@ class TriplePayload(BaseModel):
     schema_match_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     section_id: Optional[str] = Field(default=None, min_length=1, max_length=64)
     chunk_id: Optional[str] = Field(default=None, min_length=1, max_length=64)
+
+    @field_validator("subject_type_guess", "object_type_guess", mode="before")
+    @classmethod
+    def _coerce_type_guess(cls, value: Optional[str]) -> str:
+        """Map unknown type guesses to the ``Unknown`` sentinel value."""
+
+        if not isinstance(value, str):
+            return "Unknown"
+
+        normalized = value.strip()
+        if normalized in TYPE_GUESS_VALUES:
+            return normalized
+
+        return "Unknown"
+
+    @field_validator("relation_type_guess", mode="before")
+    @classmethod
+    def _coerce_relation_guess(cls, value: Optional[str]) -> str:
+        """Map unknown relation guesses to the ``OTHER`` sentinel value."""
+
+        if not isinstance(value, str):
+            return "OTHER"
+
+        normalized = value.strip()
+        if normalized in RELATION_GUESS_VALUES:
+            return normalized
+
+        return "OTHER"
 
 
 class TripleExtractionResponse(BaseModel):
