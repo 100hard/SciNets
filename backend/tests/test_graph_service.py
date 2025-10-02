@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 from typing import Any, Mapping, Sequence
 from uuid import UUID, uuid4
 
@@ -416,6 +417,83 @@ async def _run_graph_fallback_overview(monkeypatch: pytest.MonkeyPatch) -> None:
     assert edge.data.metadata.get("evidence")
     snippets = [item.get("snippet") for item in edge.data.metadata["evidence"]]
     assert "AlphaNet is evaluated on Dataset-X." in snippets
+
+
+def test_graph_fallback_shared_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
+    asyncio.run(_run_graph_fallback_shared_nodes(monkeypatch))
+
+
+async def _run_graph_fallback_shared_nodes(monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = _setup_fake_pool(monkeypatch)
+    conn.results = []
+    conn.methods.clear()
+    conn.datasets.clear()
+    conn.concepts = []
+
+    shared_metadata = {
+        "entities": {
+            "method": {"text": "Shared Method", "normalized": "shared-method"},
+            "dataset": {"text": "Shared Dataset", "normalized": "shared-dataset"},
+        },
+        "pairs": [
+            {
+                "source": {"type": "method", "text": "Shared Method", "normalized": "shared-method"},
+                "target": {"type": "dataset", "text": "Shared Dataset", "normalized": "shared-dataset"},
+                "relation": "evaluates_on",
+                "confidence": 0.7,
+                "section_id": "section-shared",
+                "sentence_indices": [1],
+                "evidence": "Shared Method evaluates Shared Dataset.",
+                "source": "tier2_triple",
+            }
+        ],
+    }
+
+    conn.triple_candidates = [
+        {
+            "paper_id": PAPER_A,
+            "graph_metadata": copy.deepcopy(shared_metadata),
+            "triple_conf": 0.7,
+            "evidence_text": "Shared Method evaluates Shared Dataset.",
+            "section_id": "section-shared",
+            "created_at": None,
+        },
+        {
+            "paper_id": PAPER_B,
+            "graph_metadata": copy.deepcopy(shared_metadata),
+            "triple_conf": 0.68,
+            "evidence_text": "Shared Method evaluates Shared Dataset in Paper B.",
+            "section_id": "section-shared",
+            "created_at": None,
+        },
+    ]
+
+    response = await get_graph_overview(limit=10, min_conf=0.6)
+
+    method_nodes = [node for node in response.nodes if node.data.type == "method"]
+    dataset_nodes = [node for node in response.nodes if node.data.type == "dataset"]
+
+    assert len(method_nodes) == 1, "Fallback methods should be deduplicated"
+    assert len(dataset_nodes) == 1, "Fallback datasets should be deduplicated"
+
+    method_node = method_nodes[0]
+    dataset_node = dataset_nodes[0]
+
+    assert method_node.data.paper_count == 2
+    assert dataset_node.data.paper_count == 2
+
+    def _paper_ids(metadata: Mapping[str, Any]) -> list[str]:
+        papers = metadata.get("papers", []) if metadata else []
+        return sorted({str(entry.get("paper_id")) for entry in papers if isinstance(entry, Mapping)})
+
+    expected_ids = sorted({str(PAPER_A), str(PAPER_B)})
+    assert _paper_ids(method_node.data.metadata) == expected_ids
+    assert _paper_ids(dataset_node.data.metadata) == expected_ids
+
+    assert response.edges, "Fallback edges should be generated"
+    edge = response.edges[0]
+    assert edge.data.paper_count == 2
+    assert sorted(str(item.get("paper_id")) for item in edge.data.metadata.get("papers", [])) == expected_ids
 
 
 def test_get_graph_overview_respects_min_confidence(monkeypatch: pytest.MonkeyPatch) -> None:
