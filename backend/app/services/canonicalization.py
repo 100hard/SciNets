@@ -54,7 +54,7 @@ class _OntologyRecord:
 @dataclass(frozen=True)
 class _TypeConfig:
     table: str
-    fk_column: str
+    fk_column: Optional[str]
 
 
 @dataclass
@@ -141,6 +141,8 @@ _TYPE_CONFIG: Dict[ConceptResolutionType, _TypeConfig] = {
     ConceptResolutionType.DATASET: _TypeConfig("datasets", "dataset_id"),
     ConceptResolutionType.METRIC: _TypeConfig("metrics", "metric_id"),
     ConceptResolutionType.TASK: _TypeConfig("tasks", "task_id"),
+    ConceptResolutionType.APPLICATION: _TypeConfig("applications", None),
+    ConceptResolutionType.RESEARCH_AREA: _TypeConfig("research_areas", None),
 }
 
 
@@ -149,6 +151,8 @@ _SIMILARITY_THRESHOLDS: Dict[ConceptResolutionType, float] = {
     ConceptResolutionType.DATASET: 0.65,
     ConceptResolutionType.METRIC: 0.75,
     ConceptResolutionType.TASK: 0.65,
+    ConceptResolutionType.APPLICATION: 0.68,
+    ConceptResolutionType.RESEARCH_AREA: 0.70,
 }
 
 
@@ -157,6 +161,8 @@ _SIMILARITY_BORDERLINE_WINDOWS: Dict[ConceptResolutionType, Tuple[float, float]]
     ConceptResolutionType.DATASET: (0.78, 0.82),
     ConceptResolutionType.METRIC: (0.86, 0.90),
     ConceptResolutionType.TASK: (0.76, 0.80),
+    ConceptResolutionType.APPLICATION: (0.75, 0.80),
+    ConceptResolutionType.RESEARCH_AREA: (0.77, 0.82),
 }
 
 
@@ -1011,6 +1017,8 @@ async def _update_results(
     config: _TypeConfig,
     computation: _CanonicalizationComputation,
 ) -> None:
+    if not config.fk_column:
+        return
     updates = [
         (record_id, canonical_id)
         for record_id, canonical_id in computation.id_to_canonical.items()

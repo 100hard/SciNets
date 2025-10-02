@@ -8,8 +8,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
-from typing import Optional
 EvidencePayload = list[dict[str, Any]]
 
 
@@ -53,6 +51,23 @@ class Task(TaskBase):
         from_attributes = True
 
 
+class ApplicationBase(_AliasMixin):
+    pass
+
+
+class ApplicationCreate(ApplicationBase):
+    pass
+
+
+class Application(ApplicationBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class DatasetBase(_AliasMixin):
     pass
 
@@ -87,6 +102,23 @@ class Metric(MetricBase):
         from_attributes = True
 
 
+class ResearchAreaBase(_AliasMixin):
+    pass
+
+
+class ResearchAreaCreate(ResearchAreaBase):
+    pass
+
+
+class ResearchArea(ResearchAreaBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class ClaimCategory(str, Enum):
     CONTRIBUTION = "contribution"
     LIMITATION = "limitation"
@@ -106,6 +138,8 @@ class ConceptResolutionType(str, Enum):
     DATASET = "dataset"
     METRIC = "metric"
     TASK = "task"
+    APPLICATION = "application"
+    RESEARCH_AREA = "research_area"
 
 
 class MethodRelationType(str, Enum):

@@ -49,6 +49,8 @@ _CLEAR_GRAPH_TABLES_IN_ORDER: tuple[str, ...] = (
     "datasets",
     "metrics",
     "tasks",
+    "applications",
+    "research_areas",
 )
 
 
