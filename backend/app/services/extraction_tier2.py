@@ -360,6 +360,95 @@ def _graph_value_passes_quality(value: str) -> bool:
     return True
 
 
+METRIC_KEYWORDS = frozenset(
+    {
+        "accuracy",
+        "f1",
+        "f-score",
+        "f score",
+        "precision",
+        "recall",
+        "bleu",
+        "bleu score",
+        "rouge",
+        "wer",
+        "word error rate",
+        "error rate",
+        "error",
+        "loss",
+        "perplexity",
+        "auc",
+        "auroc",
+        "auprc",
+        "psnr",
+        "ssim",
+        "mse",
+        "rmse",
+        "mae",
+        "map",
+        "mean average precision",
+        "dice",
+        "iou",
+        "exact match",
+        "top-1",
+        "top 1",
+        "top-5",
+        "top 5",
+        "cer",
+        "mrr",
+        "hit@1",
+        "hit@5",
+    }
+    | {synonym.lower() for synonym in METRIC_SYNONYM_MAP}
+    | {info["normalized_metric"].lower() for info in METRIC_SYNONYM_MAP.values()}
+    | {info["variant"].lower() for info in METRIC_SYNONYM_MAP.values()}
+)
+
+METRIC_VALUE_UNIT_RE = re.compile(
+    r"(?:%|percent|percentage|points|score|db|dB|ms|s|sec|second|seconds|minute|minutes|hour|hours|fps|flops|params|parameters|samples|epochs|iterations)",
+    re.IGNORECASE,
+)
+
+DATASET_TASK_BANNED_PREFIXES = (
+    "we ",
+    "our ",
+    "this ",
+    "that ",
+    "these ",
+    "those ",
+)
+
+DATASET_TASK_VERB_RE = re.compile(
+    r"\b(observe|observed|observes|observing|achieve|achieved|achieves|achieving|report|reported|reports|reporting|propose|proposed|proposes|proposing|introduce|introduced|introduces|introducing|improve|improved|improves|improving|show|showed|shows|showing|demonstrate|demonstrated|demonstrates|demonstrating|evaluate|evaluated|evaluates|evaluating)\b",
+    re.IGNORECASE,
+)
+
+
+def _graph_value_valid_for_type(value: str, entity_type: str) -> bool:
+    if not _graph_value_passes_quality(value):
+        return False
+
+    normalized_type = (entity_type or "").strip().lower()
+    if not normalized_type:
+        return True
+
+    if normalized_type == "metric":
+        lowered = value.lower()
+        has_keyword = any(keyword in lowered for keyword in METRIC_KEYWORDS)
+        has_number = bool(re.search(r"\d", value))
+        has_unit = bool(METRIC_VALUE_UNIT_RE.search(value))
+        if not (has_keyword or (has_number and has_unit)):
+            return False
+    elif normalized_type in {"dataset", "task"}:
+        lowered = value.lower().strip()
+        if any(lowered.startswith(prefix) for prefix in DATASET_TASK_BANNED_PREFIXES):
+            return False
+        if DATASET_TASK_VERB_RE.search(lowered):
+            return False
+
+    return True
+
+
 def _normalized_graph_key(value: str) -> str:
     normalized = _normalize_graph_text(value)
     return normalized.lower()
@@ -447,7 +536,7 @@ def _build_graph_metadata(
         normalized_value = _normalize_graph_text(cleaned_value)
         if not normalized_value:
             return None
-        if not _graph_value_passes_quality(normalized_value):
+        if not _graph_value_valid_for_type(normalized_value, entity_type):
             return None
         entry = {
             "text": cleaned_value,
