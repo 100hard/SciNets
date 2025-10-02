@@ -614,9 +614,13 @@ def _build_graph_metadata(
     if relation is None:
         return {}
 
-    if not _graph_value_valid_for_type(subject_entry.get("normalized"), str(subject_entry.get("type")))):
+    if not _graph_value_valid_for_type(
+        subject_entry.get("normalized"), str(subject_entry.get("type"))
+    ):
         return {}
-    if not _graph_value_valid_for_type(object_entry.get("normalized"), str(object_entry.get("type")))):
+    if not _graph_value_valid_for_type(
+        object_entry.get("normalized"), str(object_entry.get("type"))
+    ):
         return {}
 
     sentence_indices = _collect_sentence_indices(matches)
