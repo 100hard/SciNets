@@ -269,6 +269,54 @@ def _clean_metadata(payload: Mapping[str, Any]) -> Dict[str, Any]:
     return {key: value for key, value in payload.items() if value not in (None, "")}
 
 
+def _merge_node_metadata(
+    existing: Mapping[str, Any], incoming: Optional[Mapping[str, Any]]
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = dict(existing)
+    if not incoming:
+        return merged
+
+    for key, value in incoming.items():
+        if key == "papers":
+            if not isinstance(value, list):
+                continue
+            prior_entries = (
+                list(merged.get("papers", [])) if isinstance(merged.get("papers"), list) else []
+            )
+            normalized: list[dict[str, Any]] = []
+            seen: set[str] = set()
+
+            def _ingest(entries: Iterable[Any]) -> None:
+                for entry in entries:
+                    if isinstance(entry, Mapping):
+                        paper_id = entry.get("paper_id")
+                        if paper_id is None:
+                            continue
+                        paper_id_str = str(paper_id)
+                        if paper_id_str in seen:
+                            continue
+                        paper_entry: dict[str, Any] = {"paper_id": paper_id_str}
+                        paper_title = entry.get("paper_title")
+                        if paper_title:
+                            paper_entry["paper_title"] = paper_title
+                        normalized.append(paper_entry)
+                        seen.add(paper_id_str)
+                    elif entry:
+                        paper_id_str = str(entry)
+                        if paper_id_str in seen:
+                            continue
+                        normalized.append({"paper_id": paper_id_str})
+                        seen.add(paper_id_str)
+
+            _ingest(prior_entries)
+            _ingest(value)
+            merged["papers"] = normalized
+        else:
+            merged.setdefault(key, value)
+
+    return merged
+
+
 async def _fetch_results(
     conn: Any,
     *,
@@ -398,6 +446,46 @@ async def _fetch_concept_fallback_rows(
             payload["paper_title"] = paper_title
         return payload
 
+    def _append_paper_metadata(metadata: Dict[str, Any], paper_payload: Mapping[str, Any]) -> None:
+        paper_id = paper_payload.get("paper_id")
+        if not paper_id:
+            return
+        paper_id_str = str(paper_id)
+        paper_title = paper_payload.get("paper_title")
+
+        papers_raw = metadata.setdefault("papers", [])
+        normalized_entries: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for entry in papers_raw:
+            if isinstance(entry, Mapping):
+                existing_id = entry.get("paper_id")
+                if existing_id is None:
+                    continue
+                existing_id_str = str(existing_id)
+                if existing_id_str in seen:
+                    continue
+                normalized_entry: dict[str, Any] = {"paper_id": existing_id_str}
+                existing_title = entry.get("paper_title")
+                if existing_title:
+                    normalized_entry["paper_title"] = existing_title
+                normalized_entries.append(normalized_entry)
+                seen.add(existing_id_str)
+            elif entry:
+                entry_str = str(entry)
+                if entry_str in seen:
+                    continue
+                normalized_entries.append({"paper_id": entry_str})
+                seen.add(entry_str)
+
+        if paper_id_str not in seen:
+            paper_entry: dict[str, Any] = {"paper_id": paper_id_str}
+            if paper_title:
+                paper_entry["paper_title"] = paper_title
+            normalized_entries.append(paper_entry)
+            seen.add(paper_id_str)
+
+        metadata["papers"] = normalized_entries
+
     def _resolve_entity(
         paper_payload: dict[str, Any],
         entity_type: str,
@@ -414,20 +502,22 @@ async def _fetch_concept_fallback_rows(
         existing = lookup.get(normalized)
         if existing:
             metadata = dict(existing.get("metadata") or {})
+            _append_paper_metadata(metadata, paper_payload)
+            existing["metadata"] = metadata
             label = existing.get("name") or str(text)
-            return existing["id"], label, metadata
+            return existing["id"], label, dict(metadata)
 
         label = str(entity_payload.get("text") or entity_payload.get("normalized") or "").strip()
         if not label:
             return None
 
-        paper_id = paper_payload["paper_id"]
-        entity_id = uuid5(_FALLBACK_NAMESPACE, f"{paper_id}:{entity_type}:{normalized}")
+        entity_id = uuid5(_FALLBACK_NAMESPACE, f"{entity_type}:{normalized}")
         metadata = {
             "fallback": True,
             "source": entity_payload.get("source") or default_source or "tier2_triple",
             "normalized": normalized,
         }
+        _append_paper_metadata(metadata, paper_payload)
         entry = {
             "id": entity_id,
             "name": label,
@@ -698,7 +788,10 @@ def _build_node_detail(
     metadata: Optional[Mapping[str, Any]] = None,
 ) -> None:
     key = _node_key(node_type, entity_id)
-    if key in node_details:
+    existing = node_details.get(key)
+    if existing:
+        merged = _merge_node_metadata(existing.metadata or {}, metadata)
+        existing.metadata = _clean_metadata(merged)
         return
     detail = NodeDetail(
         id=entity_id,
