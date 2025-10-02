@@ -1295,9 +1295,46 @@ def _parse_json(raw: str) -> dict[str, Any]:
         raise Tier2ValidationError(f"Tier-2 LLM returned invalid JSON: {exc}") from exc
 
 
+def _normalize_span_for_validation(span: Any) -> list[int]:
+    if not isinstance(span, Sequence):
+        return []
+
+    normalized: list[int] = []
+    for value in span:
+        try:
+            normalized.append(int(value))
+        except (TypeError, ValueError):
+            continue
+        if len(normalized) >= 2:
+            break
+
+    if len(normalized) == 1:
+        normalized.append(normalized[0])
+
+    if len(normalized) >= 2:
+        return normalized[:2]
+
+    return []
+
+
+def _prepare_payload_for_validation(payload: dict[str, Any]) -> dict[str, Any]:
+    prepared = copy.deepcopy(payload)
+    triples = prepared.get("triples")
+    if isinstance(triples, list):
+        for triple in triples:
+            if not isinstance(triple, dict):
+                continue
+            for key in ("subject_span", "object_span"):
+                span = triple.get(key)
+                normalized = _normalize_span_for_validation(span)
+                triple[key] = normalized if normalized else [0, 0]
+    return prepared
+
+
 def _validate_payload(payload: dict[str, Any]) -> TripleExtractionResponse:
     try:
-        return TripleExtractionResponse.model_validate(payload)
+        prepared = _prepare_payload_for_validation(payload)
+        return TripleExtractionResponse.model_validate(prepared)
     except ValidationError as exc:
         raise Tier2ValidationError(f"Tier-2 payload failed schema validation: {exc}") from exc
 
