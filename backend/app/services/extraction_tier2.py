@@ -27,7 +27,7 @@ from app.services.triple_candidates import replace_triple_candidates
 logger = logging.getLogger(__name__)
 
 TIER_NAME = "tier2_llm_openie"
-SYSTEM_PROMPT = settings.tier2_llm_system_prompt
+_DEFAULT_SYSTEM_PROMPT = settings.tier2_llm_system_prompt
 DEFAULT_TRIPLE_CONFIDENCE = 0.55
 DEFAULT_SCHEMA_SCORE = 1.0
 MAX_LLM_ATTEMPTS = 2
@@ -125,6 +125,17 @@ TRIPLE_JSON_SCHEMA_TEMPLATE: dict[str, Any] = {
     "required": ["triples"],
     "additionalProperties": False,
 }
+
+
+def _system_prompt() -> str:
+    """Return the configured Tier-2 system prompt, falling back to the default."""
+
+    prompt = getattr(settings, "tier2_llm_system_prompt", None)
+    if isinstance(prompt, str):
+        stripped = prompt.strip()
+        if stripped:
+            return stripped
+    return _DEFAULT_SYSTEM_PROMPT
 
 
 def _build_triple_json_schema(max_triples: int) -> dict[str, Any]:
@@ -1012,7 +1023,7 @@ def _prepare_section_contexts(sections: Sequence[dict[str, Any]]) -> list[Sectio
         or settings.tier2_llm_max_section_chars
         or 2000
     )
-    chunk_budget = max(400, raw_budget)
+    chunk_budget = max(120, raw_budget)
     chunk_overlap = max(0, settings.tier2_llm_section_chunk_overlap_sentences or 0)
     max_chunks_per_section = max(
         1, settings.tier2_llm_max_chunks_per_section or 1
@@ -1154,7 +1165,7 @@ def _build_messages(contexts: Sequence[SectionContext], *, mode: str = "primary"
 
     user_message = "\n".join(line for line in content_lines if line is not None)
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": _system_prompt()},
         {"role": "user", "content": user_message},
     ]
 

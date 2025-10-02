@@ -573,7 +573,9 @@ def _update_confidences(candidates: Sequence[CandidateWrapper]) -> None:
         score = max(0.0, min(1.0, score))
 
         components: dict[str, float] = {"tier2_base": round(score, 4)}
-        score = _apply_component(score, components, "json_valid", _JSON_VALID_BONUS)
+
+        if wrapper.measurement is not None:
+            score = _apply_component(score, components, "json_valid", _JSON_VALID_BONUS)
 
         if wrapper.coref_resolved:
             score = _apply_component(score, components, "coref_resolution", _COREF_BONUS)
