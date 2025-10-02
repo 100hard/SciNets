@@ -986,8 +986,9 @@ async def _update_aliases(
         aliases_list = computation.aliases_by_record.get(record_id, [])
         normalized_aliases = [alias for alias in aliases_list if isinstance(alias, str) and alias]
         payload: Any
-        if pgproto is not None:
-            payload = pgproto.Jsonb(normalized_aliases)
+        jsonb_factory = getattr(pgproto, "Jsonb", None) if pgproto is not None else None
+        if jsonb_factory is not None:
+            payload = jsonb_factory(normalized_aliases)
         else:
             payload = normalized_aliases
         updates.append((record_id, payload))

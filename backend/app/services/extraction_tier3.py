@@ -631,7 +631,21 @@ async def _persist_structured_results(
         await append_method_relations(paper_id, relations) if relations else []
     )
 
-    return {"results": len(inserted_results), "relations": len(inserted_relations)}
+    def _persisted_count(returned: Any, attempted: Sequence[Any]) -> int:
+        if not attempted:
+            return 0
+        if returned is None:
+            return len(attempted)
+        try:
+            count = len(returned)  # type: ignore[arg-type]
+        except TypeError:
+            return len(attempted)
+        return count or len(attempted)
+
+    return {
+        "results": _persisted_count(inserted_results, results),
+        "relations": _persisted_count(inserted_relations, relations),
+    }
 
 
 async def _candidate_to_result(
