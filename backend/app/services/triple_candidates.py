@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import json
 from typing import Sequence
 from uuid import UUID
+
+try:
+    from asyncpg.pgproto import pgproto  # type: ignore
+except Exception:  # pragma: no cover - asyncpg may be absent
+    pgproto = None  # type: ignore[assignment]
 
 from app.db.pool import get_pool
 from app.models.triple_candidate import TripleCandidateRecord
@@ -30,6 +36,15 @@ INSERT_SQL = """
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
     )
 """
+
+
+def _encode_json(value: object) -> object:
+    if value is None:
+        return None
+    jsonb_factory = getattr(pgproto, "Jsonb", None) if pgproto is not None else None
+    if jsonb_factory is not None:
+        return jsonb_factory(value)
+    return json.dumps(value)
 
 
 async def replace_triple_candidates(
@@ -79,8 +94,12 @@ async def replace_triple_candidates(
                         candidate.triple_conf,
                         candidate.schema_match_score,
                         candidate.tier,
+<<<<<<< Updated upstream
                         candidate.graph_metadata,
                         candidate.provenance,
+=======
+                        _encode_json(candidate.graph_metadata or {}),
+>>>>>>> Stashed changes
                     )
                 )
 

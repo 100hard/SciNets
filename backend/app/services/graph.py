@@ -130,10 +130,6 @@ _RESULT_SELECT = """
         r.value_text,
         r.is_sota,
         r.confidence,
-        r.split,
-        r.value_numeric,
-        r.value_text,
-        r.is_sota,
         (to_jsonb(r) ->> 'verified')::boolean AS verified,
         r.evidence,
         p.title AS paper_title,
@@ -172,10 +168,6 @@ _METHOD_RELATION_SELECT = """
         NULL::text AS value_text,
         NULL::boolean AS is_sota,
         mr.confidence,
-        NULL::text AS split,
-        NULL::numeric AS value_numeric,
-        NULL::text AS value_text,
-        NULL::boolean AS is_sota,
         NULL::boolean AS verified,
         mr.evidence,
         p.title AS paper_title,
@@ -242,6 +234,11 @@ class EdgeInstance:
     metric_unit: Optional[str]
     task_id: Optional[UUID]
     task_label: Optional[str]
+    value_numeric: Optional[float] = None
+    value_text: Optional[str] = None
+    is_sota: Optional[bool] = None
+    verified: Optional[bool] = None
+    claims: Sequence[Mapping[str, Any]] = ()
     statement_metadata: Optional[Dict[str, Any]] = None
 
 
@@ -266,6 +263,22 @@ class MethodContext:
     is_sota: Optional[bool]
     verified: Optional[bool]
     claims: Sequence[Mapping[str, Any]]
+
+
+@dataclass
+class NodeOutcome:
+    paper_id: UUID
+    paper_title: Optional[str] = None
+    paper_year: Optional[int] = None
+    value_numeric: Optional[float] = None
+    value_text: Optional[str] = None
+    metric_label: Optional[str] = None
+    dataset_label: Optional[str] = None
+    task_label: Optional[str] = None
+    metric_unit: Optional[str] = None
+    confidence: float = 0.0
+    is_sota: Optional[bool] = None
+    verified: Optional[bool] = None
 
 
 @dataclass
@@ -474,7 +487,7 @@ def _format_edge_summary(instance: EdgeInstance) -> Optional[tuple[str, Optional
     claim_text = _select_claim_text(instance.claims)
     base_summary = "; ".join(part for part in summary_parts if part)
     if claim_text:
-        combined = f"{claim_text} — {base_summary}"
+        combined = f"{claim_text} - {base_summary}"
         return combined, claim_text
     return base_summary, claim_text
 
@@ -825,7 +838,7 @@ async def _fetch_concept_fallback_rows(
     conn: Any,
     *,
     paper_ids: Optional[Sequence[UUID]] = None,
-) -> list[Mapping[str, Any]]:
+) -> list[dict[str, Any]]:
     concept_types = _CONCEPT_TYPES
     if not concept_types:
         return []
@@ -949,6 +962,9 @@ async def _fetch_concept_fallback_rows(
         paper_title = paper_payload.get("paper_title")
 
         papers_raw = metadata.setdefault("papers", [])
+        if not isinstance(papers_raw, list):
+            papers_raw = []
+            metadata["papers"] = papers_raw
         normalized_entries: list[dict[str, Any]] = []
         seen: set[str] = set()
         for entry in papers_raw:
@@ -1456,20 +1472,30 @@ def _aggregate_edges(
                 metadata=task_metadata,
             )
 
-        dataset_label = node_details.get(("dataset", dataset_id)).label if dataset_id and ("dataset", dataset_id) in node_details else None
-        metric_label = node_details.get(("metric", metric_id)).label if metric_id and ("metric", metric_id) in node_details else None
-        task_label = node_details.get(("task", task_id)).label if task_id and ("task", task_id) in node_details else None
+        method_key = _node_key(NodeType.METHOD, method_id) if method_id else None
+        dataset_key = _node_key(NodeType.DATASET, dataset_id) if dataset_id else None
+        metric_key = _node_key(NodeType.METRIC, metric_id) if metric_id else None
+        task_key = _node_key(NodeType.TASK, task_id) if task_id else None
+
+        method_detail = node_details.get(method_key) if method_key else None
+        dataset_detail = node_details.get(dataset_key) if dataset_key else None
+        metric_detail = node_details.get(metric_key) if metric_key else None
+        task_detail = node_details.get(task_key) if task_key else None
+
+        dataset_label = dataset_detail.label if dataset_detail else None
+        metric_label = metric_detail.label if metric_detail else None
+        task_label = task_detail.label if task_detail else None
         metric_unit = row.get("metric_unit")
 
         node_keys: list[tuple[NodeType, UUID]] = []
-        if method_id:
-            node_keys.append(_node_key("method", method_id))
-        if dataset_id:
-            node_keys.append(_node_key("dataset", dataset_id))
-        if metric_id:
-            node_keys.append(_node_key("metric", metric_id))
-        if task_id:
-            node_keys.append(_node_key("task", task_id))
+        if method_key:
+            node_keys.append(method_key)
+        if dataset_key:
+            node_keys.append(dataset_key)
+        if metric_key:
+            node_keys.append(metric_key)
+        if task_key:
+            node_keys.append(task_key)
 
         if paper_year is not None:
             for key in node_keys:
@@ -1501,7 +1527,7 @@ def _aggregate_edges(
             )
             edges[key].append(
                 EdgeInstance(
-                    relation="evaluates_on",
+                    relation=RelationType.EVALUATES_ON,
                     paper_id=paper_id,
                     paper_title=paper_title,
                     paper_year=paper_year,
@@ -1530,7 +1556,7 @@ def _aggregate_edges(
             )
             edges[key].append(
                 EdgeInstance(
-                    relation="reports",
+                    relation=RelationType.REPORTS,
                     paper_id=paper_id,
                     paper_title=paper_title,
                     paper_year=paper_year,
@@ -1559,7 +1585,7 @@ def _aggregate_edges(
             )
             edges[key].append(
                 EdgeInstance(
-                    relation="proposes",
+                    relation=RelationType.PROPOSES,
                     paper_id=paper_id,
                     paper_title=paper_title,
                     paper_year=paper_year,
@@ -1655,25 +1681,34 @@ def _aggregate_edges(
             )
             edges[edge_key].append(
                 EdgeInstance(
+                    relation=relation,
                     paper_id=paper_id,
                     paper_title=paper_title,
+                    paper_year=paper_year,
                     confidence=relation_confidence,
                     evidence=relation_evidence_payload if relation_evidence_payload else evidence,
                     dataset_id=None,
                     dataset_label=None,
                     metric_id=None,
                     metric_label=None,
+                    metric_unit=None,
                     task_id=None,
                     task_label=None,
+                    value_numeric=None,
+                    value_text=None,
+                    is_sota=None,
+                    verified=None,
+                    claims=claims,
                     statement_metadata=statement_metadata,
                 )
             )
 
         if method_id and dataset_id and metric_id:
+            method_label_value = method_detail.label if method_detail else _safe_label(row.get("method_name"), "Method", method_id)
             compare_contexts[(paper_id, dataset_id, metric_id)].append(
                 MethodContext(
                     method_id=method_id,
-                    method_label=node_details[(NodeType.METHOD, method_id)].label,
+                    method_label=method_label_value,
                     confidence=confidence,
                     evidence=evidence,
                     paper_id=paper_id,
@@ -2067,15 +2102,14 @@ async def get_graph_overview(
     async with pool.acquire() as conn:
         records = await _fetch_results(conn)
         relation_records = await _fetch_method_relations(conn)
-        claim_records = await _fetch_claims(conn)
         rows = [dict(record) for record in records]
         rows.extend(dict(record) for record in relation_records)
-        paper_ids = {row["paper_id"] for row in rows if row.get("paper_id")}
-        claims_by_paper = await _fetch_claims_by_paper(conn, list(paper_ids))
+        paper_id_candidates = {row["paper_id"] for row in rows if row.get("paper_id")}
+        claims_by_paper = await _fetch_claims_by_paper(conn, list(paper_id_candidates))
         analytics = _compute_node_analytics(rows, claims_by_paper)
         _attach_node_metadata(rows, analytics)
         node_details: dict[tuple[NodeType, UUID], NodeDetail] = {}
-        aggregated_edges = _aggregate_edges(rows, edge_allowed_types, allowed_relations, min_conf, node_details)
+        aggregated_edges = _aggregate_edges(rows, edge_allowed_types, allowed_relations, min_conf, node_details, claims_by_paper)
     response = _build_graph_response(
         aggregated_edges,
         node_details,
@@ -2097,7 +2131,7 @@ async def get_graph_overview(
     combined_rows = fallback_rows + rows
     node_details = {}
     fallback_edges = _aggregate_edges(
-        combined_rows, edge_allowed_types, allowed_relations, min_conf, node_details
+        combined_rows, edge_allowed_types, allowed_relations, min_conf, node_details, claims_by_paper
     )
     fallback_response = _build_graph_response(
         fallback_edges,
@@ -2135,10 +2169,10 @@ async def get_graph_neighborhood(
         paper_ids = await _fetch_related_papers(conn, center_detail)
         records = await _fetch_results(conn, paper_ids=paper_ids)
         relation_records = await _fetch_method_relations(conn, paper_ids=paper_ids)
-        claim_records = await _fetch_claims(conn, paper_ids=paper_ids)
         rows = [dict(record) for record in records]
         rows.extend(dict(record) for record in relation_records)
-        claims_map = await _fetch_claims_by_paper(conn, list({row["paper_id"] for row in rows if row.get("paper_id")}))
+        paper_id_candidates = {row["paper_id"] for row in rows if row.get("paper_id")}
+        claims_map = await _fetch_claims_by_paper(conn, list(paper_id_candidates))
 
     allowed_types.add(center_detail.type)
     edge_allowed_types.add(center_detail.type)
@@ -2149,7 +2183,7 @@ async def get_graph_neighborhood(
         (_node_key(center_detail.type, center_detail.id)): center_detail
     }
     aggregated_edges = _aggregate_edges(
-        rows, edge_allowed_types, allowed_relations, min_conf, node_details
+        rows, edge_allowed_types, allowed_relations, min_conf, node_details, claims_map
     )
     response = _build_graph_response(
         aggregated_edges,
@@ -2177,7 +2211,7 @@ async def get_graph_neighborhood(
     combined_rows = fallback_rows + rows
     node_details = {(_node_key(center_detail.type, center_detail.id)): center_detail}
     fallback_edges = _aggregate_edges(
-        combined_rows, edge_allowed_types, allowed_relations, min_conf, node_details
+        combined_rows, edge_allowed_types, allowed_relations, min_conf, node_details, claims_map
 
     )
     fallback_response = _build_graph_response(

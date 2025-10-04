@@ -8,9 +8,10 @@ import logging
 import re
 import string
 from dataclasses import dataclass, asdict
-from typing import Any, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 from uuid import UUID
 
+<<<<<<< Updated upstream
 try:  # pragma: no cover - optional dependency guard
     import httpx
 except ImportError:  # pragma: no cover - optional dependency guard
@@ -21,8 +22,19 @@ try:  # pragma: no cover - optional dependency guard
 except ImportError:  # pragma: no cover - optional dependency guard
     Draft7Validator = None  # type: ignore
     JSONSchemaValidationError = None  # type: ignore
+=======
+>>>>>>> Stashed changes
 
 from pydantic import ValidationError
+
+if TYPE_CHECKING:
+    import httpx
+else:
+    try:
+        import httpx  # type: ignore[import]
+    except ImportError:  # pragma: no cover - optional dependency
+        httpx = None  # type: ignore[assignment]
+
 
 from app.core.config import settings
 from app.schemas.tier2 import (
@@ -300,11 +312,11 @@ LOW_INFO_BASE_TERMS = frozenset(
         "work",
     }
 )
-QUOTE_CHARS = '"\'“”‘’'
+QUOTE_CHARS = "\"'\u2018\u2019\u201c\u201d"
 
 MAX_ANTECEDENT_LOOKBACK = 5
 
-ANTECEDENT_QUOTE_RE = re.compile('["\'“”‘’]([^"\'“”‘’]{3,})["\'“”‘’]')
+ANTECEDENT_QUOTE_RE = re.compile(r'[\"\'\\u2018\\u2019\\u201c\\u201d]([^\"\'\\u2018\\u2019\\u201c\\u201d]{3,})[\"\'\\u2018\\u2019\\u201c\\u201d]')
 
 ANTECEDENT_CAPITAL_RE = re.compile(r'([A-Z][A-Za-z0-9]*(?:[\s-][A-Z][A-Za-z0-9]*){0,4})')
 
@@ -344,17 +356,17 @@ CITATION_LOW_INFO_TOKENS = frozenset(
 )
 
 
-def _normalize_whitespace(value: str) -> str:
+def _normalize_whitespace(value: Optional[str]) -> str:
     if not value:
         return ""
     return re.sub(r"\s+", " ", value).strip()
 
 
-def _normalize_graph_text(value: str) -> str:
+def _normalize_graph_text(value: Optional[str]) -> str:
     return _normalize_whitespace(value)
 
 
-def _strip_citation_fragments(value: str) -> str:
+def _strip_citation_fragments(value: Optional[str]) -> str:
     if not value:
         return ""
     stripped = value.strip()
@@ -373,7 +385,7 @@ def _strip_citation_fragments(value: str) -> str:
 GRAPH_PUNCTUATION = frozenset(set(string.punctuation) - {"-", "_", "/"})
 
 
-def _graph_value_passes_quality(value: str) -> bool:
+def _graph_value_passes_quality(value: Optional[str]) -> bool:
     if not value:
         return False
     if _is_low_info_text(value):
@@ -669,13 +681,13 @@ def _build_graph_metadata(
     return metadata
 
 
-def _normalize_key_text(value: str) -> str:
+def _normalize_key_text(value: Optional[str]) -> str:
     if not value:
         return ""
     return _normalize_whitespace(value).lower()
 
 
-def _strip_outer_quotes(value: str) -> str:
+def _strip_outer_quotes(value: Optional[str]) -> str:
     if not value:
         return ""
     stripped = value.strip()
@@ -887,6 +899,7 @@ class Tier2ValidationError(RuntimeError):
     """Raised when Tier-2 returns an invalid payload or cannot execute."""
 
 
+
     def formatted_text(self) -> str:
         lines: list[str] = []
         for idx, text in self.sentences:
@@ -916,7 +929,7 @@ async def run_tier2_structurer(
             base_summary,
             [],
             TripleExtractionResponse(),
-            raw_response=None,
+            raw_responses=None,
             stats=GuardrailStats(),
         )
 
@@ -968,7 +981,7 @@ async def run_tier2_structurer(
         base_summary,
         all_candidates,
         merged_payload,
-        raw_response=raw_responses if raw_responses else None,
+        raw_responses=raw_responses if raw_responses else None,
         stats=guard_stats,
     )
 
@@ -1529,7 +1542,7 @@ def _augment_summary(
     candidates: Sequence[dict[str, Any]],
     payload: TripleExtractionResponse,
     *,
-    raw_response: Optional[str],
+    raw_responses: Optional[dict[str, Optional[str]]] = None,
     stats: Optional[GuardrailStats] = None,
 ) -> dict[str, Any]:
     summary = copy.deepcopy(base_summary)
@@ -1549,8 +1562,8 @@ def _augment_summary(
         tier2_meta["warnings"] = list(payload.warnings)
     if payload.discarded:
         tier2_meta["discarded"] = list(payload.discarded)
-    if raw_response is not None:
-        tier2_meta["raw_response"] = raw_response
+    if raw_responses:
+        tier2_meta["raw_responses"] = {key: value for key, value in raw_responses.items() if value is not None}
     if stats is not None:
         tier2_meta["guardrails"] = stats.to_metadata()
     metadata["tier2"] = tier2_meta
@@ -1717,6 +1730,7 @@ def validate_triples(payload: dict[str, Any]) -> TripleExtractionResponse:
             )
         )
 
+<<<<<<< Updated upstream
     return TripleExtractionResponse(
         triples=sanitized_triples,
         warnings=list(response.warnings or []),
@@ -1841,6 +1855,12 @@ def _apply_repair_patch(context: RepairContext, patch: dict[str, Any]) -> dict[s
 async def _invoke_llm(
     messages: Sequence[dict[str, str]], *, temperature: Optional[float] = None
 ) -> str:
+=======
+async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
+    if httpx is None:  # type: ignore[name-defined]
+        raise Tier2ValidationError("Tier-2 HTTP client dependency 'httpx' is not installed")
+
+>>>>>>> Stashed changes
     model = settings.tier2_llm_model
     if not model:
         raise Tier2ValidationError("Tier-2 LLM model is not configured")
@@ -1877,6 +1897,7 @@ async def _invoke_llm(
     if settings.openai_organization:
         headers["OpenAI-Organization"] = settings.openai_organization
 
+<<<<<<< Updated upstream
     timeout_value = float(settings.tier2_llm_timeout_seconds or 120.0)
     timeout = httpx.Timeout(timeout_value)
     max_retries = max(1, int(getattr(settings, "tier2_llm_retry_attempts", 1) or 1))
@@ -1904,6 +1925,16 @@ async def _invoke_llm(
 
         if response is None:
             raise Tier2ValidationError("Tier-2 LLM request failed without response")
+=======
+    timeout = float(settings.tier2_llm_timeout_seconds or 120.0)
+    try:
+        assert httpx is not None  # type: ignore[name-defined]
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+    except httpx.HTTPError as exc:  # pragma: no cover - network failure path
+        raise Tier2ValidationError(f"Tier-2 LLM request failed: {exc}") from exc
+>>>>>>> Stashed changes
 
     data = response.json()
     try:
