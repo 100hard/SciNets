@@ -9,6 +9,7 @@ from typing import Any, Optional, Sequence
 from uuid import UUID
 
 from app.models.ontology import MethodRelationCreate, MethodRelationType, ResultCreate
+from app.schemas.tier3 import NumericMeasurementPayload
 from app.services.ontology_store import (
     append_method_relations,
     append_results,
@@ -16,6 +17,9 @@ from app.services.ontology_store import (
     ensure_method,
     ensure_metric,
     ensure_task,
+)
+from app.services.extraction_tier3_relations import (
+    maybe_apply_relation_llm_fallback,
 )
 TIER_NAME = "tier3_verifier"
 _BASE_CONFIDENCE_FALLBACK = 0.55
@@ -40,6 +44,13 @@ _MAX_MEASUREMENT_ABS_VALUE = 1_000.0
 _GRAPH_DATASET_RELATIONS = {"EVALUATED_ON", "USES"}
 _GRAPH_METRIC_RELATIONS = {"MEASURES", "REPORTS"}
 _GRAPH_TASK_RELATIONS = {"PROPOSES"}
+
+_PROVENANCE_PRIORS = {
+    "table": 0.1,
+    "rule": 0.05,
+    "spacy": 0.02,
+    "llm": -0.05,
+}
 
 _COREF_HEAD_PATTERN = re.compile(
     r"^(?:this|that|these|those|our|the|its|their|it|they)\b",
@@ -148,6 +159,7 @@ async def run_tier3_verifier(
     paper_id: UUID,
     *,
     base_summary: Optional[dict[str, Any]],
+    enable_relation_fallback: Optional[bool] = None,
 ) -> dict[str, Any]:
     if base_summary is None:
         raise ValueError("Tier-3 verifier requires Tier-1 and Tier-2 summaries")
@@ -162,8 +174,27 @@ async def run_tier3_verifier(
     tiers.update({1, 2, 3})
     summary["tiers"] = sorted(tiers)
 
+    fallback_candidates: list[dict[str, Any]] = []
+    fallback_meta: dict[str, Any] = {}
+    try:
+        fallback_candidates, fallback_meta = await maybe_apply_relation_llm_fallback(
+            paper_id,
+            summary,
+            enabled=enable_relation_fallback,
+        )
+    except Exception as exc:  # pragma: no cover - defensive guard
+        fallback_meta = {
+            "triggered": True,
+            "status": "error",
+            "errors": [str(exc)],
+        }
+
+    if fallback_candidates:
+        candidates_raw.extend(fallback_candidates)
+    if fallback_meta:
+        metadata["tier3_fallback"] = fallback_meta
+
     if not candidates_raw:
-        metadata = summary.setdefault("metadata", {})
         metadata["tier3"] = {
             "tier": TIER_NAME,
             "triple_count": 0,
@@ -189,7 +220,6 @@ async def run_tier3_verifier(
 
     persisted_counts = await _persist_structured_results(paper_id, wrapped)
 
-    metadata = summary.setdefault("metadata", {})
     tier3_meta = {
         "tier": TIER_NAME,
         "input_triples": input_count,
@@ -331,15 +361,26 @@ def _needs_coref_resolution(text: str) -> bool:
     return False
 
 
-def _attach_measurements(candidates: Sequence[CandidateWrapper]) -> None:
+def _attach_measurements(
+    candidates: Sequence[CandidateWrapper],
+    section_index: dict[str, dict[str, Any]],
+    rejection_counts: dict[str, int],
+) -> None:
     for wrapper in candidates:
-        measurement = _extract_numeric_measure(wrapper.data)
+        measurement, rejection, verification_info = _extract_numeric_measure(
+            wrapper.data, section_index
+        )
         wrapper.measurement = measurement
+        verification = wrapper.data.setdefault("verification", {})
+        if verification_info:
+            verification.update(verification_info)
         if measurement:
             measurement.compute_hash()
-            wrapper.data["normalization"] = measurement.to_payload()
-            verification = wrapper.data.setdefault("verification", {})
+            payload = NumericMeasurementPayload.model_validate(measurement.to_payload())
+            wrapper.data["normalization"] = payload.model_dump()
             verification["normalization_hash"] = measurement.normalization_hash
+        elif rejection:
+            rejection_counts[rejection] = rejection_counts.get(rejection, 0) + 1
         _update_graph_metadata(wrapper)
 
 
@@ -481,13 +522,19 @@ def _update_graph_metadata(wrapper: CandidateWrapper) -> None:
     )
 
 
-def _extract_numeric_measure(candidate: dict[str, Any]) -> Optional[NumericMeasurement]:
+def _extract_numeric_measure(
+    candidate: dict[str, Any],
+    section_index: dict[str, dict[str, Any]],
+) -> tuple[Optional[NumericMeasurement], Optional[str], dict[str, Any]]:
     texts: list[str] = []
     for key in ("object", "evidence"):
         value = candidate.get(key)
-        if isinstance(value, str):
+        if isinstance(value, str) and value.strip():
             texts.append(value)
+
     seen_metrics: set[str] = set()
+    verification: dict[str, Any] = {}
+
     for text in texts:
         for match in _NUMERIC_RESULT_RE.finditer(text):
             metric = _clean_metric(match.group("metric"))
@@ -499,6 +546,7 @@ def _extract_numeric_measure(candidate: dict[str, Any]) -> Optional[NumericMeasu
                 value_numeric = float(value_text_raw)
             except ValueError:
                 continue
+
             unit = _clean_unit(match.group("unit"))
             high_text = match.group("high")
             value_range: Optional[tuple[float, float]] = None
@@ -518,6 +566,7 @@ def _extract_numeric_measure(candidate: dict[str, Any]) -> Optional[NumericMeasu
             split = _extract_split(text)
             task = _extract_task(text)
             ci = _extract_ci(text)
+
             measurement = NumericMeasurement(
                 metric=metric,
                 value=value_numeric,
@@ -529,8 +578,39 @@ def _extract_numeric_measure(candidate: dict[str, Any]) -> Optional[NumericMeasu
                 ci=ci,
                 value_range=value_range,
             )
-            return measurement
-    return None
+
+            if value_max_raw:
+                try:
+                    value_max = float(value_max_raw)
+                except ValueError:
+                    value_max = None
+                else:
+                    low, high = sorted((value_numeric, value_max))
+                    measurement.value_range = (low, high)
+                    measurement.value_text = f"{value_raw}-{value_max_raw}"
+
+            aliases = _value_aliases(measurement)
+            verification["numeric_aliases"] = sorted(set(aliases))
+            match_found, matched_alias = _value_in_evidence(
+                candidate, measurement, section_index, aliases
+            )
+            verification["value_in_evidence"] = match_found
+            if matched_alias:
+                verification["matched_alias"] = matched_alias
+
+            if not match_found:
+                verification["numeric_status"] = "rejected"
+                verification["numeric_reason"] = "value_not_in_evidence"
+                return None, "value_not_in_evidence", verification
+
+            verification["numeric_status"] = "accepted"
+            verification["numeric_reason"] = "value_in_evidence"
+            verification["numeric_value"] = value_numeric
+            return measurement, None, verification
+
+    if texts:
+        verification.setdefault("numeric_status", "skipped")
+    return None, None, verification
 
 
 def _clean_metric(metric: str) -> str:
@@ -609,7 +689,7 @@ def _detect_table_matches(
                 if not cell_text:
                     continue
                 lowered = cell_text.lower()
-                if any(alias in cell_text for alias in aliases):
+                if any(alias.lower() in lowered for alias in aliases):
                     if measurement.metric and measurement.metric.lower() not in lowered:
                         # Allow matches even without metric mention but prefer those that do
                         pass
@@ -766,30 +846,38 @@ def _update_confidences(candidates: Sequence[CandidateWrapper]) -> None:
             components["provenance_floor"] = round(base_floor, 4)
 
         if wrapper.measurement is not None:
-            score = _apply_component(score, components, "json_valid", _JSON_VALID_BONUS)
+            score = _apply_adjustment(score, components, "json_valid", _JSON_VALID_BONUS)
 
         if wrapper.coref_resolved:
-            score = _apply_component(score, components, "coref_resolution", _COREF_BONUS)
+            score = _apply_adjustment(score, components, "coref_resolution", _COREF_BONUS)
         if wrapper.table_match:
-            score = _apply_component(score, components, "table_match", _TABLE_MATCH_BONUS)
+            score = _apply_adjustment(score, components, "table_match", _TABLE_MATCH_BONUS)
+
+        provenance_category = _provenance_category(wrapper.data, wrapper)
+        prior_adjustment = _PROVENANCE_PRIORS.get(provenance_category)
+        if prior_adjustment:
+            score = _apply_adjustment(
+                score, components, f"provenance_{provenance_category}", prior_adjustment
+            )
+        verification = data.setdefault("verification", {})
+        verification.setdefault("provenance_category", provenance_category)
 
         if wrapper.measurement and wrapper.measurement.normalization_hash:
             occurrences = normalization_counts.get(wrapper.measurement.normalization_hash, 0)
             if occurrences > 1:
                 bonus = min(_DUPLICATE_BONUS_STEP * (occurrences - 1), _DUPLICATE_BONUS_CAP)
-                score = _apply_component(score, components, "duplicate_support", bonus)
+                score = _apply_adjustment(score, components, "duplicate_support", bonus)
         else:
             signature = _triple_signature(data)
             occurrences = duplicate_counts.get(signature, 0)
             if occurrences > 1:
                 bonus = min(0.02 * (occurrences - 1), 0.06)
-                score = _apply_component(score, components, "duplicate_support", bonus)
+                score = _apply_adjustment(score, components, "duplicate_support", bonus)
 
         final_score = round(min(1.0, score), 4)
         components["final"] = final_score
         data["triple_conf"] = final_score
         data["confidence_components"] = components
-        verification = data.setdefault("verification", {})
         verification.setdefault("coref_resolved", wrapper.coref_resolved)
         verification.setdefault("table_match", wrapper.table_match)
 
@@ -954,6 +1042,22 @@ async def _candidate_to_result(
     relation_outcomes: list[tuple[MethodRelationCreate, tuple[Any, ...]]] = []
 
     if measurement:
+        verification_info = data.get("verification") or {}
+        numeric_status = verification_info.get("numeric_status")
+        numeric_reason = verification_info.get("numeric_reason")
+        verified_flag: Optional[bool] = None
+        if numeric_status == "accepted":
+            verified_flag = True
+        elif numeric_status == "rejected":
+            verified_flag = False
+        verifier_notes = None
+        if numeric_reason:
+            note_parts = [f"tier3:{numeric_reason}"]
+            matched_alias = verification_info.get("matched_alias")
+            if matched_alias:
+                note_parts.append(f"alias={matched_alias}")
+            verifier_notes = "; ".join(note_parts)
+
         result = ResultCreate(
             paper_id=paper_id,
             method_id=method_model.id,
@@ -966,6 +1070,8 @@ async def _candidate_to_result(
             is_sota=False,
             confidence=confidence_value,
             evidence=evidence,
+            verified=verified_flag,
+            verifier_notes=verifier_notes,
         )
 
         key = (
@@ -1081,11 +1187,53 @@ def _clean_entity_name(value: Optional[str]) -> Optional[str]:
     return cleaned or None
 
 
-def _apply_component(score: float, components: dict[str, float], key: str, bonus: float) -> float:
-    if bonus <= 0:
+def _apply_adjustment(
+    score: float, components: dict[str, float], key: str, delta: float
+) -> float:
+    if not delta:
         return score
-    components[key] = round(bonus, 4)
-    return min(1.0, score + bonus)
+    components[key] = round(delta, 4)
+    updated = score + delta
+    return max(0.0, min(1.0, updated))
+
+
+def _provenance_category(
+    candidate: dict[str, Any], wrapper: CandidateWrapper
+) -> str:
+    if wrapper.table_match:
+        return "table"
+
+    provenance_value = candidate.get("provenance")
+    tokens: list[str] = []
+
+    if isinstance(provenance_value, str):
+        tokens.append(provenance_value)
+    elif isinstance(provenance_value, dict):
+        for key in ("source", "tier", "type", "name", "provider"):
+            value = provenance_value.get(key)
+            if isinstance(value, str):
+                tokens.append(value)
+
+    tier_value = candidate.get("tier")
+    if isinstance(tier_value, str):
+        tokens.append(tier_value)
+
+    source_value = candidate.get("source")
+    if isinstance(source_value, str):
+        tokens.append(source_value)
+
+    for token in tokens:
+        lowered = token.lower()
+        if "table" in lowered:
+            return "table"
+        if "rule" in lowered:
+            return "rule"
+        if "spacy" in lowered or "ner" in lowered:
+            return "spacy"
+        if "llm" in lowered or "gpt" in lowered:
+            return "llm"
+
+    return "unknown"
 
 
 def _count_normalizations(candidates: Sequence[CandidateWrapper]) -> dict[str, int]:
