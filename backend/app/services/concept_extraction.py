@@ -62,33 +62,8 @@ class ExtractedConcept:
     type: Optional[str]
     description: Optional[str]
     score: float
-    occurrences: int
-    provenance: List["ConceptProvenance"] = field(default_factory=list)
-
-
-@dataclass
-class ConceptProvenance:
-    section_id: Optional[UUID]
-    char_start: Optional[int]
-    char_end: Optional[int]
-    snippet: Optional[str]
-    provider: str
-    provider_metadata: Dict[str, Any] = field(default_factory=dict)
-
-    def to_payload(self) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {
-            "section_id": str(self.section_id) if self.section_id else None,
-            "char_start": self.char_start,
-            "char_end": self.char_end,
-            "snippet": self.snippet,
-            "provider": self.provider,
-            "provider_metadata": {
-                key: value
-                for key, value in self.provider_metadata.items()
-                if value is not None
-            },
-        }
-        return payload
+    canonical_id: Optional[str] = None
+    canonical_score: Optional[float] = None
 
 
 @dataclass
@@ -98,11 +73,9 @@ class _Candidate:
     type: Optional[str]
     description: Optional[str]
     score: float
-    provenance: List[ConceptProvenance] = field(default_factory=list)
-
-    @property
-    def occurrences(self) -> int:
-        return len(self.provenance)
+    occurrences: int = 1
+    canonical_id: Optional[str] = None
+    canonical_score: Optional[float] = None
 
 
 @dataclass
@@ -156,8 +129,11 @@ def extract_concepts_from_sections(
             type=candidate.type,
             description=candidate.description,
             score=round(_final_score(candidate), 4),
-            occurrences=candidate.occurrences,
-            provenance=list(candidate.provenance),
+            canonical_id=candidate.canonical_id,
+            canonical_score=
+            round(candidate.canonical_score, 4)
+            if candidate.canonical_score is not None
+            else None,
         )
         for candidate in top_ranked
     ]
@@ -392,7 +368,18 @@ def _merge_candidate(registry: Dict[str, _Candidate], candidate: _Candidate) -> 
         registry[candidate.normalized] = candidate
         return
     existing.score += candidate.score
-    existing.provenance.extend(candidate.provenance)
+    existing.occurrences += candidate.occurrences
+    existing_canonical_score = (
+        existing.canonical_score if existing.canonical_score is not None else float("-inf")
+    )
+    candidate_canonical_score = (
+        candidate.canonical_score if candidate.canonical_score is not None else float("-inf")
+    )
+    if candidate.canonical_id and (
+        not existing.canonical_id or candidate_canonical_score > existing_canonical_score
+    ):
+        existing.canonical_id = candidate.canonical_id
+        existing.canonical_score = candidate.canonical_score
     if candidate.type and (not existing.type or existing.type == "keyword"):
         existing.type = candidate.type
     if candidate.description and (
@@ -460,7 +447,13 @@ def _extract_with_spacy_model(
     for section in sections:
         doc = model(section.content)
         for entity in getattr(doc, "ents", []):
-            name = _format_phrase(entity.text)
+            raw_name = entity.text
+            long_form = getattr(getattr(entity, "_", None), "long_form", None)
+            if long_form:
+                long_text = getattr(long_form, "text", None) or str(long_form)
+                if long_text:
+                    raw_name = long_text
+            name = _format_phrase(raw_name)
             normalized = _normalize_concept_name(name, config)
             if not normalized:
                 continue
@@ -468,33 +461,23 @@ def _extract_with_spacy_model(
             description = _compose_description(section, snippet)
             label = (entity.label_ or "entity").lower()
             score = 4.0 + min(len(normalized.split()), 4)
-            absolute_start, absolute_end = _resolve_absolute_span(
-                section, entity.start_char, entity.end_char
-            )
-            metadata = dict(provider_metadata or {})
-            if getattr(entity, "label_", None):
-                metadata.setdefault("label", entity.label_)
-            kb_id = getattr(entity, "kb_id_", None)
-            if kb_id:
-                metadata["kb_id"] = kb_id
-            metadata["relative_span"] = [entity.start_char, entity.end_char]
-            provenance = ConceptProvenance(
-                section_id=getattr(section, "id", None),
-                char_start=absolute_start,
-                char_end=absolute_end,
-                snippet=snippet,
-                provider=provider,
-                provider_metadata={
-                    key: value for key, value in metadata.items() if value is not None
-                },
-            )
+            kb_ents = getattr(getattr(entity, "_", None), "kb_ents", None)
+            canonical_id: Optional[str] = None
+            canonical_score: Optional[float] = None
+            if kb_ents:
+                kb_list = list(kb_ents)
+                if kb_list:
+                    best = max(kb_list, key=lambda item: item[1] if len(item) > 1 else 0.0)
+                    canonical_id = str(best[0])
+                    canonical_score = float(best[1]) if len(best) > 1 else None
             yield _Candidate(
                 name=name,
                 normalized=normalized,
                 type=label,
                 description=description,
                 score=score,
-                provenance=[provenance],
+                canonical_id=canonical_id,
+                canonical_score=canonical_score,
             )
 
 
@@ -862,5 +845,74 @@ def _load_spacy_model(model_name: str) -> Optional[Language]:
     except (OSError, IOError, ImportError):  # pragma: no cover - missing model
         _SPACY_MODEL_CACHE[model_name] = False
         return None
+    _configure_scispacy_components(model)
     _SPACY_MODEL_CACHE[model_name] = model
     return model
+
+
+def _configure_scispacy_components(model: Language) -> None:
+    try:
+        _ensure_abbreviation_detector(model)
+    except Exception:  # pragma: no cover - defensive guard
+        pass
+    try:
+        _ensure_entity_linker(model)
+    except Exception:  # pragma: no cover - defensive guard
+        pass
+
+
+def _ensure_abbreviation_detector(model: Language) -> None:
+    if "abbreviation_detector" in model.pipe_names:
+        return
+    try:
+        model.add_pipe("abbreviation_detector")
+        return
+    except Exception:
+        pass
+    try:
+        from scispacy.abbreviation import AbbreviationDetector  # type: ignore[import]
+    except ImportError:  # pragma: no cover - optional dependency
+        return
+    try:
+        abbreviation_pipe = AbbreviationDetector(model)
+        model.add_pipe(abbreviation_pipe, name="abbreviation_detector")
+    except Exception:  # pragma: no cover - best effort
+        return
+
+
+def _ensure_entity_linker(model: Language) -> None:
+    existing = set(model.pipe_names)
+    if {"scispacy_linker", "entity_linker"} & existing:
+        return
+    linker_added = False
+    try:
+        for linker_name in ("umls", "wikidata"):
+            try:
+                model.add_pipe(
+                    "scispacy_linker",
+                    last=True,
+                    config={"resolve_abbreviations": True, "linker_name": linker_name},
+                )
+                linker_added = True
+                break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    if linker_added:
+        return
+    try:
+        from scispacy.linking import EntityLinker  # type: ignore[import]
+    except ImportError:  # pragma: no cover - optional dependency
+        return
+    for linker_name in ("umls", "wikidata"):
+        try:
+            linker = EntityLinker(resolve_abbreviations=True, name=linker_name)
+        except Exception:  # pragma: no cover - missing resources
+            continue
+        for pipe_name in ("scispacy_linker", "entity_linker"):
+            try:
+                model.add_pipe(linker, name=pipe_name, last=True)
+                return
+            except Exception:
+                continue

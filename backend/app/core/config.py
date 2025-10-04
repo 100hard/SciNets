@@ -157,9 +157,8 @@ DEFAULT_FILLER_SUFFIXES = [
 ]
 
 DEFAULT_SCISPACY_MODELS = [
-    "en_core_sci_sm",
     "en_core_sci_md",
-    "en_core_web_sm",
+    "en_core_sci_lg",
 ]
 
 
