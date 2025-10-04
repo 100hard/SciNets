@@ -728,7 +728,7 @@ def test_merge_payloads_dedupes_entries() -> None:
     assert merged.discarded == ["Row 1", "Row 2", "Row 3"]
 
 
-def test_validate_payload_allows_single_value_spans() -> None:
+def test_validate_triples_allows_single_value_spans() -> None:
     payload = {
         "triples": [
             {
@@ -742,7 +742,7 @@ def test_validate_payload_allows_single_value_spans() -> None:
         ]
     }
 
-    validated = extraction_tier2._validate_payload(payload)
+    validated = extraction_tier2.validate_triples(payload)
     triple = validated.triples[0]
 
     assert triple.subject_span == [11, 11]
