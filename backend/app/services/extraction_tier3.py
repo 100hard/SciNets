@@ -32,6 +32,15 @@ _QUALITATIVE_RELATION_CONFIDENCE = 0.65
 _DATASET_RELATION_GUESSES = {"EVALUATED_ON", "USES", "TRAINS_ON", "TESTED_ON"}
 _TASK_RELATION_GUESSES = {"PROPOSES", "ADDRESSES", "SOLVES", "TARGETS"}
 
+_PROVENANCE_FLOORS = {
+    "tier3_dependency": 0.72,
+    "tier2_structurer": 0.64,
+    "tier2_llm": 0.6,
+    "tier3_llm": 0.58,
+}
+_TABLE_CONFIDENCE_FLOOR = 0.82
+_MAX_MEASUREMENT_ABS_VALUE = 1_000.0
+
 _GRAPH_DATASET_RELATIONS = {"EVALUATED_ON", "USES"}
 _GRAPH_METRIC_RELATIONS = {"MEASURES", "REPORTS"}
 _GRAPH_TASK_RELATIONS = {"PROPOSES"}
@@ -52,14 +61,9 @@ _COREF_NOUN_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _NUMERIC_RESULT_RE = re.compile(
-    r"""
-    (?P<metric>[A-Za-z][A-Za-z0-9\-/+ ]{1,40})
-    \s*(?:=|:)?\s*
-    (?P<value>-?\d+(?:\.\d+)?)
-    (?:\s*(?:-|–|to)\s*(?P<value_max>-?\d+(?:\.\d+)?))?
-    (?P<unit>%|\s*%|\s*pts|\s*pp)?
-    """,
-    re.IGNORECASE | re.VERBOSE,
+    r"(?P<metric>[A-Za-z][A-Za-z0-9\-/+ ]{1,40})\s*(?:=|:)?\s*(?P<value>-?\d+(?:\.\d+)?)(?P<unit>%|\s*%|\s*pts|\s*pp)?"
+    r"(?:\s*(?:-|to)\s*(?P<high>-?\d+(?:\.\d+)?)(?P<unit_high>%|\s*%|\s*pts|\s*pp)?)?",
+    re.IGNORECASE,
 )
 _DATASET_RE = re.compile(r"on\s+(?P<dataset>[A-Za-z0-9\-_/\. ]{2,80})", re.IGNORECASE)
 _SPLIT_RE = re.compile(r"\b(test|dev|validation|val|train)\b", re.IGNORECASE)
@@ -108,8 +112,10 @@ class NumericMeasurement:
             _normalize_identifier(self.task),
         ]
         if self.value_range:
-            parts.append(f"{self.value_range[0]:.6f}")
-            parts.append(f"{self.value_range[1]:.6f}")
+            low, high = self.value_range
+            parts.append(f"{low:.6f}:{high:.6f}")
+        else:
+            parts.append("")
         joined = "|".join(parts)
         self.normalization_hash = hashlib.blake2b(joined.encode("utf-8"), digest_size=16).hexdigest()
         return self.normalization_hash
@@ -133,10 +139,7 @@ class NumericMeasurement:
         if self.normalization_hash:
             payload["normalization_hash"] = self.normalization_hash
         if self.value_range:
-            payload["value_range"] = {
-                "minimum": self.value_range[0],
-                "maximum": self.value_range[1],
-            }
+            payload["range"] = [self.value_range[0], self.value_range[1]]
         return payload
 
 
@@ -162,10 +165,10 @@ async def run_tier3_verifier(
         raise ValueError("Tier-3 verifier requires Tier-1 and Tier-2 summaries")
 
     summary = copy.deepcopy(base_summary)
-    metadata = summary.setdefault("metadata", {})
-    candidates_raw = list(summary.get("triple_candidates") or [])
-    sections_raw = summary.get("sections") or []
-    tables_raw = summary.get("tables") or []
+    candidates_raw = base_summary.get("triple_candidates") or []
+    input_count = len(candidates_raw)
+    sections_raw = base_summary.get("sections") or []
+    tables_raw = base_summary.get("tables") or []
 
     tiers = set(summary.get("tiers") or [])
     tiers.update({1, 2, 3})
@@ -206,8 +209,8 @@ async def run_tier3_verifier(
 
     wrapped = _prepare_candidates(candidates_raw, section_index)
     _resolve_coreferences(wrapped)
-    rejection_counts: dict[str, int] = {}
-    _attach_measurements(wrapped, section_index, rejection_counts)
+    _attach_measurements(wrapped)
+    wrapped, rejections, rejection_counts = _validate_wrapped_candidates(wrapped)
     _detect_table_matches(wrapped, table_index)
     _update_confidences(wrapped)
 
@@ -219,13 +222,18 @@ async def run_tier3_verifier(
 
     tier3_meta = {
         "tier": TIER_NAME,
+        "input_triples": input_count,
         "triple_count": len(wrapped),
         "normalized": sum(1 for wrapper in wrapped if wrapper.measurement),
         "table_matches": sum(1 for wrapper in wrapped if wrapper.table_match),
         "coref_resolved": sum(1 for wrapper in wrapped if wrapper.coref_resolved),
     }
-    if rejection_counts:
-        tier3_meta["numeric_rejections"] = rejection_counts
+    if rejections:
+        tier3_meta["rejections"] = {
+            "count": len(rejections),
+            "reasons": rejection_counts,
+            "examples": rejections[:5],
+        }
     if persisted_counts.get("results"):
         tier3_meta["persisted_results"] = persisted_counts["results"]
     if persisted_counts.get("relations"):
@@ -376,6 +384,49 @@ def _attach_measurements(
         _update_graph_metadata(wrapper)
 
 
+def _validate_wrapped_candidates(
+    candidates: Sequence[CandidateWrapper],
+) -> tuple[list[CandidateWrapper], list[dict[str, Any]], dict[str, int]]:
+    valid: list[CandidateWrapper] = []
+    rejections: list[dict[str, Any]] = []
+    reason_counts: dict[str, int] = {}
+
+    for wrapper in candidates:
+        issues: list[str] = []
+        evidence = wrapper.data.get("evidence")
+        if not isinstance(evidence, str) or len(evidence.strip()) < 10:
+            issues.append("missing_evidence")
+
+        measurement = wrapper.measurement
+        if measurement:
+            if not _measurement_in_evidence(measurement, evidence or ""):
+                issues.append("value_not_in_evidence")
+            if (
+                measurement.value is not None
+                and abs(float(measurement.value)) > _MAX_MEASUREMENT_ABS_VALUE
+            ):
+                issues.append("value_out_of_bounds")
+            if measurement.value_range and not _measurement_range_in_evidence(
+                measurement, evidence or ""
+            ):
+                issues.append("range_not_in_evidence")
+
+        if issues:
+            rejections.append(
+                {
+                    "candidate_id": wrapper.data.get("candidate_id"),
+                    "reasons": issues,
+                }
+            )
+            for issue in issues:
+                reason_counts[issue] = reason_counts.get(issue, 0) + 1
+            continue
+
+        valid.append(wrapper)
+
+    return valid, rejections, reason_counts
+
+
 def _update_graph_metadata(wrapper: CandidateWrapper) -> None:
     metadata = wrapper.data.get("graph_metadata")
     if not isinstance(metadata, dict):
@@ -490,15 +541,27 @@ def _extract_numeric_measure(
             if not metric or metric.lower() in seen_metrics:
                 continue
             seen_metrics.add(metric.lower())
-
-            value_raw = match.group("value")
-            value_max_raw = match.group("value_max")
+            value_text_raw = match.group("value")
             try:
-                value_numeric = float(value_raw)
-            except (TypeError, ValueError):
+                value_numeric = float(value_text_raw)
+            except ValueError:
                 continue
 
             unit = _clean_unit(match.group("unit"))
+            high_text = match.group("high")
+            value_range: Optional[tuple[float, float]] = None
+            combined_value_text = value_text_raw
+            if high_text:
+                try:
+                    high_value = float(high_text)
+                except ValueError:
+                    high_value = None
+                if high_value is not None:
+                    low_value = value_numeric
+                    value_range = (min(low_value, high_value), max(low_value, high_value))
+                    combined_value_text = f"{value_text_raw}-{high_text}"
+                    if not unit:
+                        unit = _clean_unit(match.group("unit_high"))
             dataset = _extract_dataset(text)
             split = _extract_split(text)
             task = _extract_task(text)
@@ -507,12 +570,13 @@ def _extract_numeric_measure(
             measurement = NumericMeasurement(
                 metric=metric,
                 value=value_numeric,
-                value_text=value_raw,
+                value_text=combined_value_text,
                 unit=unit,
                 dataset=dataset,
                 split=split,
                 task=task,
                 ci=ci,
+                value_range=value_range,
             )
 
             if value_max_raw:
@@ -644,122 +708,115 @@ def _detect_table_matches(
             verification.setdefault("table_match", False)
 
 
-def _collect_evidence_texts(
-    candidate: dict[str, Any],
-    section_index: dict[str, dict[str, Any]],
-) -> list[str]:
-    texts: list[str] = []
-    evidence_snippet = candidate.get("evidence")
-    if isinstance(evidence_snippet, str) and evidence_snippet.strip():
-        texts.append(evidence_snippet)
-    spans = candidate.get("evidence_spans") or []
-    for span in spans:
-        if not isinstance(span, dict):
-            continue
-        section_id = span.get("section_id")
-        if not section_id:
-            continue
-        sentence_index = span.get("sentence_index")
-        if not isinstance(sentence_index, int):
-            continue
-        section_meta = section_index.get(str(section_id)) or {}
-        sentences = section_meta.get("sentences") or []
-        if 0 <= sentence_index < len(sentences):
-            sentence_entry = sentences[sentence_index]
-            if isinstance(sentence_entry, dict):
-                sentence_text = sentence_entry.get("text")
-            else:
-                sentence_text = sentence_entry
-            if isinstance(sentence_text, str) and sentence_text.strip():
-                texts.append(sentence_text)
-
-    # Deduplicate while preserving order
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for text in texts:
-        normalized = text.strip()
-        if normalized and normalized not in seen:
-            seen.add(normalized)
-            ordered.append(normalized)
-    return ordered
-
-
-def _alias_pattern(alias: str) -> Optional[re.Pattern[str]]:
-    cleaned = alias.strip().lower()
-    if not cleaned:
-        return None
-    try:
-        return re.compile(rf"(?<![\d.]){re.escape(cleaned)}(?![\d.])")
-    except re.error:
-        return None
-
-
-def _value_in_evidence(
-    candidate: dict[str, Any],
-    measurement: NumericMeasurement,
-    section_index: dict[str, dict[str, Any]],
-    aliases: Sequence[str],
-) -> tuple[bool, Optional[str]]:
-    texts = _collect_evidence_texts(candidate, section_index)
-    if not texts or not aliases:
-        return False, None
-
-    lowered_texts = [text.lower() for text in texts]
-    for alias in aliases:
-        pattern = _alias_pattern(alias)
-        if pattern is None:
-            continue
-        for text in lowered_texts:
-            if pattern.search(text):
-                return True, alias
-    return False, None
-
-
 def _value_aliases(measurement: NumericMeasurement) -> list[str]:
     aliases: set[str] = set()
+    base_text = (measurement.value_text or "").strip()
+    if base_text:
+        aliases.add(base_text)
 
-    def _format_value(value: float) -> str:
-        formatted = f"{value:.4f}".rstrip("0").rstrip(".")
-        return formatted or str(value)
-
-    if measurement.value_text:
-        aliases.add(measurement.value_text.strip())
-
-    aliases.add(_format_value(measurement.value))
-    if float(int(measurement.value)) == measurement.value:
-        aliases.add(str(int(measurement.value)))
+    try:
+        numeric = float(measurement.value)
+    except (TypeError, ValueError):
+        numeric = None
+    if numeric is not None:
+        aliases.add(_format_number(numeric))
+        if float(numeric).is_integer():
+            aliases.add(str(int(numeric)))
 
     if measurement.value_range:
         low, high = measurement.value_range
-        aliases.add(_format_value(low))
-        aliases.add(_format_value(high))
-        if float(int(low)) == low:
-            aliases.add(str(int(low)))
-        if float(int(high)) == high:
+        aliases.update(_range_aliases(low, high))
+        aliases.add(_format_number(low))
+        aliases.add(_format_number(high))
+        if float(high).is_integer():
             aliases.add(str(int(high)))
-        range_dash = f"{_format_value(low)}-{_format_value(high)}"
-        range_en_dash = range_dash.replace("-", "–")
-        aliases.add(range_dash)
-        aliases.add(range_en_dash)
 
-    expanded_aliases: set[str] = set()
+    unit = measurement.unit
+    expanded: set[str] = set()
     for alias in list(aliases):
         cleaned = alias.strip()
         if not cleaned:
             continue
-        expanded_aliases.add(cleaned)
-        if "." in cleaned:
-            expanded_aliases.add(cleaned.replace(".", ","))
+        expanded.add(cleaned)
+        expanded.add(cleaned.replace(".", ","))
+        expanded.add(cleaned.replace(" ", ""))
+        if unit and unit != "points":
+            expanded.add(f"{cleaned}{unit}")
+            expanded.add(f"{cleaned} {unit}")
+            if unit == "%":
+                expanded.add(f"{cleaned}%")
 
-    aliases = expanded_aliases
+    return [alias for alias in expanded if alias]
 
-    unit = measurement.unit or ""
-    if unit and unit.lower() not in {"points", ""}:
-        for alias in list(aliases):
-            aliases.add(f"{alias}{unit}")
-            aliases.add(f"{alias} {unit}")
 
-    return [alias for alias in aliases if alias]
+def _format_number(value: float) -> str:
+    formatted = f"{value:.4f}".rstrip("0").rstrip(".")
+    return formatted or "0"
+
+
+def _range_aliases(low: float, high: float) -> set[str]:
+    low_text = _format_number(low)
+    high_text = _format_number(high)
+    variations = {
+        f"{low_text}-{high_text}",
+        f"{low_text} - {high_text}",
+        f"{low_text}–{high_text}",
+        f"{low_text} – {high_text}",
+        f"{low_text} to {high_text}",
+    }
+    mirrored = {alias.replace("-", "–") for alias in variations}
+    variations.update(mirrored)
+    return {alias for alias in variations if alias}
+
+
+def _number_aliases(value: float, unit: Optional[str]) -> set[str]:
+    aliases: set[str] = {_format_number(value)}
+    if float(value).is_integer():
+        aliases.add(str(int(value)))
+    if unit and unit != "points":
+        updated: set[str] = set()
+        for alias in aliases:
+            updated.add(f"{alias}{unit}")
+            updated.add(f"{alias} {unit}")
+            if unit == "%":
+                updated.add(f"{alias}%")
+        aliases.update(updated)
+    aliases.update({alias.replace(".", ",") for alias in list(aliases) if "." in alias})
+    aliases.update({alias.replace(" ", "") for alias in list(aliases)})
+    return {alias.lower() for alias in aliases if alias}
+
+
+def _measurement_in_evidence(
+    measurement: NumericMeasurement, evidence: str
+) -> bool:
+    if not evidence:
+        return False
+    lowered = evidence.lower()
+    condensed = lowered.replace(" ", "")
+    for alias in _value_aliases(measurement):
+        lowered_alias = alias.lower()
+        if lowered_alias in lowered or lowered_alias.replace(" ", "") in condensed:
+            return True
+    return False
+
+
+def _measurement_range_in_evidence(
+    measurement: NumericMeasurement, evidence: str
+) -> bool:
+    if not measurement.value_range:
+        return True
+    if not evidence:
+        return False
+    lowered = evidence.lower()
+    condensed = lowered.replace(" ", "")
+    low, high = measurement.value_range
+    low_aliases = _number_aliases(low, measurement.unit)
+    high_aliases = _number_aliases(high, measurement.unit)
+    low_present = any(alias in lowered or alias.replace(" ", "") in condensed for alias in low_aliases)
+    high_present = any(
+        alias in lowered or alias.replace(" ", "") in condensed for alias in high_aliases
+    )
+    return low_present and high_present
 
 
 def _update_confidences(candidates: Sequence[CandidateWrapper]) -> None:
@@ -776,6 +833,17 @@ def _update_confidences(candidates: Sequence[CandidateWrapper]) -> None:
         score = max(0.0, min(1.0, score))
 
         components: dict[str, float] = {"tier2_base": round(score, 4)}
+
+        provenance = data.get("provenance")
+        source = ""
+        if isinstance(provenance, dict):
+            source = str(provenance.get("source") or "").lower()
+        base_floor = _PROVENANCE_FLOORS.get(source, _BASE_CONFIDENCE_FALLBACK)
+        if wrapper.table_match:
+            base_floor = max(base_floor, _TABLE_CONFIDENCE_FLOOR)
+        if score < base_floor:
+            score = base_floor
+            components["provenance_floor"] = round(base_floor, 4)
 
         if wrapper.measurement is not None:
             score = _apply_adjustment(score, components, "json_valid", _JSON_VALID_BONUS)

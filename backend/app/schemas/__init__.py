@@ -2,19 +2,19 @@
 
 from .tier2 import RelationGuess, TripleExtractionResponse, TriplePayload, TypeGuess
 from .tier3 import (
-    EvidenceSpanPayload,
-    NumericMeasurementPayload,
-    NumericRangePayload,
-    Tier3RelationCandidate,
+    RelationEvidenceSpan,
+    RelationExtractionResponse,
+    RelationTriplePayload,
+    get_relation_json_schema,
 )
 
 __all__ = [
+    "RelationEvidenceSpan",
+    "RelationExtractionResponse",
+    "RelationTriplePayload",
     "RelationGuess",
     "TripleExtractionResponse",
     "TriplePayload",
     "TypeGuess",
-    "EvidenceSpanPayload",
-    "NumericMeasurementPayload",
-    "NumericRangePayload",
-    "Tier3RelationCandidate",
+    "get_relation_json_schema",
 ]
