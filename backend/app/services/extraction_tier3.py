@@ -5,7 +5,7 @@ import hashlib
 from decimal import Decimal
 import re
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 from uuid import UUID
 
 from app.models.ontology import MethodRelationCreate, MethodRelationType, ResultCreate
@@ -165,6 +165,7 @@ async def run_tier3_verifier(
         raise ValueError("Tier-3 verifier requires Tier-1 and Tier-2 summaries")
 
     summary = copy.deepcopy(base_summary)
+    metadata = summary.setdefault("metadata", {})
     candidates_raw = base_summary.get("triple_candidates") or []
     input_count = len(candidates_raw)
     sections_raw = base_summary.get("sections") or []
@@ -174,13 +175,24 @@ async def run_tier3_verifier(
     tiers.update({1, 2, 3})
     summary["tiers"] = sorted(tiers)
 
+    relations_meta = metadata.get("tier3_relations")
+    fallback_already_triggered = False
+    if isinstance(relations_meta, Mapping):
+        fallback_info = relations_meta.get("fallback")
+        if isinstance(fallback_info, Mapping):
+            fallback_already_triggered = bool(fallback_info.get("triggered"))
+
+    fallback_flag: Optional[bool] = enable_relation_fallback
+    if fallback_already_triggered:
+        fallback_flag = False
+
     fallback_candidates: list[dict[str, Any]] = []
     fallback_meta: dict[str, Any] = {}
     try:
         fallback_candidates, fallback_meta = await maybe_apply_relation_llm_fallback(
             paper_id,
             summary,
-            enabled=enable_relation_fallback,
+            enabled=fallback_flag,
         )
     except Exception as exc:  # pragma: no cover - defensive guard
         fallback_meta = {

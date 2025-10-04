@@ -14,6 +14,7 @@ from pydantic import ValidationError
 
 from app.core.config import settings
 from app.models.triple_candidate import TripleCandidateRecord
+from app.services import extraction_tier2 as tier2
 from app.services.extraction_tier2 import (
     build_graph_metadata,
     extract_graph_entities,
@@ -39,6 +40,13 @@ except ImportError:  # pragma: no cover - optional dependency guard
 logger = logging.getLogger(__name__)
 
 TIER_NAME = "tier3_relations"
+FALLBACK_SOURCE = "tier3_relation_fallback"
+
+__all__ = [
+    "FALLBACK_SOURCE",
+    "maybe_apply_relation_llm_fallback",
+    "run_tier3_relations",
+]
 _RULE_CONFIDENCE = 0.72
 _REPORT_CONFIDENCE = 0.68
 _MIN_PHRASE_CHARS = 3
@@ -204,7 +212,203 @@ class CandidateData:
 async def run_tier3_relations(
     paper_id: UUID,
     *,
+    base_summary: dict[str, Any],
+) -> dict[str, Any]:
+    if not isinstance(base_summary, dict):
+        raise ValueError("Tier-3 relations require Tier-2 summary data")
+
+    summary = await _run_tier3_relations_core(
+        paper_id,
+        base_summary=base_summary,
+        persist=False,
+        enable_llm_fallback=False,
+    )
+
+    metadata = summary.setdefault("metadata", {})
+    tier_meta = metadata.setdefault("tier3_relations", {"tier": TIER_NAME})
+    tier_meta["existing_candidates"] = len(base_summary.get("triple_candidates") or [])
+
+    fallback_candidates: list[dict[str, Any]] = []
+    fallback_meta: dict[str, Any] = {}
+    try:
+        fallback_candidates, fallback_meta = await maybe_apply_relation_llm_fallback(
+            paper_id,
+            summary,
+        )
+    except Exception as exc:  # pragma: no cover - defensive guard
+        fallback_meta = {
+            "triggered": True,
+            "status": "error",
+            "errors": [str(exc)],
+        }
+
+    if fallback_candidates:
+        summary.setdefault("triple_candidates", [])
+        summary["triple_candidates"].extend(fallback_candidates)
+
+    tier_meta["fallback"] = fallback_meta
+    tier_meta["fallback_triggered"] = bool(fallback_meta.get("triggered"))
+    tier_meta["accepted_fallback"] = int(fallback_meta.get("accepted") or 0)
+    tier_meta["triple_candidates"] = len(summary.get("triple_candidates") or [])
+
+    persistence_payload = [
+        _record_from_candidate_dict(paper_id, candidate)
+        for candidate in summary.get("triple_candidates") or []
+    ]
+    try:
+        await replace_triple_candidates(paper_id, persistence_payload)
+    except Exception as exc:  # pragma: no cover - persistence failure should not break pipeline
+        logger.error(
+            "[tier3-rel] failed to persist triple candidates for paper %s: %s",
+            paper_id,
+            exc,
+        )
+        tier_meta["persistence_error"] = str(exc)
+
+    return summary
+
+
+async def maybe_apply_relation_llm_fallback(
+    paper_id: UUID,
+    summary: Mapping[str, Any],
+    *,
+    enabled: Optional[bool] = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    meta: dict[str, Any] = {
+        "triggered": False,
+        "status": "disabled",
+        "attempts": 0,
+        "accepted": 0,
+        "errors": [],
+    }
+
+    if enabled is None:
+        enabled = bool(getattr(settings, "tier3_relation_fallback_enabled", False))
+    if not enabled:
+        return [], meta
+
+    existing_candidates = list(summary.get("triple_candidates") or [])
+    min_rule = getattr(settings, "tier3_relation_fallback_min_rule_candidates", 0)
+    try:
+        min_rule_int = int(min_rule or 0)
+    except (TypeError, ValueError):
+        min_rule_int = 0
+    if min_rule_int > 0 and len(existing_candidates) >= min_rule_int:
+        meta.update({"status": "skipped", "reason": "threshold_met"})
+        return [], meta
+
+    contexts = _prepare_sentence_contexts(summary.get("sections") or [])
+    if not contexts:
+        meta.update({"triggered": True, "status": "skipped", "reason": "no_context"})
+        return [], meta
+
+    meta["triggered"] = True
+    selected_contexts = _select_fallback_contexts(contexts)
+    if not selected_contexts:
+        meta.update({"status": "skipped", "reason": "no_context"})
+        return [], meta
+
+    base_messages = _build_llm_messages(selected_contexts)
+    attempt_messages = list(base_messages)
+    max_attempts = max(1, int(getattr(settings, "tier3_relation_fallback_max_attempts", 1) or 1))
+    errors: list[str] = []
+    response: Optional[RelationExtractionResponse] = None
+    raw_content: str = ""
+    attempts = 0
+
+    for attempt in range(1, max_attempts + 1):
+        attempts = attempt
+        try:
+            raw_content = await tier2._invoke_llm(  # type: ignore[attr-defined]
+                attempt_messages,
+                temperature=getattr(settings, "tier3_relation_fallback_temperature", None),
+            )
+        except Exception as exc:  # pragma: no cover - defensive guard
+            errors.append(f"request:{exc}")
+            if attempt >= max_attempts:
+                meta.update({"status": "error", "attempts": attempts, "errors": errors})
+                return [], meta
+            attempt_messages = list(base_messages)
+            await asyncio.sleep(min(2.0, 0.5 * attempt))
+            continue
+
+        response, validation_error = _parse_llm_content(raw_content)
+        if response is not None:
+            break
+
+        errors.append(validation_error or "validation_error")
+        attempt_messages = _augment_messages_for_repair(
+            base_messages, raw_content or "", validation_error
+        )
+    else:
+        meta.update({"status": "invalid", "attempts": max_attempts, "errors": errors})
+        return [], meta
+
+    context_index = {
+        (context.section_id, context.sentence_index): context for context in contexts
+    }
+    seen_keys = {
+        make_triple_dedupe_key(
+            str(candidate.get("subject", "")),
+            str(candidate.get("relation", "")),
+            str(candidate.get("object", "")),
+            str(candidate.get("evidence", "")),
+            section_id=candidate.get("section_id"),
+            chunk_id=candidate.get("chunk_id"),
+        )
+        for candidate in existing_candidates
+    }
+
+    next_index = len(existing_candidates)
+    candidates, _records = _materialize_llm_triples(
+        paper_id,
+        response.triples,
+        context_index,
+        seen_keys,
+        next_index,
+        attempts,
+    )
+
+    meta["attempts"] = attempts
+    meta["errors"] = errors
+    if response.warnings:
+        meta["warnings"] = response.warnings
+    if response.discarded:
+        meta["discarded"] = response.discarded
+
+    if not candidates:
+        meta.update({"status": "empty", "accepted": 0})
+        return [], meta
+
+    retry_count = max(0, attempts - 1)
+    for candidate in candidates:
+        candidate["source"] = FALLBACK_SOURCE
+        candidate["tier"] = FALLBACK_SOURCE
+        candidate["retry_count"] = retry_count
+        candidate["fallback_attempt"] = attempts
+        candidate["provenance"] = FALLBACK_SOURCE
+
+    meta.update({"status": "succeeded", "accepted": len(candidates)})
+    return candidates, meta
+
+
+def _select_fallback_contexts(
+    contexts: Sequence[SentenceContext],
+) -> list[SentenceContext]:
+    try:
+        limit = int(getattr(settings, "tier3_relation_fallback_max_sentences", 20) or 20)
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, limit)
+    return list(contexts[:limit])
+
+
+async def _run_tier3_relations_core(
+    paper_id: UUID,
+    *,
     base_summary: Optional[dict[str, Any]],
+    persist: bool = True,
+    enable_llm_fallback: bool = True,
 ) -> dict[str, Any]:
     if base_summary is None:
         raise ValueError("Tier-3 relations require Tier-2 summary data")
@@ -336,7 +540,7 @@ async def run_tier3_relations(
     llm_candidates: List[dict[str, Any]] = []
     llm_records: List[TripleCandidateRecord] = []
 
-    if _should_invoke_llm(stats, contexts):
+    if enable_llm_fallback and _should_invoke_llm(stats, contexts):
         try:
             (
                 llm_candidates,
@@ -380,11 +584,16 @@ async def run_tier3_relations(
         tier_meta["llm_fallback"] = fallback_meta
 
     persistence_payload = existing_records + new_records + llm_records
-    try:
-        await replace_triple_candidates(paper_id, persistence_payload)
-    except Exception as exc:  # pragma: no cover - persistence failure should not break pipeline
-        logger.error("[tier3-rel] failed to persist triple candidates for paper %s: %s", paper_id, exc)
-        tier_meta["persistence_error"] = str(exc)
+    if persist:
+        try:
+            await replace_triple_candidates(paper_id, persistence_payload)
+        except Exception as exc:  # pragma: no cover - persistence failure should not break pipeline
+            logger.error(
+                "[tier3-rel] failed to persist triple candidates for paper %s: %s",
+                paper_id,
+                exc,
+            )
+            tier_meta["persistence_error"] = str(exc)
 
     return summary
 
