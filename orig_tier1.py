@@ -799,7 +799,7 @@ def _build_evidence(
     snippet = text[snippet_start:snippet_end].strip()
     return {
         "section_id": str(section.id) if section else None,
-        "char_range": [start, end],
+        "range": [start, end],
         "snippet": snippet,
         "page": section.page_number if section else None,
         "section_title": section.title if section else None,
@@ -931,7 +931,7 @@ def _find_entity_near_span(
         for evidence in entity.evidence:
             if evidence.get("section_id") != section_id:
                 continue
-            char_range = evidence.get("char_range")
+            char_range = evidence.get("range")
             if (
                 isinstance(char_range, list)
                 and len(char_range) == 2
