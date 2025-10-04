@@ -42,6 +42,13 @@ from app.schemas.tier2 import (
 )
 from app.models.triple_candidate import TripleCandidateRecord
 from app.services.triple_candidates import replace_triple_candidates
+from app.services.normalization import (
+    METRIC_SYNONYM_MAP,
+    extract_measurement,
+    infer_metric_from_text,
+    normalize_metric_name,
+)
+
 
 
 logger = logging.getLogger(__name__)
@@ -56,29 +63,6 @@ COMPARISON_GUIDANCE = (
     "Extract comparisons, ablations, and causal claims. Capture statements such as 'X improves Y', 'X vs. Y', 'with vs without', or reported gains/losses."
     " Infer implied metrics when terms like misclassification rate or error rate appear."
 )
-
-METRIC_SYNONYM_MAP: dict[str, dict[str, str]] = {
-    "misclassification rate": {
-        "normalized_metric": "Accuracy",
-        "variant": "1 - error",
-        "reason": "Misclassification rate implies complement of accuracy",
-    },
-    "error rate": {
-        "normalized_metric": "Accuracy",
-        "variant": "1 - error",
-        "reason": "Error rate implies complement of accuracy",
-    },
-    "word error rate": {
-        "normalized_metric": "WER",
-        "variant": "WER",
-        "reason": "Word error rate corresponds to WER metric",
-    },
-    "false positive rate": {
-        "normalized_metric": "Specificity",
-        "variant": "1 - FPR",
-        "reason": "False positive rate implies specificity complement",
-    },
-}
 
 
 TRIPLE_JSON_SCHEMA_TEMPLATE: dict[str, Any] = {
@@ -213,6 +197,7 @@ class GuardrailStats:
     fuzzy_matches: int = 0
     unmatched_evidence: int = 0
     metrics_inferred: int = 0
+    measurements_detected: int = 0
 
     def to_metadata(self) -> dict[str, int]:
         return asdict(self)
@@ -604,6 +589,8 @@ def _build_graph_metadata(
     evidence_text: str,
     section_id: Optional[str],
     triple_conf: float,
+    metric_inference: Optional[Mapping[str, Any]] = None,
+    measurement: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {"entities": {}, "pairs": []}
 
@@ -675,6 +662,21 @@ def _build_graph_metadata(
     }
 
     metadata["pairs"].append(pair_payload)
+
+    metric_entity = metadata["entities"].get("metric")
+    if metric_inference:
+        metadata["metric_inference"] = dict(metric_inference)
+        normalized_metric = metric_inference.get("normalized_metric")
+        if normalized_metric and isinstance(metric_entity, dict):
+            metric_entity.setdefault("canonical", normalized_metric)
+    elif isinstance(metric_entity, dict):
+        normalized_metric = normalize_metric_name(metric_entity.get("text"))
+        if normalized_metric:
+            metric_entity.setdefault("canonical", normalized_metric)
+
+    if measurement:
+        metadata["measurement"] = dict(measurement)
+
     return metadata
 
 
@@ -1282,20 +1284,6 @@ def _build_messages(contexts: Sequence[SectionContext], *, mode: str = "primary"
 
 
 
-def _infer_metric_from_evidence(
-    object_text: str,
-    evidence_text: str,
-) -> Optional[dict[str, str]]:
-    combined = f"{object_text} {evidence_text}".lower()
-    for synonym, info in METRIC_SYNONYM_MAP.items():
-        if synonym in combined:
-            return {
-                "normalized_metric": info["normalized_metric"],
-                "variant": info["variant"],
-                "reason": info["reason"],
-            }
-    return None
-
 
 def _build_candidates(
     payload: TripleExtractionResponse,
@@ -1412,10 +1400,17 @@ def _build_candidates(
         triple_conf = _coerce_float(triple.triple_conf, DEFAULT_TRIPLE_CONFIDENCE)
         schema_score = _coerce_float(triple.schema_match_score, DEFAULT_SCHEMA_SCORE)
 
-        metric_inference = _infer_metric_from_evidence(object_text, evidence_text)
+        metric_inference = infer_metric_from_text(object_text, evidence_text)
         if metric_inference:
             stats.metrics_inferred += 1
             triple_conf = round(max(0.0, triple_conf - METRIC_INFERENCE_CONF_PENALTY), 4)
+
+        measurement = extract_measurement(
+            f"{object_text} {evidence_text}",
+            metric_hint=metric_inference.get("normalized_metric") if metric_inference else None,
+        )
+        if measurement:
+            stats.measurements_detected += 1
 
         candidate: dict[str, Any] = {
             "candidate_id": f"{TIER_NAME}_{index:03d}",
@@ -1435,6 +1430,9 @@ def _build_candidates(
         }
         if metric_inference:
             candidate["metric_inference"] = {**metric_inference, "confidence_penalty": METRIC_INFERENCE_CONF_PENALTY}
+
+        if measurement:
+            candidate["measurement"] = measurement
 
         if candidate_section_id:
             candidate["section_id"] = candidate_section_id
@@ -1456,7 +1454,15 @@ def _build_candidates(
             evidence_text=evidence_text,
             section_id=candidate_section_id,
             triple_conf=triple_conf,
+            metric_inference=metric_inference,
+            measurement=measurement,
         )
+        if not graph_metadata and (metric_inference or measurement):
+            graph_metadata = {}
+            if metric_inference:
+                graph_metadata["metric_inference"] = dict(metric_inference)
+            if measurement:
+                graph_metadata["measurement"] = dict(measurement)
         if graph_metadata:
             candidate["graph_metadata"] = graph_metadata
 
@@ -2050,6 +2056,3 @@ async def _invoke_llm(
     if not isinstance(content, str) or not content.strip():
         raise Tier2ValidationError("Tier-2 LLM returned empty content")
     return content
-
-
-
