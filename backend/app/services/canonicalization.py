@@ -990,13 +990,24 @@ async def _update_aliases(
     updates: list[tuple[UUID, Any]] = []
     for record_id in computation.id_to_canonical.keys():
         aliases_list = computation.aliases_by_record.get(record_id, [])
-        normalized_aliases = [alias for alias in aliases_list if isinstance(alias, str) and alias]
+        seen: set[str] = set()
+        normalized_aliases: list[str] = []
+        for alias in aliases_list:
+            if not isinstance(alias, str):
+                continue
+            cleaned = alias.strip()
+            if not cleaned:
+                continue
+            if cleaned in seen:
+                continue
+            seen.add(cleaned)
+            normalized_aliases.append(cleaned)
         payload: Any
         jsonb_factory = getattr(pgproto, "Jsonb", None) if pgproto is not None else None
         if jsonb_factory is not None:
             payload = jsonb_factory(normalized_aliases)
         else:
-            payload = normalized_aliases
+            payload = json.dumps(normalized_aliases)
         updates.append((record_id, payload))
     if not updates:
         return

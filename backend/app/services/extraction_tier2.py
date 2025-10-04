@@ -8,7 +8,7 @@ import logging
 import re
 import string
 from dataclasses import dataclass, asdict
-from typing import Any, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 from uuid import UUID
 
 try:  # pragma: no cover - optional dependency guard
@@ -23,6 +23,15 @@ except ImportError:  # pragma: no cover - optional dependency guard
     JSONSchemaValidationError = None  # type: ignore
 
 from pydantic import ValidationError
+
+if TYPE_CHECKING:
+    import httpx
+else:
+    try:
+        import httpx  # type: ignore[import]
+    except ImportError:  # pragma: no cover - optional dependency
+        httpx = None  # type: ignore[assignment]
+
 
 from app.core.config import settings
 from app.schemas.tier2 import (
@@ -300,11 +309,11 @@ LOW_INFO_BASE_TERMS = frozenset(
         "work",
     }
 )
-QUOTE_CHARS = '"\'“”‘’'
+QUOTE_CHARS = "\"'\u2018\u2019\u201c\u201d"
 
 MAX_ANTECEDENT_LOOKBACK = 5
 
-ANTECEDENT_QUOTE_RE = re.compile('["\'“”‘’]([^"\'“”‘’]{3,})["\'“”‘’]')
+ANTECEDENT_QUOTE_RE = re.compile(r'[\"\'\\u2018\\u2019\\u201c\\u201d]([^\"\'\\u2018\\u2019\\u201c\\u201d]{3,})[\"\'\\u2018\\u2019\\u201c\\u201d]')
 
 ANTECEDENT_CAPITAL_RE = re.compile(r'([A-Z][A-Za-z0-9]*(?:[\s-][A-Z][A-Za-z0-9]*){0,4})')
 
@@ -344,17 +353,17 @@ CITATION_LOW_INFO_TOKENS = frozenset(
 )
 
 
-def _normalize_whitespace(value: str) -> str:
+def _normalize_whitespace(value: Optional[str]) -> str:
     if not value:
         return ""
     return re.sub(r"\s+", " ", value).strip()
 
 
-def _normalize_graph_text(value: str) -> str:
+def _normalize_graph_text(value: Optional[str]) -> str:
     return _normalize_whitespace(value)
 
 
-def _strip_citation_fragments(value: str) -> str:
+def _strip_citation_fragments(value: Optional[str]) -> str:
     if not value:
         return ""
     stripped = value.strip()
@@ -373,7 +382,7 @@ def _strip_citation_fragments(value: str) -> str:
 GRAPH_PUNCTUATION = frozenset(set(string.punctuation) - {"-", "_", "/"})
 
 
-def _graph_value_passes_quality(value: str) -> bool:
+def _graph_value_passes_quality(value: Optional[str]) -> bool:
     if not value:
         return False
     if _is_low_info_text(value):
@@ -669,13 +678,13 @@ def _build_graph_metadata(
     return metadata
 
 
-def _normalize_key_text(value: str) -> str:
+def _normalize_key_text(value: Optional[str]) -> str:
     if not value:
         return ""
     return _normalize_whitespace(value).lower()
 
 
-def _strip_outer_quotes(value: str) -> str:
+def _strip_outer_quotes(value: Optional[str]) -> str:
     if not value:
         return ""
     stripped = value.strip()
@@ -887,6 +896,7 @@ class Tier2ValidationError(RuntimeError):
     """Raised when Tier-2 returns an invalid payload or cannot execute."""
 
 
+
     def formatted_text(self) -> str:
         lines: list[str] = []
         for idx, text in self.sentences:
@@ -916,7 +926,7 @@ async def run_tier2_structurer(
             base_summary,
             [],
             TripleExtractionResponse(),
-            raw_response=None,
+            raw_responses=None,
             stats=GuardrailStats(),
         )
 
@@ -968,7 +978,7 @@ async def run_tier2_structurer(
         base_summary,
         all_candidates,
         merged_payload,
-        raw_response=raw_responses if raw_responses else None,
+        raw_responses=raw_responses if raw_responses else None,
         stats=guard_stats,
     )
 
@@ -1533,7 +1543,7 @@ def _augment_summary(
     candidates: Sequence[dict[str, Any]],
     payload: TripleExtractionResponse,
     *,
-    raw_response: Optional[str],
+    raw_responses: Optional[dict[str, Optional[str]]] = None,
     stats: Optional[GuardrailStats] = None,
 ) -> dict[str, Any]:
     summary = copy.deepcopy(base_summary)
@@ -1553,8 +1563,8 @@ def _augment_summary(
         tier2_meta["warnings"] = list(payload.warnings)
     if payload.discarded:
         tier2_meta["discarded"] = list(payload.discarded)
-    if raw_response is not None:
-        tier2_meta["raw_response"] = raw_response
+    if raw_responses:
+        tier2_meta["raw_responses"] = {key: value for key, value in raw_responses.items() if value is not None}
     if stats is not None:
         tier2_meta["guardrails"] = stats.to_metadata()
     metadata["tier2"] = tier2_meta
@@ -1720,6 +1730,126 @@ def validate_triples(payload: dict[str, Any]) -> TripleExtractionResponse:
                 }
             )
         )
+
+    return TripleExtractionResponse(
+        triples=sanitized_triples,
+        warnings=list(response.warnings or []),
+        discarded=list(response.discarded or []),
+    )
+
+
+def _describe_field_constraints(field: str) -> str:
+    schema = get_triple_json_schema()
+    triple_schema = schema.get("properties", {}).get("triples", {}).get("items", {})
+    properties = triple_schema.get("properties", {})
+    field_schema = properties.get(field, {})
+    parts: list[str] = []
+    field_type = field_schema.get("type")
+    if field_type:
+        parts.append(f"type={field_type}")
+    if "minLength" in field_schema:
+        parts.append(f"minLength={field_schema['minLength']}")
+    if "maxLength" in field_schema:
+        parts.append(f"maxLength={field_schema['maxLength']}")
+    if "enum" in field_schema:
+        parts.append("enum=" + ",".join(map(str, field_schema["enum"])))
+    if not parts:
+        return "must satisfy schema requirements"
+    return ", ".join(parts)
+
+
+def _build_repair_messages(
+    payload: dict[str, Any],
+    issues: Sequence[TripleSchemaIssue],
+) -> tuple[list[dict[str, str]], RepairContext, float]:
+    triples = payload.get("triples")
+    if not isinstance(triples, list):
+        raise Tier2ValidationError("Cannot repair payload without a triples array")
+
+    target_indexes = sorted(
+        {issue.index for issue in issues if issue.index is not None}
+    )
+    if not target_indexes:
+        raise Tier2ValidationError("No targeted triples available for repair")
+
+    lines: list[str] = []
+    lines.append(
+        "The prior triple extraction JSON had schema violations. Fix ONLY the listed "
+        "triples so they satisfy the schema."
+    )
+    lines.append(
+        "Return strict JSON with a 'triples' array containing corrected entries in the "
+        "same order as provided here."
+    )
+    lines.append(
+        "Do not include any other keys. Each corrected triple must satisfy the schema "
+        "constraints noted for its invalid fields."
+    )
+    lines.append("")
+
+    for index in target_indexes:
+        original = triples[index] if index < len(triples) else None
+        lines.append(f"Triple index {index}:")
+        if isinstance(original, Mapping):
+            lines.append(json.dumps(original, indent=2, ensure_ascii=False))
+        else:
+            lines.append(f"(missing or invalid entry: {original!r})")
+
+        for issue in issues:
+            if issue.index != index:
+                continue
+            field_desc = f"Field '{issue.field}'" if issue.field else "Entry"
+            constraint_desc = (
+                _describe_field_constraints(issue.field)
+                if issue.field
+                else "must be a valid triple object"
+            )
+            lines.append(
+                f"- {field_desc} violates: {issue.message}. Expected: {constraint_desc}."
+            )
+        lines.append("")
+
+    user_message = "\n".join(lines).strip()
+    repair_messages = [
+        {"role": "system", "content": _system_prompt()},
+        {"role": "user", "content": user_message},
+    ]
+
+    repair_temperature = max(0.0, settings.tier2_llm_temperature / 2.0)
+    context = RepairContext(
+        base_payload=copy.deepcopy(payload),
+        target_indexes=target_indexes,
+        issues=list(issues),
+    )
+
+    return repair_messages, context, repair_temperature
+
+
+def _apply_repair_patch(context: RepairContext, patch: dict[str, Any]) -> dict[str, Any]:
+    triples_patch = patch.get("triples")
+    if not isinstance(triples_patch, list):
+        raise Tier2ValidationError(
+            "Repair payload must include a 'triples' array with corrected entries"
+        )
+
+    if len(triples_patch) != len(context.target_indexes):
+        raise Tier2ValidationError(
+            "Repair payload triple count does not match requested fixes"
+        )
+
+    updated = copy.deepcopy(context.base_payload)
+    triples = updated.get("triples")
+    if not isinstance(triples, list):
+        raise Tier2ValidationError("Base payload missing triples array during repair")
+
+    for target_index, replacement in zip(context.target_indexes, triples_patch):
+        if target_index >= len(triples):
+            raise Tier2ValidationError(
+                f"Repair target index {target_index} is out of range"
+            )
+        triples[target_index] = replacement
+
+    return updated
 
     return TripleExtractionResponse(
         triples=sanitized_triples,

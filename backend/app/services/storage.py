@@ -5,19 +5,33 @@ import io
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import Final
+from typing import Any, Final, IO, Optional, TYPE_CHECKING, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
-from fastapi import UploadFile
-from minio import Minio
-from minio.error import S3Error
-from urllib3.exceptions import HTTPError as Urllib3HTTPError
+try:
+    from minio import Minio
+    from minio.error import S3Error
+except ImportError:  # pragma: no cover - optional runtime dependency
+    Minio = cast(Any, None)  # type: ignore[assignment]
+    class S3Error(Exception):
+        pass
+
+try:
+    from urllib3.exceptions import HTTPError as Urllib3HTTPError
+except ImportError:  # pragma: no cover - optional runtime dependency
+    Urllib3HTTPError = Exception  # type: ignore[assignment]
 
 from app.core.config import settings
 
+if TYPE_CHECKING:
+    from fastapi import UploadFile
+else:
+    try:
+        from fastapi import UploadFile
+    except ImportError:  # pragma: no cover - fallback for type checks
+        from starlette.datastructures import UploadFile  # type: ignore[import]
 
-from typing import Optional
 PDF_CONTENT_TYPES: Final[set[str]] = {"application/pdf"}
 MAX_FILE_SIZE_BYTES: Final[int] = 50 * 1024 * 1024  # 50 MB limit for MVP
 
@@ -32,6 +46,9 @@ class StorageUploadResult:
 
 
 def get_minio_client() -> Minio:
+    if Minio is None:
+        raise RuntimeError("MinIO client dependency is not installed")
+
     endpoint, secure = _normalize_minio_endpoint(
         settings.minio_endpoint, settings.minio_secure
     )
@@ -84,8 +101,9 @@ async def upload_pdf_to_storage(file: UploadFile) -> StorageUploadResult:
     if not _is_pdf(file):
         raise ValueError("Only PDF uploads are supported")
 
-    file.file.seek(0, io.SEEK_END)
-    size = int(file.file.tell())
+    file_stream = cast(IO[bytes], getattr(file, "file"))
+    file_stream.seek(0, io.SEEK_END)
+    size = int(file_stream.tell())
     if size == 0:
         raise ValueError("Uploaded file is empty")
     if size > MAX_FILE_SIZE_BYTES:
@@ -97,14 +115,14 @@ async def upload_pdf_to_storage(file: UploadFile) -> StorageUploadResult:
     file_name = Path(file.filename).name
 
     content_type = _resolve_content_type(file)
-    file.file.seek(0)
+    file_stream.seek(0)
 
     try:
         await asyncio.to_thread(
             client.put_object,
             bucket_name=bucket,
             object_name=object_name,
-            data=file.file,
+            data=file_stream,
             length=size,
             content_type=content_type,
         )
