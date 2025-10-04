@@ -5,6 +5,7 @@ from typing import Any, Optional, Sequence
 from uuid import UUID, uuid4
 
 from app.core.config import settings
+from app.schemas.tier3 import Tier3RelationCandidate
 from app.services import extraction_tier2 as tier2
 from app.services.extraction_tier2 import (
     Tier2ValidationError,
@@ -167,6 +168,8 @@ async def maybe_apply_relation_llm_fallback(
                 "candidate_id",
                 f"{FALLBACK_SOURCE}_{paper_id.hex}_{attempt}_{index:03d}_{uuid4().hex[:8]}",
             )
+            # Ensure Tier-3 specific payloads adhere to our schema contract.
+            Tier3RelationCandidate.model_validate(triple_dict)
             triples.append(triple_dict)
 
         meta.update(
