@@ -27,6 +27,7 @@ except ImportError:  # pragma: no cover - optional dependency
     TesseractError = Exception  # type: ignore[assignment]
     TesseractNotFoundError = Exception  # type: ignore[assignment]
 
+from app.core.config import settings
 from app.models.ontology import ConceptResolutionType
 from app.models.section import SectionCreate
 from app.services.canonicalization import canonicalize
@@ -209,7 +210,26 @@ async def parse_pdf_task(paper_id: UUID) -> None:
                 extraction_summary = await run_tier3_verifier(
                     paper_id,
                     base_summary=extraction_summary,
+                    enable_relation_fallback=settings.tier3_relation_fallback_enabled,
                 )
+                fallback_meta = (
+                    (extraction_summary or {}).get("metadata", {})
+                    .get("tier3_fallback")
+                )
+                if fallback_meta and fallback_meta.get("triggered"):
+                    status = fallback_meta.get("status")
+                    attempts = fallback_meta.get("attempts")
+                    accepted = fallback_meta.get("accepted")
+                    print(
+                        "[parse_pdf_task] Tier-3 LLM fallback triggered for paper "
+                        f"{paper_id}: status={status}, attempts={attempts}, accepted={accepted}"
+                    )
+                    errors = fallback_meta.get("errors") or []
+                    if errors:
+                        print(
+                            "[parse_pdf_task] Tier-3 fallback errors for paper "
+                            f"{paper_id}: {errors}"
+                        )
             except ValueError as exc:
                 print(
                     "[parse_pdf_task] Tier-3 verifier skipped for paper "

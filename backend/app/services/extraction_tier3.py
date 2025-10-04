@@ -17,6 +17,9 @@ from app.services.ontology_store import (
     ensure_metric,
     ensure_task,
 )
+from app.services.extraction_tier3_relations import (
+    maybe_apply_relation_llm_fallback,
+)
 TIER_NAME = "tier3_verifier"
 _BASE_CONFIDENCE_FALLBACK = 0.55
 _JSON_VALID_BONUS = 0.05
@@ -130,21 +133,42 @@ async def run_tier3_verifier(
     paper_id: UUID,
     *,
     base_summary: Optional[dict[str, Any]],
+    enable_relation_fallback: Optional[bool] = None,
 ) -> dict[str, Any]:
     if base_summary is None:
         raise ValueError("Tier-3 verifier requires Tier-1 and Tier-2 summaries")
 
     summary = copy.deepcopy(base_summary)
-    candidates_raw = base_summary.get("triple_candidates") or []
-    sections_raw = base_summary.get("sections") or []
-    tables_raw = base_summary.get("tables") or []
+    metadata = summary.setdefault("metadata", {})
+    candidates_raw = list(summary.get("triple_candidates") or [])
+    sections_raw = summary.get("sections") or []
+    tables_raw = summary.get("tables") or []
 
     tiers = set(summary.get("tiers") or [])
     tiers.update({1, 2, 3})
     summary["tiers"] = sorted(tiers)
 
+    fallback_candidates: list[dict[str, Any]] = []
+    fallback_meta: dict[str, Any] = {}
+    try:
+        fallback_candidates, fallback_meta = await maybe_apply_relation_llm_fallback(
+            paper_id,
+            summary,
+            enabled=enable_relation_fallback,
+        )
+    except Exception as exc:  # pragma: no cover - defensive guard
+        fallback_meta = {
+            "triggered": True,
+            "status": "error",
+            "errors": [str(exc)],
+        }
+
+    if fallback_candidates:
+        candidates_raw.extend(fallback_candidates)
+    if fallback_meta:
+        metadata["tier3_fallback"] = fallback_meta
+
     if not candidates_raw:
-        metadata = summary.setdefault("metadata", {})
         metadata["tier3"] = {
             "tier": TIER_NAME,
             "triple_count": 0,
@@ -169,7 +193,6 @@ async def run_tier3_verifier(
 
     persisted_counts = await _persist_structured_results(paper_id, wrapped)
 
-    metadata = summary.setdefault("metadata", {})
     tier3_meta = {
         "tier": TIER_NAME,
         "triple_count": len(wrapped),
