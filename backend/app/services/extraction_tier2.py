@@ -11,7 +11,6 @@ from dataclasses import dataclass, asdict
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Sequence
 from uuid import UUID
 
-<<<<<<< Updated upstream
 try:  # pragma: no cover - optional dependency guard
     import httpx
 except ImportError:  # pragma: no cover - optional dependency guard
@@ -22,8 +21,6 @@ try:  # pragma: no cover - optional dependency guard
 except ImportError:  # pragma: no cover - optional dependency guard
     Draft7Validator = None  # type: ignore
     JSONSchemaValidationError = None  # type: ignore
-=======
->>>>>>> Stashed changes
 
 from pydantic import ValidationError
 
@@ -1465,23 +1462,27 @@ def _build_candidates(
 
         candidates.append(candidate)
 
+        record_metadata: dict[str, Any] = {}
+        if isinstance(graph_metadata, Mapping):
+            record_metadata = dict(graph_metadata)
+
         persistence_payload.append(
             TripleCandidateRecord(
                 paper_id=paper_id,
                 section_id=candidate_section_id,
-                subject=subject_text,
-                relation=relation_text,
-                object=object_text,
+                subject=str(subject_text),
+                relation=str(relation_text),
+                object=str(object_text),
                 subject_span=subject_span,
                 object_span=object_span,
                 subject_type_guess=triple.subject_type_guess,
                 relation_type_guess=triple.relation_type_guess,
                 object_type_guess=triple.object_type_guess,
-                evidence=evidence_text,
+                evidence=str(evidence_text),
                 triple_conf=triple_conf,
                 schema_match_score=schema_score,
                 tier=TIER_NAME,
-                graph_metadata=graph_metadata,
+                graph_metadata=record_metadata,
             )
         )
 
@@ -1730,7 +1731,126 @@ def validate_triples(payload: dict[str, Any]) -> TripleExtractionResponse:
             )
         )
 
-<<<<<<< Updated upstream
+    return TripleExtractionResponse(
+        triples=sanitized_triples,
+        warnings=list(response.warnings or []),
+        discarded=list(response.discarded or []),
+    )
+
+
+def _describe_field_constraints(field: str) -> str:
+    schema = get_triple_json_schema()
+    triple_schema = schema.get("properties", {}).get("triples", {}).get("items", {})
+    properties = triple_schema.get("properties", {})
+    field_schema = properties.get(field, {})
+    parts: list[str] = []
+    field_type = field_schema.get("type")
+    if field_type:
+        parts.append(f"type={field_type}")
+    if "minLength" in field_schema:
+        parts.append(f"minLength={field_schema['minLength']}")
+    if "maxLength" in field_schema:
+        parts.append(f"maxLength={field_schema['maxLength']}")
+    if "enum" in field_schema:
+        parts.append("enum=" + ",".join(map(str, field_schema["enum"])))
+    if not parts:
+        return "must satisfy schema requirements"
+    return ", ".join(parts)
+
+
+def _build_repair_messages(
+    payload: dict[str, Any],
+    issues: Sequence[TripleSchemaIssue],
+) -> tuple[list[dict[str, str]], RepairContext, float]:
+    triples = payload.get("triples")
+    if not isinstance(triples, list):
+        raise Tier2ValidationError("Cannot repair payload without a triples array")
+
+    target_indexes = sorted(
+        {issue.index for issue in issues if issue.index is not None}
+    )
+    if not target_indexes:
+        raise Tier2ValidationError("No targeted triples available for repair")
+
+    lines: list[str] = []
+    lines.append(
+        "The prior triple extraction JSON had schema violations. Fix ONLY the listed "
+        "triples so they satisfy the schema."
+    )
+    lines.append(
+        "Return strict JSON with a 'triples' array containing corrected entries in the "
+        "same order as provided here."
+    )
+    lines.append(
+        "Do not include any other keys. Each corrected triple must satisfy the schema "
+        "constraints noted for its invalid fields."
+    )
+    lines.append("")
+
+    for index in target_indexes:
+        original = triples[index] if index < len(triples) else None
+        lines.append(f"Triple index {index}:")
+        if isinstance(original, Mapping):
+            lines.append(json.dumps(original, indent=2, ensure_ascii=False))
+        else:
+            lines.append(f"(missing or invalid entry: {original!r})")
+
+        for issue in issues:
+            if issue.index != index:
+                continue
+            field_desc = f"Field '{issue.field}'" if issue.field else "Entry"
+            constraint_desc = (
+                _describe_field_constraints(issue.field)
+                if issue.field
+                else "must be a valid triple object"
+            )
+            lines.append(
+                f"- {field_desc} violates: {issue.message}. Expected: {constraint_desc}."
+            )
+        lines.append("")
+
+    user_message = "\n".join(lines).strip()
+    repair_messages = [
+        {"role": "system", "content": _system_prompt()},
+        {"role": "user", "content": user_message},
+    ]
+
+    repair_temperature = max(0.0, settings.tier2_llm_temperature / 2.0)
+    context = RepairContext(
+        base_payload=copy.deepcopy(payload),
+        target_indexes=target_indexes,
+        issues=list(issues),
+    )
+
+    return repair_messages, context, repair_temperature
+
+
+def _apply_repair_patch(context: RepairContext, patch: dict[str, Any]) -> dict[str, Any]:
+    triples_patch = patch.get("triples")
+    if not isinstance(triples_patch, list):
+        raise Tier2ValidationError(
+            "Repair payload must include a 'triples' array with corrected entries"
+        )
+
+    if len(triples_patch) != len(context.target_indexes):
+        raise Tier2ValidationError(
+            "Repair payload triple count does not match requested fixes"
+        )
+
+    updated = copy.deepcopy(context.base_payload)
+    triples = updated.get("triples")
+    if not isinstance(triples, list):
+        raise Tier2ValidationError("Base payload missing triples array during repair")
+
+    for target_index, replacement in zip(context.target_indexes, triples_patch):
+        if target_index >= len(triples):
+            raise Tier2ValidationError(
+                f"Repair target index {target_index} is out of range"
+            )
+        triples[target_index] = replacement
+
+    return updated
+
     return TripleExtractionResponse(
         triples=sanitized_triples,
         warnings=list(response.warnings or []),
@@ -1855,12 +1975,6 @@ def _apply_repair_patch(context: RepairContext, patch: dict[str, Any]) -> dict[s
 async def _invoke_llm(
     messages: Sequence[dict[str, str]], *, temperature: Optional[float] = None
 ) -> str:
-=======
-async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
-    if httpx is None:  # type: ignore[name-defined]
-        raise Tier2ValidationError("Tier-2 HTTP client dependency 'httpx' is not installed")
-
->>>>>>> Stashed changes
     model = settings.tier2_llm_model
     if not model:
         raise Tier2ValidationError("Tier-2 LLM model is not configured")
@@ -1897,7 +2011,6 @@ async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
     if settings.openai_organization:
         headers["OpenAI-Organization"] = settings.openai_organization
 
-<<<<<<< Updated upstream
     timeout_value = float(settings.tier2_llm_timeout_seconds or 120.0)
     timeout = httpx.Timeout(timeout_value)
     max_retries = max(1, int(getattr(settings, "tier2_llm_retry_attempts", 1) or 1))
@@ -1925,16 +2038,6 @@ async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
 
         if response is None:
             raise Tier2ValidationError("Tier-2 LLM request failed without response")
-=======
-    timeout = float(settings.tier2_llm_timeout_seconds or 120.0)
-    try:
-        assert httpx is not None  # type: ignore[name-defined]
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(url, json=payload, headers=headers)
-            response.raise_for_status()
-    except httpx.HTTPError as exc:  # pragma: no cover - network failure path
-        raise Tier2ValidationError(f"Tier-2 LLM request failed: {exc}") from exc
->>>>>>> Stashed changes
 
     data = response.json()
     try:

@@ -94,12 +94,9 @@ async def replace_triple_candidates(
                         candidate.triple_conf,
                         candidate.schema_match_score,
                         candidate.tier,
-<<<<<<< Updated upstream
                         candidate.graph_metadata,
                         candidate.provenance,
-=======
-                        _encode_json(candidate.graph_metadata or {}),
->>>>>>> Stashed changes
+
                     )
                 )
 

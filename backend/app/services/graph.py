@@ -4,7 +4,7 @@ import copy
 import json
 from collections import defaultdict
 from itertools import combinations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, TypeVar, cast
 from uuid import UUID, uuid4, uuid5
@@ -137,16 +137,20 @@ _RESULT_SELECT = """
         m.name AS method_name,
         m.aliases AS method_aliases,
         m.description AS method_description,
+        m.metadata AS method_metadata,
         d.name AS dataset_name,
         d.aliases AS dataset_aliases,
         d.description AS dataset_description,
+        d.metadata AS dataset_metadata,
         mt.name AS metric_name,
         mt.aliases AS metric_aliases,
         mt.description AS metric_description,
         mt.unit AS metric_unit,
+        mt.metadata AS metric_metadata,
         t.name AS task_name,
         t.aliases AS task_aliases,
-        t.description AS task_description
+        t.description AS task_description,
+        t.metadata AS task_metadata
     FROM results r
     JOIN papers p ON p.id = r.paper_id
     LEFT JOIN methods m ON r.method_id = m.id
@@ -175,16 +179,20 @@ _METHOD_RELATION_SELECT = """
         m.name AS method_name,
         m.aliases AS method_aliases,
         m.description AS method_description,
+        m.metadata AS method_metadata,
         d.name AS dataset_name,
         d.aliases AS dataset_aliases,
         d.description AS dataset_description,
+        d.metadata AS dataset_metadata,
         NULL::text AS metric_name,
         NULL::jsonb AS metric_aliases,
         NULL::text AS metric_description,
         NULL::text AS metric_unit,
+        NULL::jsonb AS metric_metadata,
         t.name AS task_name,
         t.aliases AS task_aliases,
-        t.description AS task_description
+        t.description AS task_description,
+        t.metadata AS task_metadata
     FROM method_relations mr
     JOIN papers p ON p.id = mr.paper_id
     LEFT JOIN methods m ON mr.method_id = m.id
@@ -238,7 +246,7 @@ class EdgeInstance:
     value_text: Optional[str] = None
     is_sota: Optional[bool] = None
     verified: Optional[bool] = None
-    claims: Sequence[Mapping[str, Any]] = ()
+    claims: Sequence[Mapping[str, Any]] = field(default_factory=tuple)
     statement_metadata: Optional[Dict[str, Any]] = None
 
 
