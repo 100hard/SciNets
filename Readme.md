@@ -1,3 +1,112 @@
+Hybrid KG Strategy: Implementation Plan (Superset of MVP)
+
+Overview
+
+- Goal: generate insightful, reliable knowledge graphs from research papers across domains by combining robust structure parsers, scientific NER/RE models, schema-enforced LLM extraction, and strong normalization/aggregation.
+- Why hybrid: off‑the‑shelf components (PDF parsing, base NER) provide stability; custom schema, validation, normalization, and graph aggregation provide scientific nuance and control.
+
+Architecture (at a glance)
+
+- Parsing: Docling or GROBID for structure (sections/tables/figures) with PyMuPDF fallback and optional OCR.
+- Entities: spaCy en_core_web_trf + SciSpaCy (default en_core_sci_md for lighter builds) with UMLS/Wikidata linking and domain lexicons.
+- Relations: supervised patterns (DependencyMatcher/weakly‑supervised rules) plus LLM fallback with JSON‑schema guardrails.
+- Validation: schema‑first JSON validation + deterministic verifier for numeric values and units.
+- Aggregation: alias resolution, measurement/effect size computation, confidence scoring, provenance.
+- Feedback: human‑in‑the‑loop queue for low‑confidence or conflicting triples.
+
+Phased Plan
+
+0) Foundations (Infra & Data)
+
+- Confirm DB schema supports: concept tables (method/dataset/metric/task with `aliases jsonb`), `result` (paper_id, method_id, dataset_id, metric_id, split, value_numeric, unit, evidence jsonb, confidence), `claim`, `paper_relation`, and `concept_resolution` for alias merges.
+- Add migrations if missing; ensure GIN indexes on `aliases`, btree on `(paper_id, dataset_id, metric_id, method_id)`.
+- Add object storage buckets (MinIO) and vector DB (Qdrant) for semantic search.
+
+1) Robust Parsing Tier
+
+- Integrate Docling or GROBID (preferred) for section and table/figure extraction; keep PyMuPDF as fast path and OCR as last resort.
+- Persist sections with offsets: `page`, `char_start/char_end`, `title`, `text`, and capture table cell coordinates.
+- Evidence anchors: standardize evidence JSON as `[ {section_id, page, range:[s,e], snippet, source:'section|table'} ]`.
+
+2) Entity Extraction Tier (NER + Linking)
+
+- Register two NLP pipelines with lazy load:
+  - General: spaCy `en_core_web_trf` for syntax.
+  - Scientific: SciSpaCy `en_core_sci_md` (switchable to `lg` in prod) with abbreviation detector + linker (UMLS/Wikidata).
+- Add lexicon/rule support per domain (datasets, metrics, tasks, common methods) to boost recall and precision.
+- Produce entity candidates with span, label, canonical hint, and model provenance.
+
+3) Relation Extraction Tier (Rules + Model + LLM Fallback)
+
+- Implement DependencyMatcher patterns for proposes/evaluates_on/reports; apply over sentence spans.
+- Optional: integrate a lightweight SciBERT/DyGIE++‑style finetuned model for RE (kept modular).
+- LLM fallback: extract relations in hard cases using function‑calling with strict JSON schema; retry/repair loop on invalid output.
+
+4) Schema‑First Validation & Deterministic Verifier
+
+- Define JSON Schemas for entity and relation candidates; validate all LLM outputs before persistence.
+- Deterministic checks:
+  - Parse numbers and units; normalize percentages and ranges.
+  - Cross‑check reported values appear in evidence text/table cells; lower confidence or reject otherwise.
+  - Sanity bounds (e.g., accuracy ≤ 100, BLEU ≤ 100) with verifier notes.
+
+5) Normalization, Ontology, and Canonicalization
+
+- Normalize metric names/units to canonical forms; map abbreviations via SciSpaCy linker and curated maps.
+- Implement canonical resolver: score = 0.6·embedding(sim) + 0.4·string(sim); union‑find to merge aliases; persist in `concept_resolution` and backfill `aliases`.
+
+6) Graph Aggregation & Insight Enrichment
+
+- Edge metadata includes `measurement` (value, unit), `split`, `confidence`, and `provenance` (tiers/models).
+- Compute effect sizes across methods/datasets when multiple numeric outcomes exist; surface in `metadata.insights`.
+- Rank edges by confidence × recency × evidence strength; expose to frontend.
+
+7) Human‑in‑the‑Loop QA
+
+- Add a review queue for low‑confidence items or conflicts; enable quick approve/edit/merge with provenance.
+- Track reviewer overrides and feed lexicon/resolver improvements.
+
+8) APIs and Jobs
+
+- Endpoints: `/api/papers`, `/api/extract/{paper_id}?tiers=1,2,3`, `/api/graph/overview`, `/api/graph/neighborhood`, `/api/claims`.
+- Background tasks: parsing, NLP, validation, resolver, aggregation; idempotent and resumable via content hashes.
+
+9) Observability & Evaluation
+
+- Structured logs with timings per tier and rejection reasons; metrics for coverage/precision.
+- Small gold set per domain; evaluate precision/recall for entities/relations and numeric correctness.
+
+10) Build & Ops Notes
+
+- Default to SciSpaCy `en_core_sci_md` to avoid large downloads; allow switching to `lg` in production.
+- Cache model wheels if possible; increase pip retries/timeouts; or prebuild a base image with models.
+- Make LLM base URL/model configurable; fail fast on missing keys.
+
+Acceptance Checks
+
+- Upload → parse → extract → graph endpoints complete within expected time on sample PDFs.
+- Graph edges show measurements/effect sizes with evidence snippets and confidence.
+- No schema drift errors; invalid LLM outputs are repaired or rejected.
+
+Run Guide (docker compose)
+
+- Build backend with retries and optional smaller SciSpaCy model:
+  - `docker compose build backend`
+  - If model downloads are flaky, rebuild or pre‑pull models; consider switching to `en_core_sci_md` in requirements.
+- Start services:
+  - `docker compose up -d`
+- Health and quick smoke:
+  - `curl http://localhost:8000/health`
+  - Upload a PDF via UI or `POST /api/papers/upload`, then `POST /api/extract/{paper_id}?tiers=1,2,3`, then query `/api/graph/overview`.
+
+What Changed vs. Previous Plan
+
+- Explicit hybrid approach with robust parsing, schema‑enforced LLM use, deterministic numeric verification, and effect‑size aggregation.
+- Reduced build fragility by recommending SciSpaCy `md` default and wheel caching.
+- Clear acceptance gates and evaluation harness for quality tracking.
+
+—
+
 3-Week MVP Implementation Plan (Final, Improved)
 
 Project: Research Paper Knowledge Graph Platform
