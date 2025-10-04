@@ -1005,7 +1005,7 @@ def _collect_mentions_for_entity(
         surface = evidence.get("mention_text") if isinstance(evidence, dict) else None
         if not isinstance(surface, str) or not surface.strip():
             surface = entity.name
-        char_range = evidence.get("char_range") if isinstance(evidence, dict) else None
+        char_range = evidence.get("range") if isinstance(evidence, dict) else None
         start: Optional[int] = None
         end: Optional[int] = None
         if isinstance(char_range, (list, tuple)):
@@ -1491,7 +1491,7 @@ def _build_evidence(
     mention_text = text[safe_start:safe_end].strip()
     return {
         "section_id": str(section.id) if section else None,
-        "char_range": [start, end],
+        "range": [start, end],
         "snippet": snippet,
         "page": section.page_number if section else None,
         "section_title": section.title if section else None,
@@ -1624,7 +1624,7 @@ def _find_entity_near_span(
         for evidence in entity.evidence:
             if evidence.get("section_id") != section_id:
                 continue
-            char_range = evidence.get("char_range")
+            char_range = evidence.get("range")
             if (
                 isinstance(char_range, list)
                 and len(char_range) == 2

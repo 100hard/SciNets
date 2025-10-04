@@ -5,12 +5,15 @@ import io
 import re
 import statistics
 from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Sequence, Tuple
 from uuid import UUID
 
 import fitz  # type: ignore[import]
 
-from typing import Optional
+try:  # pragma: no cover - optional dependency
+    from docling.document_converter import DocumentConverter  # type: ignore[import]
+except ImportError:  # pragma: no cover - optional dependency
+    DocumentConverter = None  # type: ignore[assignment]
 try:  # pragma: no cover - optional dependency
     from PIL import Image
 except ImportError:  # pragma: no cover - optional dependency
@@ -32,6 +35,7 @@ from app.services.embeddings import embed_paper_sections
 from app.services.extraction_tier1 import run_tier1_extraction
 from app.services.extraction_tier2 import Tier2ValidationError, run_tier2_structurer
 from app.services.extraction_tier3 import run_tier3_verifier
+from app.services.extraction_tier3_relations import run_tier3_relations
 from app.services.papers import get_paper, update_paper_status
 from app.services.sections import replace_sections
 from app.services.storage import download_pdf_from_storage
@@ -203,6 +207,22 @@ async def parse_pdf_task(paper_id: UUID) -> None:
 
         if extraction_summary is not None:
             try:
+                extraction_summary = await run_tier3_relations(
+                    paper_id,
+                    base_summary=extraction_summary,
+                )
+            except ValueError as exc:
+                print(
+                    "[parse_pdf_task] Tier-3 relations skipped for paper "
+                    f"{paper_id}: {exc}"
+                )
+            except Exception as exc:  # pragma: no cover - defensive logging
+                print(
+                    f"[parse_pdf_task] Tier-3 relations failed for paper {paper_id}: {exc}"
+                )
+
+        if extraction_summary is not None:
+            try:
                 extraction_summary = await run_tier3_verifier(
                     paper_id,
                     base_summary=extraction_summary,
@@ -235,6 +255,10 @@ async def parse_pdf_task(paper_id: UUID) -> None:
 
 
 def _parse_pdf_bytes(pdf_bytes: bytes) -> List[ParsedSection]:
+    docling_sections = _parse_with_docling(pdf_bytes)
+    if docling_sections:
+        return docling_sections
+
     extraction = _extract_document(pdf_bytes)
     if not extraction.full_text or not extraction.full_text.strip():
         raise RuntimeError("Unable to extract text from PDF")
@@ -250,6 +274,229 @@ def _parse_pdf_bytes(pdf_bytes: bytes) -> List[ParsedSection]:
         raise RuntimeError("Failed to segment PDF content into sections")
 
     return sections
+
+
+def _parse_with_docling(pdf_bytes: bytes) -> List[ParsedSection]:
+    if not pdf_bytes or DocumentConverter is None:
+        return []
+
+    try:
+        converter = DocumentConverter()  # type: ignore[call-arg]
+    except Exception as exc:  # pragma: no cover - optional dependency initialisation issues
+        print(f"[parse_pdf_task] Docling unavailable: {exc}")
+        return []
+
+    convert = getattr(converter, "convert", None)
+    if not callable(convert):
+        print("[parse_pdf_task] Docling converter missing callable convert()")
+        return []
+
+    try:
+        document = convert(pdf_bytes)
+    except TypeError:
+        try:
+            document = convert(io.BytesIO(pdf_bytes))
+        except Exception as exc:  # pragma: no cover - docling API variance
+            print(f"[parse_pdf_task] Docling conversion failed: {exc}")
+            return []
+    except Exception as exc:  # pragma: no cover - docling runtime errors
+        print(f"[parse_pdf_task] Docling conversion raised error: {exc}")
+        return []
+
+    resolved = _resolve_docling_document(document)
+    sections = _collect_docling_sections(resolved)
+    return sections
+
+
+def _resolve_docling_document(document: Any) -> Any:
+    if document is None:
+        return None
+
+    for attr in ("document", "structured_document", "content", "root"):
+        value = getattr(document, attr, None)
+        if value is not None:
+            return value
+    return document
+
+
+def _collect_docling_sections(document: Any) -> List[ParsedSection]:
+    nodes = list(_iter_docling_nodes(document))
+    section_candidates: List[tuple[Optional[str], str, Optional[int]]] = []
+    seen_titles: set[tuple[str, Optional[int]]] = set()
+
+    for node in nodes:
+        if not _is_docling_section(node):
+            continue
+        text = _coerce_docling_text(node)
+        if not text:
+            continue
+        title = _coerce_docling_title(node)
+        page_number = _coerce_docling_page(node)
+        key = (title or "", page_number)
+        if key in seen_titles and len(text) < 40:
+            continue
+        seen_titles.add(key)
+        section_candidates.append((title, text, page_number))
+
+    if not section_candidates:
+        return []
+
+    parsed: List[ParsedSection] = []
+    cursor = 0
+    for index, (title, text, page_number) in enumerate(section_candidates, start=1):
+        cleaned_text = sanitize_text(text)
+        if not cleaned_text:
+            continue
+        cleaned_title = sanitize_text(title) if title else None
+        if not cleaned_title:
+            cleaned_title = f"Section {index}"
+        start = cursor
+        end = start + len(cleaned_text)
+        parsed.append(
+            ParsedSection(
+                title=cleaned_title,
+                content=cleaned_text,
+                char_start=start,
+                char_end=end,
+                page_number=_normalize_page_number(page_number),
+            )
+        )
+        cursor = end + 2
+
+    return parsed
+
+
+def _iter_docling_nodes(root: Any) -> Iterable[Any]:
+    if root is None:
+        return []
+
+    stack: list[Any] = [root]
+    visited: set[int] = set()
+
+    while stack:
+        node = stack.pop()
+        if node is None:
+            continue
+        marker = id(node)
+        if marker in visited:
+            continue
+        visited.add(marker)
+        yield node
+
+        children = list(_docling_children(node))
+        for child in reversed(children):
+            stack.append(child)
+
+
+def _docling_children(node: Any) -> Iterable[Any]:
+    if node is None:
+        return []
+
+    for attr in (
+        "children",
+        "sections",
+        "subsections",
+        "items",
+        "elements",
+        "nodes",
+        "parts",
+    ):
+        value = getattr(node, attr, None)
+        if isinstance(value, Sequence):
+            return [item for item in value if item is not None]
+    return []
+
+
+def _is_docling_section(node: Any) -> bool:
+    if node is None:
+        return False
+
+    type_hints = []
+    for attr in ("category", "kind", "type", "node_type", "role"):
+        raw = getattr(node, attr, None)
+        if isinstance(raw, str):
+            type_hints.append(raw.lower())
+    if any("section" in hint or "heading" in hint for hint in type_hints):
+        return True
+
+    if getattr(node, "title", None) and (_coerce_docling_text(node) or _docling_children(node)):
+        return True
+
+    return False
+
+
+def _coerce_docling_text(node: Any) -> Optional[str]:
+    for attr in ("text", "content", "body", "value", "plain_text"):
+        value = getattr(node, attr, None)
+        if isinstance(value, str) and value.strip():
+            return value
+
+    paragraphs = getattr(node, "paragraphs", None)
+    if isinstance(paragraphs, Sequence):
+        parts: List[str] = []
+        for paragraph in paragraphs:
+            if isinstance(paragraph, str) and paragraph.strip():
+                parts.append(paragraph.strip())
+            else:
+                text = getattr(paragraph, "text", None)
+                if isinstance(text, str) and text.strip():
+                    parts.append(text.strip())
+        if parts:
+            return "\n\n".join(parts)
+
+    return None
+
+
+def _coerce_docling_title(node: Any) -> Optional[str]:
+    for attr in ("title", "heading", "name", "label"):
+        value = getattr(node, attr, None)
+        if isinstance(value, str) and value.strip():
+            return value
+
+    metadata = getattr(node, "metadata", None)
+    if isinstance(metadata, dict):
+        title = metadata.get("title") or metadata.get("heading")
+        if isinstance(title, str) and title.strip():
+            return title
+
+    return None
+
+
+def _coerce_docling_page(node: Any) -> Optional[int]:
+    for attr in ("page_number", "page", "page_index"):
+        value = getattr(node, attr, None)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, Sequence) and value:
+            first = value[0]
+            if isinstance(first, int):
+                return first
+
+    metadata = getattr(node, "metadata", None)
+    if isinstance(metadata, dict):
+        page_meta = metadata.get("page") or metadata.get("page_number")
+        if isinstance(page_meta, int):
+            return page_meta
+        if isinstance(page_meta, Sequence) and page_meta:
+            first = page_meta[0]
+            if isinstance(first, int):
+                return first
+
+    return None
+
+
+def _normalize_page_number(page_number: Optional[int]) -> Optional[int]:
+    if page_number is None:
+        return None
+    if isinstance(page_number, int) and page_number >= 0:
+        return page_number
+    try:
+        coerced = int(page_number)  # type: ignore[arg-type]
+        if coerced >= 0:
+            return coerced
+    except Exception:
+        return None
+    return None
 
 
 def _extract_document(pdf_bytes: bytes) -> DocumentExtraction:

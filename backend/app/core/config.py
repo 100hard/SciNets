@@ -303,6 +303,26 @@ class Settings(BaseSettings):
             "missing or spans cannot be resolved."
         )
     )
+    # Tier-3 LLM
+    tier3_llm_model: Optional[str] = Field(default=None)
+    tier3_llm_base_url: Optional[str] = Field(default=None)
+    tier3_llm_completion_path: Optional[str] = Field(default=None)
+    tier3_llm_temperature: float = Field(default=0.1)
+    tier3_llm_top_p: float = Field(default=1.0)
+    tier3_llm_timeout_seconds: float = Field(default=120.0)
+    tier3_llm_retry_attempts: int = Field(default=2)
+    tier3_llm_force_json: bool = Field(default=True)
+    tier3_llm_max_output_tokens: int = Field(default=4096)
+    tier3_llm_max_triples: int = Field(default=20)
+    tier3_llm_max_sentences: int = Field(default=40)
+    tier3_llm_min_rule_hits: int = Field(default=1)
+    tier3_llm_prompt: str = Field(
+        default=(
+            "You review scientific paper sentences and recover missing relations between "
+            "methods, datasets, tasks, and reported metrics. Only emit relations that are "
+            "explicitly supported by the supplied evidence sentences."
+        )
+    )
     concept_extraction: ConceptExtractionSettings = Field(
         default_factory=ConceptExtractionSettings
     )
