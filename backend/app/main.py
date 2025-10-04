@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.db.database import test_postgres_connection
+from app.services.embeddings import ensure_vector_store_ready
 from app.services.storage import ensure_bucket_exists
 from app.api.admin import router as admin_router
 from app.api.concepts import router as concepts_router
@@ -69,6 +70,10 @@ def create_app() -> FastAPI:
         print("Ensuring MinIO bucket exists...")
         await ensure_bucket_exists(settings.minio_bucket_papers)
         print("MinIO bucket check completed")
+
+        print("Ensuring Qdrant collection exists...")
+        await ensure_vector_store_ready()
+        print("Qdrant collection ready")
 
         print("Starting database migrations...")
         await apply_migrations()

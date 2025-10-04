@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import List
 from uuid import UUID, uuid4
 
@@ -12,8 +13,13 @@ from app.models.paper import Paper
 from app.models.section import SectionCreate
 from app.services.concept_extraction import (
     _Candidate,
+    ConceptProvenance,
     _apply_method_post_filters,
     _infer_concept_type,
+    ConceptExtractionRuntimeConfig,
+    FILLER_PREFIXES,
+    FILLER_SUFFIXES,
+    STOPWORDS,
     extract_and_store_concepts,
     extract_concepts_from_sections,
 )
@@ -26,6 +32,7 @@ def anyio_backend() -> str:
 
 def _make_section(content: str, *, title: str | None = None) -> SectionCreate:
     return SectionCreate(
+        id=uuid4(),
         paper_id=uuid4(),
         title=title,
         content=content,
@@ -86,6 +93,68 @@ def test_extract_concepts_from_sections_deduplicates_variants() -> None:
     assert len(mpnn_mentions) == 1
 
     assert any("cora dataset" in name for name in lowered)
+    assert all(concept.provenance for concept in concepts)
+    for concept in concepts:
+        provenance = concept.provenance[0]
+        assert provenance.provider in {"heuristic", "scispacy", "domain_ner"}
+        assert provenance.snippet
+
+
+def test_scispacy_candidates_capture_linker_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    sections = [
+        _make_section(
+            "We evaluate GNN models alongside their expanded form Graph Neural Network",
+            title="Abbreviations",
+        )
+    ]
+
+    class DummyEntity:
+        def __init__(self, text: str, start: int, end: int) -> None:
+            self.text = text
+            self.label_ = "METHOD"
+            self.start_char = start
+            self.end_char = end
+            self._ = SimpleNamespace(
+                kb_ents=[("UMLS:C12345", 0.87), ("WIKIDATA:Q1", 0.12)],
+                long_form=SimpleNamespace(text="Graph Neural Network"),
+            )
+
+    class DummyModel:
+        def __call__(self, text: str) -> SimpleNamespace:
+            start = text.index("GNN")
+            end = start + len("GNN")
+            entity = DummyEntity(text[start:end], start, end)
+            return SimpleNamespace(ents=[entity])
+
+    dummy_model = DummyModel()
+
+    monkeypatch.setattr(
+        "app.services.concept_extraction._load_scispacy_model",
+        lambda _: dummy_model,
+    )
+
+    config = ConceptExtractionRuntimeConfig(
+        max_concepts=5,
+        max_tokens=6,
+        stopwords=set(STOPWORDS),
+        filler_prefixes=set(FILLER_PREFIXES),
+        filler_suffixes=set(FILLER_SUFFIXES),
+        provider_priority=("scispacy",),
+        scispacy_models=("dummy",),
+        domain_model=None,
+        llm_prompt=None,
+        entity_hints={},
+        domain_key=None,
+    )
+
+    concepts = extract_concepts_from_sections(sections, config=config)
+    assert concepts
+    linked = [concept for concept in concepts if concept.canonical_id == "UMLS:C12345"]
+    assert linked
+    resolved = linked[0]
+    assert resolved.canonical_score is not None
+    assert resolved.canonical_score == pytest.approx(0.87)
+    assert resolved.name == "Graph Neural Network"
 
 
 def test_biology_domain_labels_organisms() -> None:
@@ -163,12 +232,14 @@ async def test_extract_and_store_concepts_persists_and_links(monkeypatch: pytest
 
     stored_models: List[Concept] = []
     captured_payloads: List[str] = []
+    captured_metadata: List[dict] = []
 
     async def fake_replace_concepts(
         _: UUID, models: List[ConceptCreate]
     ) -> List[Concept]:
-        nonlocal stored_models, captured_payloads
+        nonlocal stored_models, captured_payloads, captured_metadata
         captured_payloads = [model.name for model in models]
+        captured_metadata = [model.metadata for model in models]
         now = datetime.now(timezone.utc)
         stored_models = [
             Concept(
@@ -177,6 +248,7 @@ async def test_extract_and_store_concepts_persists_and_links(monkeypatch: pytest
                 name=model.name,
                 type=model.type,
                 description=model.description,
+                metadata=model.metadata,
                 created_at=now,
                 updated_at=now,
             )
@@ -214,6 +286,16 @@ async def test_extract_and_store_concepts_persists_and_links(monkeypatch: pytest
     lower_payloads = [name.lower() for name in captured_payloads]
     assert any("deep learning" in name for name in lower_payloads)
     assert any("cifar" in name for name in lower_payloads)
+    assert captured_metadata
+    for payload in captured_metadata:
+        assert payload["provenance"]
+        first = payload["provenance"][0]
+        assert first["provider"]
+        assert first["snippet"]
+        assert first["section_id"]
+        assert first["char_start"] is not None
+        assert first["char_end"] is not None
+        assert payload["occurrences"] >= 1
 
 
 def test_infer_concept_type_uses_strong_method_cues() -> None:
@@ -224,12 +306,21 @@ def test_infer_concept_type_uses_strong_method_cues() -> None:
 
 
 def test_method_post_filter_demotes_noisy_phrases() -> None:
+    provenance = ConceptProvenance(
+        section_id=None,
+        char_start=0,
+        char_end=10,
+        snippet="sample snippet",
+        provider="heuristic",
+        provider_metadata={"strategy": "token_phrase"},
+    )
     noisy = _Candidate(
         name="The Proposed Multi Stage Training Approach",
         normalized="proposed multi stage training approach",
         type="method",
         description=None,
         score=1.0,
+        provenance=[provenance],
     )
     corroborated = _Candidate(
         name="Baseline Transformer Model",
@@ -237,7 +328,7 @@ def test_method_post_filter_demotes_noisy_phrases() -> None:
         type="method",
         description=None,
         score=1.0,
-        occurrences=2,
+        provenance=[provenance, provenance],
     )
 
     registry = {
@@ -245,7 +336,21 @@ def test_method_post_filter_demotes_noisy_phrases() -> None:
         corroborated.normalized: corroborated,
     }
 
-    _apply_method_post_filters(registry)
+    config = ConceptExtractionRuntimeConfig(
+        max_concepts=5,
+        max_tokens=6,
+        stopwords=set(STOPWORDS),
+        filler_prefixes=set(FILLER_PREFIXES),
+        filler_suffixes=set(FILLER_SUFFIXES),
+        provider_priority=("scispacy",),
+        scispacy_models=("dummy",),
+        domain_model=None,
+        llm_prompt=None,
+        entity_hints={},
+        domain_key=None,
+    )
+
+    _apply_method_post_filters(registry, config)
 
     assert registry[noisy.normalized].type == "keyword"
     assert registry[corroborated.normalized].type == "method"
