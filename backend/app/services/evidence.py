@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any, List, Optional
 from uuid import UUID
 
@@ -9,30 +8,17 @@ from app.models.evidence import Evidence, EvidenceCreate
 from app.utils.text_sanitize import sanitize_text
 
 
-from typing import Optional
-def _encode_metadata(metadata: Optional[dict[str, Any]]) -> Optional[str]:
-    if metadata is None:
-        return None
-    return json.dumps(metadata, ensure_ascii=False)
-
-
-def _decode_metadata(value: Any) -> Optional[dict[str, Any]]:
+def _normalize_optional_mapping(value: Any) -> Optional[dict[str, Any]]:
     if value is None:
         return None
     if isinstance(value, dict):
-        return value
-    if isinstance(value, str):
-        value = value.strip()
-        if not value:
-            return None
-        try:
-            decoded = json.loads(value)
-        except json.JSONDecodeError:
-            return None
-        if isinstance(decoded, dict):
-            return decoded
-        return None
+        return dict(value)
     return None
+
+
+def _normalize_provenance(value: Any) -> dict[str, Any]:
+    normalized = _normalize_optional_mapping(value)
+    return normalized or {}
 
 
 async def list_evidence(
@@ -63,7 +49,9 @@ async def list_evidence(
         placeholder_index += 1
 
     query = """
-        SELECT id, paper_id, section_id, concept_id, relation_id, snippet, vector_id, embedding_model, score, metadata, created_at, updated_at
+        SELECT id, paper_id, section_id, concept_id, relation_id, snippet,
+               vector_id, embedding_model, score, metadata, provenance,
+               created_at, updated_at
         FROM evidence
         WHERE {conditions}
         ORDER BY created_at DESC
@@ -77,10 +65,11 @@ async def list_evidence(
     async with pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
 
-    normalized = []
+    normalized: List[Evidence] = []
     for row in rows:
         payload = dict(row)
-        payload["metadata"] = _decode_metadata(payload.get("metadata"))
+        payload["metadata"] = _normalize_optional_mapping(payload.get("metadata"))
+        payload["provenance"] = _normalize_provenance(payload.get("provenance"))
         normalized.append(Evidence(**payload))
     return normalized
 
@@ -88,14 +77,27 @@ async def list_evidence(
 async def create_evidence(data: EvidenceCreate) -> Evidence:
     pool = get_pool()
     query = """
-        INSERT INTO evidence (paper_id, section_id, concept_id, relation_id, snippet, vector_id, embedding_model, score, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id, paper_id, section_id, concept_id, relation_id, snippet, vector_id, embedding_model, score, metadata, created_at, updated_at
+        INSERT INTO evidence (
+            paper_id,
+            section_id,
+            concept_id,
+            relation_id,
+            snippet,
+            vector_id,
+            embedding_model,
+            score,
+            metadata,
+            provenance
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id, paper_id, section_id, concept_id, relation_id, snippet,
+                  vector_id, embedding_model, score, metadata, provenance,
+                  created_at, updated_at
     """
-    metadata = _encode_metadata(data.metadata)
     snippet = sanitize_text(data.snippet)
     if not snippet:
         raise ValueError("Evidence snippet cannot be empty after sanitization")
+
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             query,
@@ -107,17 +109,13 @@ async def create_evidence(data: EvidenceCreate) -> Evidence:
             data.vector_id,
             data.embedding_model,
             data.score,
-            metadata,
+            data.metadata,
+            data.provenance or {},
         )
     payload = dict(row)
-    payload["metadata"] = _decode_metadata(payload.get("metadata"))
+    payload["metadata"] = _normalize_optional_mapping(payload.get("metadata"))
+    payload["provenance"] = _normalize_provenance(payload.get("provenance"))
     return Evidence(**payload)
-
-
-async def delete_evidence_for_paper(paper_id: UUID) -> None:
-    pool = get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("DELETE FROM evidence WHERE paper_id = $1", paper_id)
 
 
 async def delete_evidence_for_paper(paper_id: UUID) -> None:
@@ -129,7 +127,9 @@ async def delete_evidence_for_paper(paper_id: UUID) -> None:
 async def get_evidence(evidence_id: UUID) -> Optional[Evidence]:
     pool = get_pool()
     query = """
-        SELECT id, paper_id, section_id, concept_id, relation_id, snippet, vector_id, embedding_model, score, metadata, created_at, updated_at
+        SELECT id, paper_id, section_id, concept_id, relation_id, snippet,
+               vector_id, embedding_model, score, metadata, provenance,
+               created_at, updated_at
         FROM evidence
         WHERE id = $1
     """
@@ -138,5 +138,6 @@ async def get_evidence(evidence_id: UUID) -> Optional[Evidence]:
     if not row:
         return None
     payload = dict(row)
-    payload["metadata"] = _decode_metadata(payload.get("metadata"))
+    payload["metadata"] = _normalize_optional_mapping(payload.get("metadata"))
+    payload["provenance"] = _normalize_provenance(payload.get("provenance"))
     return Evidence(**payload)
