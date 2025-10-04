@@ -22,3 +22,4 @@ class TripleCandidateRecord:
     schema_match_score: float
     tier: str
     graph_metadata: Dict[str, Any] = field(default_factory=dict)
+    provenance: Dict[str, Any] = field(default_factory=dict)

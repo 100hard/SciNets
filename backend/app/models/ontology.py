@@ -15,6 +15,7 @@ class _AliasMixin(BaseModel):
     name: str = Field(..., min_length=1)
     aliases: list[str] = Field(default_factory=list)
     description: Optional[str] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class MethodBase(_AliasMixin):

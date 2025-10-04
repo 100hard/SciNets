@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Sequence
+from enum import Enum
 from typing import Any, Optional, Union
 from uuid import UUID
 
@@ -22,10 +23,10 @@ from app.models.ontology import (
     Task,
 )
 
-_METHOD_COLUMNS = "id, name, aliases, description, created_at, updated_at"
-_DATASET_COLUMNS = "id, name, aliases, description, created_at, updated_at"
-_METRIC_COLUMNS = "id, name, unit, aliases, description, created_at, updated_at"
-_TASK_COLUMNS = "id, name, aliases, description, created_at, updated_at"
+_METHOD_COLUMNS = "id, name, aliases, description, metadata, created_at, updated_at"
+_DATASET_COLUMNS = "id, name, aliases, description, metadata, created_at, updated_at"
+_METRIC_COLUMNS = "id, name, unit, aliases, description, metadata, created_at, updated_at"
+_TASK_COLUMNS = "id, name, aliases, description, metadata, created_at, updated_at"
 
 
 _RESULTS_VERIFICATION_SUPPORTED: Optional[bool] = None
@@ -73,6 +74,21 @@ def _clean_aliases(raw_aliases: Optional[Union[Iterable[str], str]]) -> list[str
     return list(dict.fromkeys(cleaned))
 
 
+def _clean_metadata(raw_metadata: Any) -> dict[str, Any]:
+    if isinstance(raw_metadata, dict):
+        return dict(raw_metadata)
+    if raw_metadata is None:
+        return {}
+    if isinstance(raw_metadata, str):
+        try:
+            decoded = json.loads(raw_metadata)
+        except json.JSONDecodeError:
+            return {}
+        if isinstance(decoded, dict):
+            return dict(decoded)
+    return {}
+
+
 def _clean_evidence(raw_evidence: Any) -> list[dict[str, Any]]:
     if raw_evidence is None:
         return []
@@ -92,24 +108,28 @@ def _clean_evidence(raw_evidence: Any) -> list[dict[str, Any]]:
 def _method_from_row(row: Any) -> Method:
     payload = dict(row)
     payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    payload["metadata"] = _clean_metadata(payload.get("metadata"))
     return Method(**payload)
 
 
 def _dataset_from_row(row: Any) -> Dataset:
     payload = dict(row)
     payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    payload["metadata"] = _clean_metadata(payload.get("metadata"))
     return Dataset(**payload)
 
 
 def _metric_from_row(row: Any) -> Metric:
     payload = dict(row)
     payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    payload["metadata"] = _clean_metadata(payload.get("metadata"))
     return Metric(**payload)
 
 
 def _task_from_row(row: Any) -> Task:
     payload = dict(row)
     payload["aliases"] = _clean_aliases(payload.get("aliases"))
+    payload["metadata"] = _clean_metadata(payload.get("metadata"))
     return Task(**payload)
 
 
@@ -212,7 +232,7 @@ async def ensure_method(
             """
             INSERT INTO methods (name, aliases, description)
             VALUES ($1, $2::jsonb, $3)
-            RETURNING id, name, aliases, description, created_at, updated_at
+            RETURNING id, name, aliases, description, metadata, created_at, updated_at
             """,
             cleaned,
             json.dumps(alias_list),
@@ -246,7 +266,7 @@ async def ensure_dataset(
             """
             INSERT INTO datasets (name, aliases, description)
             VALUES ($1, $2::jsonb, $3)
-            RETURNING id, name, aliases, description, created_at, updated_at
+            RETURNING id, name, aliases, description, metadata, created_at, updated_at
             """,
             cleaned,
             json.dumps(alias_list),
@@ -281,7 +301,7 @@ async def ensure_metric(
             """
             INSERT INTO metrics (name, unit, aliases, description)
             VALUES ($1, $2, $3::jsonb, $4)
-            RETURNING id, name, unit, aliases, description, created_at, updated_at
+            RETURNING id, name, unit, aliases, description, metadata, created_at, updated_at
             """,
             cleaned,
             unit,
@@ -316,7 +336,7 @@ async def ensure_task(
             """
             INSERT INTO tasks (name, aliases, description)
             VALUES ($1, $2::jsonb, $3)
-            RETURNING id, name, aliases, description, created_at, updated_at
+            RETURNING id, name, aliases, description, metadata, created_at, updated_at
             """,
             cleaned,
             json.dumps(alias_list),
@@ -576,6 +596,11 @@ async def replace_claims(
 
             inserted: list[Claim] = []
             for claim in claims:
+                category_value = (
+                    claim.category.value
+                    if isinstance(claim.category, Enum)
+                    else claim.category
+                )
                 row = await conn.fetchrow(
                     """
                     INSERT INTO claims (paper_id, category, text, confidence, evidence)
@@ -583,7 +608,7 @@ async def replace_claims(
                     RETURNING id, paper_id, category, text, confidence, evidence, created_at, updated_at
                     """,
                     claim.paper_id,
-                    claim.category,
+                    category_value,
                     claim.text,
                     claim.confidence,
                     json.dumps(claim.evidence),

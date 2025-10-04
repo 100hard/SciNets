@@ -23,10 +23,11 @@ INSERT_SQL = """
         triple_conf,
         schema_match_score,
         tier,
-        graph_metadata
+        graph_metadata,
+        provenance
     )
     VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
     )
 """
 
@@ -79,6 +80,7 @@ async def replace_triple_candidates(
                         candidate.schema_match_score,
                         candidate.tier,
                         candidate.graph_metadata,
+                        candidate.provenance,
                     )
                 )
 
