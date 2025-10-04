@@ -441,19 +441,6 @@ def _merge_canonical(
         seen.add(key)
 
 
-def _resolve_absolute_span(
-    section: SectionBase, local_start: Optional[int], local_end: Optional[int]
-) -> Tuple[Optional[int], Optional[int]]:
-    if local_start is None and local_end is None:
-        return None, None
-    base_offset = section.char_start or 0
-    if section.char_start is None:
-        return local_start, local_end
-    absolute_start = local_start + base_offset if local_start is not None else None
-    absolute_end = local_end + base_offset if local_end is not None else None
-    return absolute_start, absolute_end
-
-
 def _apply_method_post_filters(
     registry: Dict[str, _Candidate], config: ConceptExtractionRuntimeConfig
 ) -> None:
