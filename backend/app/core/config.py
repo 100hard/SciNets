@@ -283,6 +283,7 @@ class Settings(BaseSettings):
     tier2_llm_temperature: float = Field(default=0.1)
     tier2_llm_top_p: float = Field(default=1.0)
     tier2_llm_timeout_seconds: float = Field(default=120.0)
+    tier2_llm_retry_attempts: int = Field(default=3)
     tier2_llm_max_sections: int = Field(default=24)
     tier2_llm_max_triples: int = Field(default=30)
     # Maximum characters per Tier-2 section chunk after formatting "[idx] sentence" lines.
