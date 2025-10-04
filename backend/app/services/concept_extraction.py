@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union
 from uuid import UUID
 
 from app.core.config import settings
@@ -152,7 +152,20 @@ def _collect_model_candidates(
             if model is None:
                 continue
             provider_available = True
-            collected.extend(_extract_with_spacy_model(model, sections, config))
+            model_meta = getattr(model, "meta", {}) or {}
+            provider_meta = {
+                "model": model_meta.get("name"),
+                "lang": getattr(model, "lang", None),
+            }
+            collected.extend(
+                _extract_with_spacy_model(
+                    model,
+                    sections,
+                    config,
+                    provider="scispacy",
+                    provider_metadata=provider_meta,
+                )
+            )
             break
         if normalized_provider == "domain_ner":
             if not config.domain_model:
@@ -161,7 +174,20 @@ def _collect_model_candidates(
             if model is None:
                 continue
             provider_available = True
-            collected.extend(_extract_with_spacy_model(model, sections, config))
+            model_meta = getattr(model, "meta", {}) or {}
+            provider_meta = {
+                "model": model_meta.get("name"),
+                "lang": getattr(model, "lang", None),
+            }
+            collected.extend(
+                _extract_with_spacy_model(
+                    model,
+                    sections,
+                    config,
+                    provider="domain_ner",
+                    provider_metadata=provider_meta,
+                )
+            )
             break
         if normalized_provider == "llm":
             if not _llm_prompt_available(config):
@@ -188,6 +214,7 @@ async def extract_and_store_concepts(
             name=concept.name,
             type=concept.type,
             description=concept.description,
+            metadata=_build_concept_metadata(concept),
         )
         for concept in concepts
     ]
@@ -367,6 +394,19 @@ def _merge_candidate(registry: Dict[str, _Candidate], candidate: _Candidate) -> 
         existing.name = candidate.name
 
 
+def _resolve_absolute_span(
+    section: SectionBase, local_start: Optional[int], local_end: Optional[int]
+) -> Tuple[Optional[int], Optional[int]]:
+    if local_start is None and local_end is None:
+        return None, None
+    base_offset = section.char_start or 0
+    if section.char_start is None:
+        return local_start, local_end
+    absolute_start = local_start + base_offset if local_start is not None else None
+    absolute_end = local_end + base_offset if local_end is not None else None
+    return absolute_start, absolute_end
+
+
 def _apply_method_post_filters(
     registry: Dict[str, _Candidate], config: ConceptExtractionRuntimeConfig
 ) -> None:
@@ -400,6 +440,9 @@ def _extract_with_spacy_model(
     model: Language,
     sections: Sequence[SectionBase],
     config: ConceptExtractionRuntimeConfig,
+    *,
+    provider: str,
+    provider_metadata: Optional[Dict[str, Any]] = None,
 ) -> Iterable[_Candidate]:
     for section in sections:
         doc = model(section.content)
@@ -452,12 +495,26 @@ def _extract_with_heuristics(
             score = 1.0 + 0.3 * min(len(normalized.split()), 4)
             score += 0.2 if section.title else 0.0
             score += 0.4 if phrase.isupper() else 0.0
+            absolute_start, absolute_end = _resolve_absolute_span(section, start, end)
+            metadata = {
+                "strategy": "token_phrase",
+                "relative_span": [start, end],
+            }
+            provenance = ConceptProvenance(
+                section_id=getattr(section, "id", None),
+                char_start=absolute_start,
+                char_end=absolute_end,
+                snippet=snippet,
+                provider="heuristic",
+                provider_metadata=metadata,
+            )
             yield _Candidate(
                 name=_format_phrase(phrase),
                 normalized=normalized,
                 type=_infer_concept_type(phrase, entity_hints=config.entity_hints),
                 description=description,
                 score=score,
+                provenance=[provenance],
             )
 
 
@@ -748,6 +805,16 @@ def _infer_concept_type(
 
 def _final_score(candidate: _Candidate) -> float:
     return candidate.score + 0.2 * candidate.occurrences
+
+
+def _build_concept_metadata(concept: ExtractedConcept) -> Dict[str, Any]:
+    provenance_payload = [prov.to_payload() for prov in concept.provenance]
+    metadata: Dict[str, Any] = {
+        "occurrences": concept.occurrences,
+        "score": concept.score,
+        "provenance": provenance_payload,
+    }
+    return metadata
 
 
 def _load_scispacy_model(
