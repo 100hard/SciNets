@@ -16,7 +16,6 @@ from app.services.evidence import create_evidence, delete_evidence_for_paper
 from app.services.sections import list_sections
 from app.utils.text_sanitize import sanitize_text
 
-from typing import Optional
 try:  # pragma: no cover - optional dependency
     from sentence_transformers import SentenceTransformer  # type: ignore[import]
 except ImportError:  # pragma: no cover - optional dependency
@@ -265,6 +264,10 @@ class VectorStore:
                 )
             ),
         )
+
+    async def ensure_ready(self) -> None:
+        client = await self._ensure_client()
+        await self._ensure_collection(client)
 
     async def _ensure_client(self) -> QdrantClient:
         if QdrantClient is None or qmodels is None:
@@ -523,5 +526,21 @@ def get_embedding_service() -> EmbeddingService:
 async def embed_paper_sections(paper_id: UUID) -> None:
     service = get_embedding_service()
     await service.embed_paper_sections(paper_id)
+
+
+async def ensure_vector_store_ready() -> None:
+    """Ensure the configured Qdrant collection exists before serving requests."""
+
+    store = VectorStore(settings.qdrant_collection_name, settings.embedding_dimension)
+    try:
+        await store.ensure_ready()
+    except VectorStoreNotAvailableError as exc:
+        raise RuntimeError(
+            "Qdrant vector store is unavailable. Verify QDRANT_URL, API key, and service health."
+        ) from exc
+    except Exception as exc:  # noqa: BLE001 - propagate detailed configuration failures
+        raise RuntimeError(
+            "Failed to verify Qdrant collection configuration."
+        ) from exc
 
 from app.db.pool import get_pool

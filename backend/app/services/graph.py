@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from collections import defaultdict
+from datetime import datetime
 from itertools import combinations
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -242,6 +243,7 @@ class EdgeInstance:
     metric_unit: Optional[str]
     task_id: Optional[UUID]
     task_label: Optional[str]
+    split: Optional[str] = None
     value_numeric: Optional[float] = None
     value_text: Optional[str] = None
     is_sota: Optional[bool] = None
@@ -266,6 +268,7 @@ class MethodContext:
     task_id: Optional[UUID]
     task_label: Optional[str]
     metric_unit: Optional[str]
+    split: Optional[str]
     value_numeric: Optional[float]
     value_text: Optional[str]
     is_sota: Optional[bool]
@@ -530,6 +533,131 @@ def _build_edge_insights(instances: Sequence[EdgeInstance]) -> list[Dict[str, An
         insights.append(_clean_metadata(payload))
         seen.add(key)
     return insights[:_MAX_EDGE_EVIDENCE]
+
+
+def _serialize_measurement(instance: EdgeInstance) -> Dict[str, Any]:
+    evidence_payload: list[dict[str, Any]] = []
+    for item in instance.evidence:
+        if isinstance(item, Mapping):
+            evidence_payload.append(
+                {
+                    key: value
+                    for key, value in item.items()
+                    if value not in (None, "", [])
+                }
+            )
+        elif isinstance(item, str):
+            evidence_payload.append({"snippet": item})
+    if evidence_payload:
+        evidence_payload = evidence_payload[:3]
+
+    provenance = None
+    if instance.statement_metadata:
+        provenance = instance.statement_metadata.get("provenance")
+
+    payload: Dict[str, Any] = {
+        "paper_id": str(instance.paper_id),
+        "paper_title": instance.paper_title,
+        "paper_year": instance.paper_year,
+        "relation": str(instance.relation),
+        "dataset_id": str(instance.dataset_id) if instance.dataset_id else None,
+        "dataset": instance.dataset_label,
+        "metric_id": str(instance.metric_id) if instance.metric_id else None,
+        "metric": instance.metric_label,
+        "task_id": str(instance.task_id) if instance.task_id else None,
+        "task": instance.task_label,
+        "split": instance.split,
+        "metric_unit": instance.metric_unit,
+        "value_numeric": instance.value_numeric,
+        "value_text": instance.value_text,
+        "is_sota": instance.is_sota,
+        "verified": instance.verified,
+        "confidence": instance.confidence,
+        "provenance": provenance,
+    }
+    if evidence_payload:
+        payload["evidence"] = evidence_payload
+    return _clean_metadata(payload)
+
+
+def _compute_recency_multiplier(years: Sequence[Optional[int]]) -> float:
+    filtered = [year for year in years if isinstance(year, int)]
+    if not filtered:
+        return 1.0
+    current_year = datetime.utcnow().year
+    latest = max(filtered)
+    earliest = min(filtered)
+    freshness = max(0, current_year - latest)
+    freshness_boost = max(0.0, min(5.0, 5.0 - float(freshness))) * 0.05
+    span = max(0, latest - earliest)
+    span_boost = min(0.2, span * 0.02)
+    return round(1.0 + freshness_boost + span_boost, 4)
+
+
+def _compute_evidence_multiplier(instances: Sequence[EdgeInstance]) -> float:
+    if not instances:
+        return 1.0
+    snippet_count = 0
+    for instance in instances:
+        for item in instance.evidence:
+            if isinstance(item, Mapping) or isinstance(item, str):
+                snippet_count += 1
+    verified_count = sum(1 for instance in instances if instance.verified)
+    statement_count = sum(1 for instance in instances if instance.statement_metadata)
+    snippet_boost = min(0.3, snippet_count * 0.03)
+    verified_boost = (verified_count / len(instances)) * 0.3
+    statement_boost = min(0.1, statement_count * 0.05)
+    return round(1.0 + snippet_boost + verified_boost + statement_boost, 4)
+
+
+def _build_effect_size_summary(
+    measurements: Sequence[Mapping[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    numeric_measurements = [
+        measurement
+        for measurement in measurements
+        if isinstance(measurement.get("value_numeric"), (int, float))
+    ]
+    if len(numeric_measurements) < 2:
+        return None
+
+    best = max(numeric_measurements, key=lambda item: cast(float, item["value_numeric"]))
+    worst = min(numeric_measurements, key=lambda item: cast(float, item["value_numeric"]))
+
+    best_value = cast(float, best["value_numeric"])
+    worst_value = cast(float, worst["value_numeric"])
+    delta = best_value - worst_value
+    if abs(delta) < 1e-9:
+        return None
+
+    unit = best.get("metric_unit") or worst.get("metric_unit") or ""
+    summary = (
+        f"Effect size delta {delta:.4g}{unit} between best ({best_value:.4g}{unit}) "
+        f"and worst ({worst_value:.4g}{unit})"
+    ).strip()
+
+    return {
+        "type": "effect_size",
+        "summary": summary,
+        "delta": delta,
+        "unit": unit or None,
+        "best": {
+            "paper_id": best.get("paper_id"),
+            "paper_title": best.get("paper_title"),
+            "value": best_value,
+            "dataset": best.get("dataset"),
+            "metric": best.get("metric"),
+            "task": best.get("task"),
+        },
+        "worst": {
+            "paper_id": worst.get("paper_id"),
+            "paper_title": worst.get("paper_title"),
+            "value": worst_value,
+            "dataset": worst.get("dataset"),
+            "metric": worst.get("metric"),
+            "task": worst.get("task"),
+        },
+    }
 
 
 def _merge_node_metadata(
@@ -1548,6 +1676,7 @@ def _aggregate_edges(
                     metric_unit=metric_unit,
                     task_id=task_id,
                     task_label=task_label,
+                    split=row.get("split"),
                     value_numeric=value_numeric,
                     value_text=value_text,
                     is_sota=is_sota,
@@ -1577,6 +1706,7 @@ def _aggregate_edges(
                     metric_unit=metric_unit,
                     task_id=task_id,
                     task_label=task_label,
+                    split=row.get("split"),
                     value_numeric=value_numeric,
                     value_text=value_text,
                     is_sota=is_sota,
@@ -1606,6 +1736,7 @@ def _aggregate_edges(
                     metric_unit=metric_unit,
                     task_id=task_id,
                     task_label=task_label,
+                    split=row.get("split"),
                     value_numeric=value_numeric,
                     value_text=value_text,
                     is_sota=is_sota,
@@ -1702,6 +1833,7 @@ def _aggregate_edges(
                     metric_unit=None,
                     task_id=None,
                     task_label=None,
+                    split=None,
                     value_numeric=None,
                     value_text=None,
                     is_sota=None,
@@ -1734,6 +1866,7 @@ def _aggregate_edges(
                     is_sota=is_sota,
                     verified=verified if isinstance(verified, bool) else None,
                     claims=claims,
+                    split=row.get("split"),
                 )
             )
 
@@ -1765,6 +1898,7 @@ def _aggregate_edges(
                         metric_unit=primary.metric_unit,
                         task_id=primary.task_id,
                         task_label=primary.task_label,
+                        split=primary.split,
                         value_numeric=None,
                         value_text=None,
                         is_sota=None,
@@ -1786,11 +1920,20 @@ def _aggregate_edges(
         evidence_items: list[dict[str, Any]] = []
         statements: list[dict[str, Any]] = []
         all_confidences: list[float] = []
+        paper_year_lookup: dict[UUID, Optional[int]] = {}
+        paper_measurements: dict[UUID, list[EdgeInstance]] = defaultdict(list)
 
         for instance in instances:
             paper_confidences[instance.paper_id].append(instance.confidence)
             paper_titles.setdefault(instance.paper_id, instance.paper_title)
             all_confidences.append(instance.confidence)
+            if instance.paper_year is not None:
+                existing_year = paper_year_lookup.get(instance.paper_id)
+                if existing_year is None or instance.paper_year > existing_year:
+                    paper_year_lookup[instance.paper_id] = instance.paper_year
+            else:
+                paper_year_lookup.setdefault(instance.paper_id, None)
+            paper_measurements[instance.paper_id].append(instance)
             context_key = (
                 instance.paper_id,
                 instance.dataset_id,
@@ -1841,16 +1984,38 @@ def _aggregate_edges(
         if average_confidence < min_conf:
             continue
 
-        paper_details = [
-            {
+        paper_details: list[dict[str, Any]] = []
+        for paper_id, values in paper_confidences.items():
+            measurement_payloads = [
+                _serialize_measurement(instance)
+                for instance in paper_measurements.get(paper_id, [])
+            ]
+            measurement_payloads = [item for item in measurement_payloads if item]
+            detail = {
                 "paper_id": paper_id,
                 "paper_title": paper_titles.get(paper_id),
                 "average_confidence": sum(values) / len(values),
+                "paper_year": paper_year_lookup.get(paper_id),
+                "evidence_count": sum(
+                    len(instance.evidence) for instance in paper_measurements.get(paper_id, [])
+                ),
+                "verified_count": sum(
+                    1 for instance in paper_measurements.get(paper_id, []) if instance.verified
+                ),
+                "measurements": measurement_payloads,
             }
-            for paper_id, values in paper_confidences.items()
+            if not measurement_payloads:
+                detail.pop("measurements")
+            paper_details.append(detail)
+        measurements = [
+            measurement
+            for detail in paper_details
+            for measurement in detail.get("measurements", [])
+            if measurement
         ]
-        weight = len(paper_details) * average_confidence
         metadata: dict[str, Any] = {"papers": paper_details}
+        if measurements:
+            metadata["measurements"] = measurements
         if contexts_map:
             metadata["contexts"] = list(contexts_map.values())
         if all_confidences:
@@ -1861,6 +2026,9 @@ def _aggregate_edges(
             }
 
         insights = _build_edge_insights(instances)
+        effect_size = _build_effect_size_summary(measurements)
+        if effect_size:
+            insights.append(effect_size)
         if insights:
             metadata["insights"] = insights
 
@@ -1869,6 +2037,21 @@ def _aggregate_edges(
             metadata["evidence"] = evidence_items
         if statements:
             metadata["statements"] = statements[:_MAX_EDGE_EVIDENCE]
+
+        recency_multiplier = _compute_recency_multiplier(paper_year_lookup.values())
+        evidence_multiplier = _compute_evidence_multiplier(instances)
+        weight = (
+            len(paper_details)
+            * average_confidence
+            * recency_multiplier
+            * evidence_multiplier
+        )
+        metadata["ranking"] = {
+            "paper_count": len(paper_details),
+            "average_confidence": average_confidence,
+            "recency_multiplier": recency_multiplier,
+            "evidence_multiplier": evidence_multiplier,
+        }
 
         aggregated.append(
             AggregatedEdge(
