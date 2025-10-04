@@ -36,6 +36,7 @@ from app.services.embeddings import embed_paper_sections
 from app.services.extraction_tier1 import run_tier1_extraction
 from app.services.extraction_tier2 import Tier2ValidationError, run_tier2_structurer
 from app.services.extraction_tier3 import run_tier3_verifier
+from app.services.extraction_tier3_relations import run_tier3_relations
 from app.services.papers import get_paper, update_paper_status
 from app.services.sections import replace_sections
 from app.services.storage import download_pdf_from_storage
@@ -204,6 +205,22 @@ async def parse_pdf_task(paper_id: UUID) -> None:
             print(
                 f"[parse_pdf_task] Unexpected Tier-2 error for paper {paper_id}: {exc}"
             )
+
+        if extraction_summary is not None:
+            try:
+                extraction_summary = await run_tier3_relations(
+                    paper_id,
+                    base_summary=extraction_summary,
+                )
+            except ValueError as exc:
+                print(
+                    "[parse_pdf_task] Tier-3 relations skipped for paper "
+                    f"{paper_id}: {exc}"
+                )
+            except Exception as exc:  # pragma: no cover - defensive logging
+                print(
+                    f"[parse_pdf_task] Tier-3 relations failed for paper {paper_id}: {exc}"
+                )
 
         if extraction_summary is not None:
             try:

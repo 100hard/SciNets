@@ -678,6 +678,38 @@ def _build_graph_metadata(
     return metadata
 
 
+def extract_graph_entities(
+    subject_text: str,
+    subject_type: str,
+    object_text: str,
+    object_type: str,
+) -> dict[str, Optional[dict[str, str]]]:
+    """Public wrapper exposing graph entity extraction for other tiers."""
+
+    return _extract_graph_entities(subject_text, subject_type, object_text, object_type)
+
+
+def build_graph_metadata(
+    entities: Mapping[str, Any],
+    *,
+    relation_type_guess: Optional[str],
+    matches: Sequence[Mapping[str, Any]],
+    evidence_text: str,
+    section_id: Optional[str],
+    triple_conf: float,
+) -> dict[str, Any]:
+    """Public wrapper exposing graph metadata construction for other tiers."""
+
+    return _build_graph_metadata(
+        entities,
+        relation_type_guess=relation_type_guess,
+        matches=matches,
+        evidence_text=evidence_text,
+        section_id=section_id,
+        triple_conf=triple_conf,
+    )
+
+
 def _normalize_key_text(value: Optional[str]) -> str:
     if not value:
         return ""
@@ -890,6 +922,20 @@ def _make_dedupe_key(
         (chunk_id or "").lower(),
     )
     return "|".join(parts)
+
+
+def make_triple_dedupe_key(
+    subject: str,
+    relation: str,
+    object_text: str,
+    evidence: str,
+    *,
+    section_id: Optional[str] = None,
+    chunk_id: Optional[str] = None,
+) -> str:
+    """Expose the triple dedupe key builder for downstream relation tiers."""
+
+    return _make_dedupe_key(subject, relation, object_text, evidence, section_id, chunk_id)
 
 
 class Tier2ValidationError(RuntimeError):

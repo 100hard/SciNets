@@ -24,6 +24,8 @@ RELATION_GUESS_VALUES: tuple[str, ...] = (
     "COMPARED_TO",
     "OUTPERFORMS",
     "MEASURES",
+    "REPORTS",
+    "PROPOSES",
     "PART_OF",
     "CAUSES",
     "ASSUMES",
@@ -41,7 +43,20 @@ TypeGuess = Literal[
     "Model",
     "Unknown",
 ]
-RelationGuess = Literal["IS_A", "USES", "EVALUATED_ON", "COMPARED_TO", "OUTPERFORMS", "MEASURES", "PART_OF", "CAUSES", "ASSUMES", "OTHER"]
+RelationGuess = Literal[
+    "IS_A",
+    "USES",
+    "EVALUATED_ON",
+    "COMPARED_TO",
+    "OUTPERFORMS",
+    "MEASURES",
+    "REPORTS",
+    "PROPOSES",
+    "PART_OF",
+    "CAUSES",
+    "ASSUMES",
+    "OTHER",
+]
 
 
 class TriplePayload(BaseModel):
