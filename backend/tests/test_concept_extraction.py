@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import List
 from uuid import UUID, uuid4
 
@@ -14,6 +15,10 @@ from app.services.concept_extraction import (
     _Candidate,
     _apply_method_post_filters,
     _infer_concept_type,
+    ConceptExtractionRuntimeConfig,
+    FILLER_PREFIXES,
+    FILLER_SUFFIXES,
+    STOPWORDS,
     extract_and_store_concepts,
     extract_concepts_from_sections,
 )
@@ -86,6 +91,63 @@ def test_extract_concepts_from_sections_deduplicates_variants() -> None:
     assert len(mpnn_mentions) == 1
 
     assert any("cora dataset" in name for name in lowered)
+
+
+def test_scispacy_candidates_capture_linker_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    sections = [
+        _make_section(
+            "We evaluate GNN models alongside their expanded form Graph Neural Network",
+            title="Abbreviations",
+        )
+    ]
+
+    class DummyEntity:
+        def __init__(self, text: str, start: int, end: int) -> None:
+            self.text = text
+            self.label_ = "METHOD"
+            self.start_char = start
+            self.end_char = end
+            self._ = SimpleNamespace(
+                kb_ents=[("UMLS:C12345", 0.87), ("WIKIDATA:Q1", 0.12)],
+                long_form=SimpleNamespace(text="Graph Neural Network"),
+            )
+
+    class DummyModel:
+        def __call__(self, text: str) -> SimpleNamespace:
+            start = text.index("GNN")
+            end = start + len("GNN")
+            entity = DummyEntity(text[start:end], start, end)
+            return SimpleNamespace(ents=[entity])
+
+    dummy_model = DummyModel()
+
+    monkeypatch.setattr(
+        "app.services.concept_extraction._load_scispacy_model",
+        lambda _: dummy_model,
+    )
+
+    config = ConceptExtractionRuntimeConfig(
+        max_concepts=5,
+        max_tokens=6,
+        stopwords=set(STOPWORDS),
+        filler_prefixes=set(FILLER_PREFIXES),
+        filler_suffixes=set(FILLER_SUFFIXES),
+        provider_priority=("scispacy",),
+        scispacy_models=("dummy",),
+        domain_model=None,
+        llm_prompt=None,
+        entity_hints={},
+        domain_key=None,
+    )
+
+    concepts = extract_concepts_from_sections(sections, config=config)
+    assert concepts
+    linked = [concept for concept in concepts if concept.canonical_id == "UMLS:C12345"]
+    assert linked
+    resolved = linked[0]
+    assert resolved.canonical_score is not None
+    assert resolved.canonical_score == pytest.approx(0.87)
+    assert resolved.name == "Graph Neural Network"
 
 
 def test_biology_domain_labels_organisms() -> None:
@@ -245,7 +307,21 @@ def test_method_post_filter_demotes_noisy_phrases() -> None:
         corroborated.normalized: corroborated,
     }
 
-    _apply_method_post_filters(registry)
+    config = ConceptExtractionRuntimeConfig(
+        max_concepts=5,
+        max_tokens=6,
+        stopwords=set(STOPWORDS),
+        filler_prefixes=set(FILLER_PREFIXES),
+        filler_suffixes=set(FILLER_SUFFIXES),
+        provider_priority=("scispacy",),
+        scispacy_models=("dummy",),
+        domain_model=None,
+        llm_prompt=None,
+        entity_hints={},
+        domain_key=None,
+    )
+
+    _apply_method_post_filters(registry, config)
 
     assert registry[noisy.normalized].type == "keyword"
     assert registry[corroborated.normalized].type == "method"
