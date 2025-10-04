@@ -302,6 +302,11 @@ class Settings(BaseSettings):
             "missing or spans cannot be resolved."
         )
     )
+    tier3_relation_fallback_enabled: bool = Field(default=False)
+    tier3_relation_fallback_min_rule_candidates: int = Field(default=3)
+    tier3_relation_fallback_prompt: Optional[str] = Field(default=None)
+    tier3_relation_fallback_max_attempts: int = Field(default=2)
+    tier3_relation_fallback_temperature: Optional[float] = Field(default=None)
     concept_extraction: ConceptExtractionSettings = Field(
         default_factory=ConceptExtractionSettings
     )
