@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import asyncio
 from datetime import datetime, timezone
 from typing import Any, List, Optional, Sequence, Tuple
@@ -75,6 +74,7 @@ def _base_row(**overrides: Any) -> dict[str, Any]:
         "embedding_model": overrides.get("embedding_model", "model"),
         "score": overrides.get("score"),
         "metadata": overrides.get("metadata"),
+        "provenance": overrides.get("provenance", {}),
         "created_at": overrides.get("created_at", now),
         "updated_at": overrides.get("updated_at", now),
     }
@@ -88,8 +88,11 @@ def test_create_evidence_serializes_metadata(fake_pool: FakeConnection) -> None:
 async def _run_create_evidence_serializes_metadata(fake_pool: FakeConnection) -> None:
     paper_id = uuid4()
     metadata = {"text_hash": "abc"}
+    provenance = {"source": "pipeline"}
     fake_pool.row_to_return = _base_row(
-        paper_id=paper_id, metadata=json.dumps(metadata, ensure_ascii=False)
+        paper_id=paper_id,
+        metadata=metadata,
+        provenance=provenance,
     )
     payload = EvidenceCreate(
         paper_id=paper_id,
@@ -101,15 +104,17 @@ async def _run_create_evidence_serializes_metadata(fake_pool: FakeConnection) ->
         embedding_model="model",
         score=0.5,
         metadata=metadata,
+        provenance=provenance,
     )
 
     evidence = await evidence_service.create_evidence(payload)
 
     assert fake_pool.fetchrow_calls
     _, params = fake_pool.fetchrow_calls[-1]
-    assert isinstance(params[-1], str)
-    assert json.loads(params[-1]) == metadata
+    assert params[-2] == metadata
+    assert params[-1] == provenance
     assert evidence.metadata == metadata
+    assert evidence.provenance == provenance
 
 
 def test_list_evidence_decodes_metadata(fake_pool: FakeConnection) -> None:
@@ -119,8 +124,8 @@ def test_list_evidence_decodes_metadata(fake_pool: FakeConnection) -> None:
 async def _run_list_evidence_decodes_metadata(fake_pool: FakeConnection) -> None:
     metadata = {"value": 42}
     fake_pool.rows_to_return = [
-        _base_row(metadata=json.dumps(metadata)),
-        _base_row(metadata=None),
+        _base_row(metadata=metadata, provenance={"stage": "test"}),
+        _base_row(metadata=None, provenance=None),
     ]
 
     results = await evidence_service.list_evidence(uuid4())
@@ -128,6 +133,8 @@ async def _run_list_evidence_decodes_metadata(fake_pool: FakeConnection) -> None
     assert len(results) == 2
     assert results[0].metadata == metadata
     assert results[1].metadata is None
+    assert results[0].provenance == {"stage": "test"}
+    assert results[1].provenance == {}
 
 
 def test_get_evidence_handles_invalid_metadata(fake_pool: FakeConnection) -> None:
@@ -135,9 +142,10 @@ def test_get_evidence_handles_invalid_metadata(fake_pool: FakeConnection) -> Non
 
 
 async def _run_get_evidence_handles_invalid_metadata(fake_pool: FakeConnection) -> None:
-    fake_pool.row_to_return = _base_row(metadata="not-json")
+    fake_pool.row_to_return = _base_row(metadata="not-json", provenance=None)
 
     evidence = await evidence_service.get_evidence(uuid4())
 
     assert evidence is not None
     assert evidence.metadata is None
+    assert evidence.provenance == {}

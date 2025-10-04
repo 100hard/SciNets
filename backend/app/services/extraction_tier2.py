@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import copy
 import difflib
 import json
@@ -10,7 +11,17 @@ from dataclasses import dataclass, asdict
 from typing import Any, Mapping, Optional, Sequence
 from uuid import UUID
 
-import httpx
+try:  # pragma: no cover - optional dependency guard
+    import httpx
+except ImportError:  # pragma: no cover - optional dependency guard
+    httpx = None  # type: ignore
+
+try:  # pragma: no cover - optional dependency guard
+    from jsonschema import Draft7Validator, ValidationError as JSONSchemaValidationError
+except ImportError:  # pragma: no cover - optional dependency guard
+    Draft7Validator = None  # type: ignore
+    JSONSchemaValidationError = None  # type: ignore
+
 from pydantic import ValidationError
 
 from app.core.config import settings
@@ -128,14 +139,23 @@ TRIPLE_JSON_SCHEMA_TEMPLATE: dict[str, Any] = {
 
 
 def _system_prompt() -> str:
-    """Return the configured Tier-2 system prompt, falling back to the default."""
+    """Return the configured Tier-2 system prompt augmented with comparison guidance."""
 
     prompt = getattr(settings, "tier2_llm_system_prompt", None)
     if isinstance(prompt, str):
         stripped = prompt.strip()
-        if stripped:
-            return stripped
-    return _DEFAULT_SYSTEM_PROMPT
+        base_prompt = stripped if stripped else _DEFAULT_SYSTEM_PROMPT
+    else:
+        base_prompt = _DEFAULT_SYSTEM_PROMPT
+
+    guidance = "\n".join(COMPARISON_GUIDANCE).strip()
+    if not guidance:
+        return base_prompt
+
+    if not base_prompt:
+        return guidance
+
+    return f"{base_prompt.rstrip()}\n\n{guidance}"
 
 
 def _build_triple_json_schema(max_triples: int) -> dict[str, Any]:
@@ -1032,13 +1052,49 @@ async def _request_llm_payload(
 ) -> tuple[Optional[TripleExtractionResponse], Optional[str]]:
     attempts = 0
     last_error: Optional[Exception] = None
+    pending_messages: Sequence[dict[str, str]] = list(messages)
+    temperature_override: Optional[float] = None
+    repair_context: Optional[RepairContext] = None
+
     while attempts < MAX_LLM_ATTEMPTS:
         attempts += 1
+        parsed_payload: Optional[dict[str, Any]] = None
         try:
-            raw_json = await _invoke_llm(messages)
-            payload_dict = _parse_json(raw_json)
-            validated = _validate_payload(payload_dict)
-            return validated, raw_json
+            raw_content = await _invoke_llm(
+                pending_messages, temperature=temperature_override
+            )
+            candidate_payload = _parse_json(raw_content)
+            if repair_context:
+                candidate_payload = _apply_repair_patch(repair_context, candidate_payload)
+                repair_context = None
+                pending_messages = list(messages)
+                temperature_override = None
+
+            parsed_payload = candidate_payload
+            validated = validate_triples(candidate_payload)
+            final_json = json.dumps(candidate_payload, ensure_ascii=False)
+            return validated, final_json
+        except TripleSchemaError as exc:
+            last_error = exc
+            logger.warning(
+                "[tier2] %s attempt %s schema repair needed for paper %s: %s",
+                failure_reason,
+                attempts,
+                paper_id,
+                exc,
+            )
+            if attempts >= MAX_LLM_ATTEMPTS:
+                break
+            if parsed_payload is None:
+                raise
+            try:
+                pending_messages, repair_context, temperature_override = _build_repair_messages(
+                    parsed_payload, exc.issues
+                )
+            except Tier2ValidationError as repair_exc:
+                last_error = repair_exc
+                break
+            continue
         except Tier2ValidationError as exc:
             last_error = exc
             logger.warning(
@@ -1049,9 +1105,11 @@ async def _request_llm_payload(
                 exc,
             )
             if attempts >= MAX_LLM_ATTEMPTS:
-                if required:
-                    raise
-                return None, None
+                break
+            pending_messages = list(messages)
+            temperature_override = None
+            repair_context = None
+
     if required:
         raise last_error or Tier2ValidationError(
             "Tier-2 validation failed without exception"
@@ -1553,18 +1611,241 @@ def _prepare_payload_for_validation(payload: dict[str, Any]) -> dict[str, Any]:
     return prepared
 
 
-def _validate_payload(payload: dict[str, Any]) -> TripleExtractionResponse:
+@dataclass
+class TripleSchemaIssue:
+    index: Optional[int]
+    field: Optional[str]
+    message: str
+    validator: Optional[str] = None
+    constraint: Optional[Any] = None
+
+
+class TripleSchemaError(Tier2ValidationError):
+    """Raised when triple JSON schema validation fails for specific entries."""
+
+    def __init__(self, issues: Sequence[TripleSchemaIssue]):
+        self.issues = list(issues)
+        summary = "; ".join(
+            f"index={issue.index}, field={issue.field}, error={issue.message}"
+            for issue in self.issues
+        )
+        super().__init__(
+            "Tier-2 payload failed triple JSON schema validation: " + summary
+        )
+
+
+@dataclass
+class RepairContext:
+    base_payload: dict[str, Any]
+    target_indexes: list[int]
+    issues: list[TripleSchemaIssue]
+
+
+def _jsonschema_validator() -> Draft7Validator:
+    if Draft7Validator is None:  # pragma: no cover - optional dependency guard
+        raise Tier2ValidationError(
+            "jsonschema is required for Tier-2 validation but is not installed"
+        )
+    schema = get_triple_json_schema()
+    return Draft7Validator(schema)
+
+
+def _coerce_triple_text(value: Any) -> str:
+    return _normalize_whitespace(str(value or ""))
+
+
+def _summarize_jsonschema_errors(
+    errors: Sequence[JSONSchemaValidationError],
+) -> list[TripleSchemaIssue]:
+    issues: list[TripleSchemaIssue] = []
+    for error in errors:
+        index: Optional[int] = None
+        field: Optional[str] = None
+        path = list(error.absolute_path)
+        if path and path[0] == "triples":
+            if len(path) >= 2 and isinstance(path[1], int):
+                index = int(path[1])
+            if len(path) >= 3:
+                field = str(path[2])
+        issues.append(
+            TripleSchemaIssue(
+                index=index,
+                field=field,
+                message=error.message,
+                validator=getattr(error, "validator", None),
+                constraint=getattr(error, "validator_value", None),
+            )
+        )
+    return issues
+
+
+def validate_triples(payload: dict[str, Any]) -> TripleExtractionResponse:
+    """Validate a raw LLM payload against the triple schema and sanitize text fields."""
+
+    validator = _jsonschema_validator()
+    schema_errors = sorted(validator.iter_errors(payload), key=lambda err: err.path)
+    if schema_errors:
+        issues = _summarize_jsonschema_errors(schema_errors)
+        if any(issue.index is None for issue in issues):
+            raise Tier2ValidationError(
+                "Tier-2 payload failed top-level schema validation: "
+                + "; ".join(issue.message for issue in issues)
+            )
+        raise TripleSchemaError(issues)
+
     try:
         prepared = _prepare_payload_for_validation(payload)
-        return TripleExtractionResponse.model_validate(prepared)
+        response = TripleExtractionResponse.model_validate(prepared)
     except ValidationError as exc:
         raise Tier2ValidationError(f"Tier-2 payload failed schema validation: {exc}") from exc
 
+    sanitized_triples: list[TriplePayload] = []
+    for triple in response.triples:
+        subject = _strip_citation_fragments(_coerce_triple_text(triple.subject))
+        relation = _strip_citation_fragments(_coerce_triple_text(triple.relation))
+        obj = _strip_citation_fragments(_coerce_triple_text(triple.object))
+        evidence = _strip_citation_fragments(_coerce_triple_text(triple.evidence))
+        sanitized_triples.append(
+            TriplePayload.model_validate(
+                {
+                    **triple.model_dump(),
+                    "subject": subject,
+                    "relation": relation,
+                    "object": obj,
+                    "evidence": evidence,
+                }
+            )
+        )
 
-async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
+    return TripleExtractionResponse(
+        triples=sanitized_triples,
+        warnings=list(response.warnings or []),
+        discarded=list(response.discarded or []),
+    )
+
+
+def _describe_field_constraints(field: str) -> str:
+    schema = get_triple_json_schema()
+    triple_schema = schema.get("properties", {}).get("triples", {}).get("items", {})
+    properties = triple_schema.get("properties", {})
+    field_schema = properties.get(field, {})
+    parts: list[str] = []
+    field_type = field_schema.get("type")
+    if field_type:
+        parts.append(f"type={field_type}")
+    if "minLength" in field_schema:
+        parts.append(f"minLength={field_schema['minLength']}")
+    if "maxLength" in field_schema:
+        parts.append(f"maxLength={field_schema['maxLength']}")
+    if "enum" in field_schema:
+        parts.append("enum=" + ",".join(map(str, field_schema["enum"])))
+    if not parts:
+        return "must satisfy schema requirements"
+    return ", ".join(parts)
+
+
+def _build_repair_messages(
+    payload: dict[str, Any],
+    issues: Sequence[TripleSchemaIssue],
+) -> tuple[list[dict[str, str]], RepairContext, float]:
+    triples = payload.get("triples")
+    if not isinstance(triples, list):
+        raise Tier2ValidationError("Cannot repair payload without a triples array")
+
+    target_indexes = sorted(
+        {issue.index for issue in issues if issue.index is not None}
+    )
+    if not target_indexes:
+        raise Tier2ValidationError("No targeted triples available for repair")
+
+    lines: list[str] = []
+    lines.append(
+        "The prior triple extraction JSON had schema violations. Fix ONLY the listed "
+        "triples so they satisfy the schema."
+    )
+    lines.append(
+        "Return strict JSON with a 'triples' array containing corrected entries in the "
+        "same order as provided here."
+    )
+    lines.append(
+        "Do not include any other keys. Each corrected triple must satisfy the schema "
+        "constraints noted for its invalid fields."
+    )
+    lines.append("")
+
+    for index in target_indexes:
+        original = triples[index] if index < len(triples) else None
+        lines.append(f"Triple index {index}:")
+        if isinstance(original, Mapping):
+            lines.append(json.dumps(original, indent=2, ensure_ascii=False))
+        else:
+            lines.append(f"(missing or invalid entry: {original!r})")
+
+        for issue in issues:
+            if issue.index != index:
+                continue
+            field_desc = f"Field '{issue.field}'" if issue.field else "Entry"
+            constraint_desc = (
+                _describe_field_constraints(issue.field)
+                if issue.field
+                else "must be a valid triple object"
+            )
+            lines.append(
+                f"- {field_desc} violates: {issue.message}. Expected: {constraint_desc}."
+            )
+        lines.append("")
+
+    user_message = "\n".join(lines).strip()
+    repair_messages = [
+        {"role": "system", "content": _system_prompt()},
+        {"role": "user", "content": user_message},
+    ]
+
+    repair_temperature = max(0.0, settings.tier2_llm_temperature / 2.0)
+    context = RepairContext(
+        base_payload=copy.deepcopy(payload),
+        target_indexes=target_indexes,
+        issues=list(issues),
+    )
+
+    return repair_messages, context, repair_temperature
+
+
+def _apply_repair_patch(context: RepairContext, patch: dict[str, Any]) -> dict[str, Any]:
+    triples_patch = patch.get("triples")
+    if not isinstance(triples_patch, list):
+        raise Tier2ValidationError(
+            "Repair payload must include a 'triples' array with corrected entries"
+        )
+
+    if len(triples_patch) != len(context.target_indexes):
+        raise Tier2ValidationError(
+            "Repair payload triple count does not match requested fixes"
+        )
+
+    updated = copy.deepcopy(context.base_payload)
+    triples = updated.get("triples")
+    if not isinstance(triples, list):
+        raise Tier2ValidationError("Base payload missing triples array during repair")
+
+    for target_index, replacement in zip(context.target_indexes, triples_patch):
+        if target_index >= len(triples):
+            raise Tier2ValidationError(
+                f"Repair target index {target_index} is out of range"
+            )
+        triples[target_index] = replacement
+
+    return updated
+
+
+async def _invoke_llm(
+    messages: Sequence[dict[str, str]], *, temperature: Optional[float] = None
+) -> str:
     model = settings.tier2_llm_model
     if not model:
         raise Tier2ValidationError("Tier-2 LLM model is not configured")
+    if httpx is None:  # pragma: no cover - optional dependency guard
+        raise Tier2ValidationError("httpx is required for Tier-2 LLM requests")
 
     base_url = (settings.tier2_llm_base_url or "https://api.openai.com/v1").rstrip("/")
     path = (settings.tier2_llm_completion_path or "/chat/completions").lstrip("/")
@@ -1573,7 +1854,9 @@ async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
     payload: dict[str, Any] = {
         "model": model,
         "messages": list(messages),
-        "temperature": settings.tier2_llm_temperature,
+        "temperature": (
+            temperature if temperature is not None else settings.tier2_llm_temperature
+        ),
         "top_p": settings.tier2_llm_top_p,
         "max_tokens": settings.tier2_llm_max_output_tokens,
     }
@@ -1594,13 +1877,33 @@ async def _invoke_llm(messages: Sequence[dict[str, str]]) -> str:
     if settings.openai_organization:
         headers["OpenAI-Organization"] = settings.openai_organization
 
-    timeout = float(settings.tier2_llm_timeout_seconds or 120.0)
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(url, json=payload, headers=headers)
-            response.raise_for_status()
-    except httpx.HTTPError as exc:  # pragma: no cover - network failure path
-        raise Tier2ValidationError(f"Tier-2 LLM request failed: {exc}") from exc
+    timeout_value = float(settings.tier2_llm_timeout_seconds or 120.0)
+    timeout = httpx.Timeout(timeout_value)
+    max_retries = max(1, int(getattr(settings, "tier2_llm_retry_attempts", 1) or 1))
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        attempt = 0
+        response: Optional[httpx.Response] = None
+        while attempt < max_retries:
+            attempt += 1
+            try:
+                response = await client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                break
+            except httpx.HTTPError as exc:  # pragma: no cover - network failure path
+                logger.warning(
+                    "[tier2] LLM request attempt %s failed: %s",
+                    attempt,
+                    exc,
+                )
+                if attempt >= max_retries:
+                    raise Tier2ValidationError(
+                        f"Tier-2 LLM request failed after {max_retries} attempts: {exc}"
+                    ) from exc
+                await asyncio.sleep(min(2.0, 0.5 * attempt))
+
+        if response is None:
+            raise Tier2ValidationError("Tier-2 LLM request failed without response")
 
     data = response.json()
     try:
