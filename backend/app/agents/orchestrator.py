@@ -31,7 +31,7 @@ async def plan_node(state: DiscoveryState) -> dict:
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", f"You are a scientific research assistant. Classify the following query into one or more of these domains: {available_domains}. Consider past insights if relevant."),
-        ("human", f"Query: {state.user_query}\n\n{memory_context}")
+        ("human", f"Query: {state.user_query}\nDisciplinary Lens: {state.lens}\n\n{memory_context}")
     ])
     
     chain = prompt | structured_llm

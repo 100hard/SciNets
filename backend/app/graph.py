@@ -21,7 +21,21 @@ def create_graph():
     # Add edges
     workflow.set_entry_point("plan")
     workflow.add_edge("plan", "literature")
-    workflow.add_edge("literature", "hypothesis")
+    
+    def route_literature(state: DiscoveryState):
+        if state.goal == "survey":
+            return "critique"
+        return "hypothesis"
+
+    workflow.add_conditional_edges(
+        "literature",
+        route_literature,
+        {
+            "critique": "critique",
+            "hypothesis": "hypothesis"
+        }
+    )
+    # workflow.add_edge("literature", "hypothesis")  <-- Removed linear edge
     workflow.add_edge("hypothesis", "evidence")
     workflow.add_edge("evidence", "experiment")
     workflow.add_edge("experiment", "critique")

@@ -42,8 +42,8 @@ class Hypothesis(BaseModel):
 
 class Experiment(BaseModel):
     hypothesis_id: str
-    code_snippet: str
-    metrics: dict
+    code_snippet: Optional[str] = None
+    metrics: Optional[dict] = None
     plot_url: Optional[str] = None
     plot_base64: Optional[str] = None
 
@@ -54,6 +54,10 @@ class Insight(BaseModel):
 
 class DiscoveryState(BaseModel):
     user_query: str
+    goal: str = "discover"           # discover, survey, write
+    lens: str = "none"               # Disciplinary lens (e.g., "game theory")
+    speculation: str = "medium"      # low, medium, high
+    run_experiments: bool = False    # Whether to run python experiments
     domain_tags: List[str] = []
     plan: Optional[dict] = None
     literature: Optional[dict] = None
@@ -63,3 +67,4 @@ class DiscoveryState(BaseModel):
     experiments: List[Experiment] = []
     critique: Optional[dict] = None
     done: bool = False
+

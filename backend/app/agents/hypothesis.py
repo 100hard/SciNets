@@ -61,19 +61,30 @@ async def hypothesis_node(state: DiscoveryState) -> dict:
             return "Graph is empty."
 
     # 2. Create ReAct Explorer Agent
-    llm = get_llm(temperature=0.7)
+    # Adjust temperature based on Speculation
+    temperature = 0.5
+    if state.speculation == "low": temperature = 0.1
+    elif state.speculation == "medium": temperature = 0.7
+    elif state.speculation == "high": temperature = 1.0
+
+    llm = get_llm(temperature=temperature)
     tools = [get_neighbors, find_paths, get_central_nodes]
     explorer_agent = create_react_agent(llm, tools)
     
+    lens_instruction = ""
+    if state.lens and state.lens != "none":
+        lens_instruction = f"IMPORTANT: You must analyze this graph through the lens of '{state.lens}'. Try to map concepts from that field onto this graph."
+
     exploration_prompt = f"""
     You are a scientific explorer. You have access to a Knowledge Graph about '{state.user_query}'.
+    {lens_instruction}
     
     Your Goal: Explore the graph to find NOVEL, non-obvious connections that could lead to a breakthrough hypothesis.
     
     Strategy:
     1. Start by checking the central nodes.
     2. Pick an interesting node and check its neighbors.
-    3. Try to find paths between disparate concepts (e.g., a biological mechanism and a disease).
+    3. Try to find paths between disparate concepts (e.g., a biological mechanism and a disease) OR between the query and the Lens concept ('{state.lens}').
     4. Don't just state facts; look for CAUSAL CHAINS.
     
     After exploring, summarize your findings.
@@ -125,11 +136,60 @@ async def hypothesis_node(state: DiscoveryState) -> dict:
     except Exception as e:
         print(f"[Hypothesis] Path extraction failed: {e}")
 
-    # 4. Generate Structured Hypotheses (using exploration + path context)
+    # 3.5 Structural Hole Explorer (The "Novelty Engine")
+    # Only runs if goal is 'discover' or speculation is 'high'
+    hole_exploration_summary = ""
+    if state.goal == "discover" or state.speculation == "high":
+        print("[Hypothesis] Running Structural Hole Explorer...")
+        try:
+            # A. Detect Communities (Clusters)
+            # Use greedy_modularity_communities which is fast and good for this scale
+            import networkx.algorithms.community as nx_comm
+            
+            # Convert to undirected for community detection
+            G_undirected = G.to_undirected()
+            if len(G_undirected.nodes) > 5:
+                communities = list(nx_comm.greedy_modularity_communities(G_undirected))
+                
+                if len(communities) >= 2:
+                    # Pick the two largest communities
+                    c1 = list(communities[0])[:5] # Top 5 nodes from cluster 1
+                    c2 = list(communities[1])[:5] # Top 5 nodes from cluster 2
+                    
+                    print(f"[Hypothesis] Identified Disconnected Clusters:\nCluster A: {c1}\nCluster B: {c2}")
+                    
+                    # B. The "Bridge" Prompt (Null Hypothesis Approach)
+                    bridge_prompt = f"""
+                    I have identified two distinct clusters of knowledge in the graph that seem currently disconnected:
+                    
+                    Cluster A (Theme 1): {', '.join(c1)}
+                    Cluster B (Theme 2): {', '.join(c2)}
+                    
+                    Your Task: Act as a visionary scientist. 
+                    1. Analyze potential "Structural Holes" (missing links) between these two clusters.
+                    2. Ask yourself: Is there a plausible underlying mechanism that could connect Cluster A to Cluster B?
+                    3. If YES, propose a "Bridge Hypothesis" explaining this mechanism.
+                    4. If NO, explicitly state that they are distinct.
+                    
+                    Use the lens of '{state.lens}' if applicable.
+                    """
+                    
+                    bridge_result = await llm.ainvoke(bridge_prompt)
+                    hole_exploration_summary = f"\n\nstructural_hole_analysis:\n{bridge_result.content}"
+                    print(f"[Hypothesis] Structural Hole Analysis completed.")
+                else:
+                    print("[Hypothesis] Not enough communities found for structural hole analysis.")
+            else:
+                 print("[Hypothesis] Graph too small for community detection.")
+                 
+        except Exception as e:
+            print(f"[Hypothesis] Structural Hole Exploration failed: {e}")
+
+    # 4. Generate Structured Hypotheses (using exploration + path context + hole analysis)
     structured_llm = llm.with_structured_output(HypothesisList)
     final_prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a Principal Investigator. Based on the following exploration of the knowledge graph, generate 3 novel, testable scientific hypotheses."),
-        ("human", f"User Query: {state.user_query}\n\nExploration Insights:\n{exploration_summary}\n\n{path_context}\n\nLiterature Context:\n{state.literature.get('summary', '')}")
+        ("human", f"User Query: {state.user_query}\n\nExploration Insights:\n{exploration_summary}\n\n{path_context}\n{hole_exploration_summary}\n\nLiterature Context:\n{state.literature.get('summary', '')}")
     ])
     
     chain = final_prompt | structured_llm

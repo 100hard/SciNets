@@ -36,8 +36,8 @@ async def critique_node(state: DiscoveryState) -> dict:
             )
         )
         
-    # Use a vision-capable model (Claude 3.5 Sonnet or GPT-4o)
-    # get_llm defaults to Claude 3.5 Sonnet which supports vision
+    # Use the default multimodal model
+    # get_llm defaults to GPT-5 Mini
     llm = get_llm(temperature=0.1)
     
     response = await llm.ainvoke(messages)

@@ -36,9 +36,21 @@ async def literature_node(state: DiscoveryState) -> dict:
     web_results = ""
     try:
         with DDGS() as ddgs:
+            # Standard search
             results = list(ddgs.text(f"{query} latest research datasets", max_results=3))
             for r in results:
                 web_results += f"Title: {r['title']}\nLink: {r['href']}\nSnippet: {r['body']}\n\n"
+            
+            # CONTRADICTION MINER (Novelty Engine)
+            if state.goal == "discover":
+                print("[Literature] Running Contradiction Miner...")
+                # Search for debates, conflicts, and limitations
+                contradiction_query = f"{query} controversy debate limitations contradictory results"
+                c_results = list(ddgs.text(contradiction_query, max_results=3))
+                web_results += "\n--- CONTRADICTION MINING FOUND ---\n"
+                for r in c_results:
+                    web_results += f"Title: {r['title']}\nLink: {r['href']}\nSnippet: {r['body']}\n\n"
+                
     except Exception as e:
         print(f"[Literature] Web search failed: {e}")
     
@@ -70,8 +82,16 @@ async def literature_node(state: DiscoveryState) -> dict:
     llm = get_cheap_llm()
     structured_llm = llm.with_structured_output(ConceptGraph)
     
+    # SYSTEM PROMPT STRATEGY BASED ON GOAL
+    if state.goal == "survey":
+        system_msg = "You are a specialized librarian. Extract the CORE CONSENSUS concepts and DEFINITIVE relationships. Ignore minor details."
+    elif state.goal == "discover":
+        system_msg = "You are a scientific detective. Extract NOVEL, NON-OBVIOUS, and CONTRADICTING concepts. Focus on the periphery and edge cases."
+    else:
+        system_msg = "You are a scientific assistant. Extract a granular concept graph from the following abstract."
+
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a scientific assistant. Extract a granular concept graph from the following abstract. Identify specific entities (proteins, genes, methods, diseases) and their precise relationships."),
+        ("system", system_msg),
         ("human", "{abstract}")
     ])
     chain = prompt | structured_llm
@@ -102,6 +122,13 @@ async def literature_node(state: DiscoveryState) -> dict:
                 if not exists:
                     merged_edges.append(edge)
     
+    # 3.5. APPLY DISCIPLINARY LENS (Inject a node if using a lens)
+    if state.lens and state.lens != "none":
+        print(f"[Literature] Injecting Lens Node: {state.lens}")
+        merged_nodes.add(state.lens)
+        # Connect lens to central concepts to force "Bridge" detection later
+        # We don't create edges yet, but having the node allows Hypothesis agent to 'find paths' to it.
+
     concept_graph = {
         "nodes": list(merged_nodes),
         "edges": [e.dict() for e in merged_edges]
@@ -224,7 +251,7 @@ async def normalize_graph_nodes(graph_data: dict) -> dict:
     class MappingList(BaseModel):
         mappings: List[NodeMapping]
 
-    llm = get_llm(model_name="gpt-4o-mini", temperature=0.0)
+    llm = get_llm(temperature=0.0)
     structured_llm = llm.with_structured_output(MappingList)
     
     # Chunk nodes if too many (limit to 50 at a time to avoid context limits)
