@@ -7,6 +7,8 @@ from app.agents.evidence import evidence_node
 from app.agents.experiment import experiment_node
 from app.agents.critique import critique_node
 
+from langgraph.checkpoint.memory import MemorySaver
+
 def create_graph():
     workflow = StateGraph(DiscoveryState)
     
@@ -41,4 +43,8 @@ def create_graph():
     workflow.add_edge("experiment", "critique")
     workflow.add_edge("critique", END)
     
-    return workflow.compile()
+    # Add Checkpointer for Human In The Loop
+    memory = MemorySaver()
+    
+    # Interrupt before 'critique' to allow user to review hypotheses/experiments
+    return workflow.compile(checkpointer=memory, interrupt_before=["critique"])

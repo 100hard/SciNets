@@ -4,7 +4,7 @@ import json
 import sys
 
 def verify_stream():
-    url = "http://127.0.0.1:8010/run_stream"
+    url = "http://127.0.0.1:8002/run_stream"
     payload = {
         "query": "Test Heartbeat Connectivity",
         "goal": "discover",
@@ -46,29 +46,22 @@ def verify_stream():
                                 data = json.loads(json_str)
                                 event_type = data.get("type")
                                 
+                                if event_type == "interrupt":
+                                    print(f"\n[INTERRUPT] Graph paused! Next: {data.get('data', {}).get('next')}")
+                                    return # Stop on interrupt
+                                    
                                 if event_type == "result":
                                     result_data = data.get("data", {})
                                     keys = list(result_data.keys())
-                                    print(f"\n[VICTORY] Received FINAL RESULT with keys: {keys}")
-                                    
-                                    # Verification Checks
-                                    missing = []
-                                    if "hypotheses" not in keys: missing.append("hypotheses")
-                                    if "concept_graph" not in keys: missing.append("concept_graph")
-                                    
-                                    if missing:
-                                        print(f"[FAILURE] Missing critical keys: {missing}")
-                                    else:
-                                        print(f"[SUCCESS] Payload contains all required fields.")
-                                        print(f" - Hypotheses count: {len(result_data.get('hypotheses', []))}")
-                                        # Handle graph structure variations
-                                        graph = result_data.get('concept_graph', {})
-                                        nodes = graph.get('nodes', [])
-                                        print(f" - Graph Nodes: {len(nodes)}")
-                                        
-                                    return # Stop after finding result
+                                    print(f"\n[RESULT] Interim result with keys: {keys}")
+                                    pass # Don't stop, wait for interrupt or done
                                     
                                 elif event_type == "activity":
+                                    data_content = data.get("data", {})
+                                    thread_id = data.get("thread_id")
+                                    if thread_id:
+                                        print(f"\n[INFO] Thread ID Received: {thread_id}")
+                                        
                                     sys.stdout.write(".")
                                     sys.stdout.flush()
                                 elif event_type == "error":

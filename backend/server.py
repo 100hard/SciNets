@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 from fastapi.responses import StreamingResponse
 import json
@@ -48,36 +48,53 @@ class RunRequest(BaseModel):
     speculation: str = "medium"
     run_experiments: bool = False
     documents: List[str] = []
+    thread_id: str | None = None # For resuming sessions
+    feedback: str | None = None # User feedback when resuming
 
 @app.post("/run_stream")
 async def run_discovery_stream(request: RunRequest):
     """
     Trigger the discovery loop and stream events.
+    Supports resuming via thread_id and providing feedback.
     """
     try:
         from app.graph import create_graph
         from app.state import DiscoveryState
         
+        # Determine Thread ID
+        thread_id = request.thread_id or str(uuid.uuid4())
+        config = {"configurable": {"thread_id": thread_id}}
+
         graph = create_graph()
-        initial_state = DiscoveryState(
-            user_query=request.query,
-            goal=request.goal,
-            lens=request.lens,
-            speculation=request.speculation,
-            run_experiments=request.run_experiments,
-            documents=request.documents
-        )
+        
+        # If resuming with feedback
+        initial_state = None
+        if request.feedback and request.thread_id:
+            # Update state with feedback
+            print(f"[Server] Resuming thread {thread_id} with feedback: {request.feedback}")
+            # Note: We use update_state to inject the feedback
+            graph.update_state(config, {"human_feedback": request.feedback})
+            initial_state = None # Resume from current state
+        else:
+            # Start new
+            initial_state = DiscoveryState(
+                user_query=request.query,
+                goal=request.goal,
+                lens=request.lens,
+                speculation=request.speculation,
+                run_experiments=request.run_experiments,
+                documents=request.documents
+            )
+
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Init failed: {e}")
 
-        
-
-
     async def event_generator():
-        # Emit initial thinking event
-        yield f"data: {json.dumps({'type': 'activity', 'data': {'agent': 'orchestrator', 'action': f'Starting discovery for: {request.query}', 'status': 'thinking'}})}\n\n"
+        # Emit initial thinking event with Thread ID
+        data = {'agent': 'orchestrator', 'action': f'Starting discovery for: {request.query}', 'status': 'thinking'}
+        yield f"data: {json.dumps({'type': 'activity', 'data': data, 'thread_id': thread_id})}\n\n"
         await asyncio.sleep(0.1) # Force flush
         
         try:
@@ -85,7 +102,8 @@ async def run_discovery_stream(request: RunRequest):
             accumulated_state = {}
             
             # Use astream_events to get granular updates
-            async for event in graph.astream_events(initial_state, version="v1"):
+            # Pass CONFIG for thread persistence
+            async for event in graph.astream_events(initial_state, config=config, version="v1"):
                 kind = event["event"]
                 name = event.get("name", "")
                 data = event.get("data", {})
@@ -140,7 +158,6 @@ async def run_discovery_stream(request: RunRequest):
                         update_dict = {}
                     
                     # SMART ACCUMULATION: Only pick up known state keys
-                    # This filters out "messages" from sub-agents and other noise
                     relevant_keys = ["plan", "literature", "hypotheses", "evidence", "experiments", "critique", "user_query", "concept_graph", "domain_tags"]
                     
                     has_update = False
@@ -150,17 +167,26 @@ async def run_discovery_stream(request: RunRequest):
                             has_update = True
                             
                     if has_update:
-                        # Ensure user_query/goal are present
                         if "user_query" not in accumulated_state:
                             accumulated_state["user_query"] = request.query
                         
-                        # Yield update if we have at least the initial plan or structure
                         yield f"data: {json.dumps({'type': 'result', 'data': accumulated_state}, default=custom_serializer)}\n\n"
 
         except Exception as e:
+            msg = f"SERVER_LOOP_ERROR: {str(e)}"
+            print(msg, flush=True)
             yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
-            
-        yield "data: [DONE]\n\n"
+        
+        # Check if we are interrupted or done
+        try:
+            snapshot = await graph.aget_state(config)
+            if snapshot.next:
+                # We are paused/interrupted
+                yield f"data: {json.dumps({'type': 'interrupt', 'data': {'next': list(snapshot.next), 'thread_id': thread_id}})}\n\n"
+            else:
+                yield "data: [DONE]\n\n"
+        except Exception:
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         event_generator(),
