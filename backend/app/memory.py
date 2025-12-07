@@ -6,13 +6,19 @@ import uuid
 
 class MemoryManager:
     def __init__(self):
+        # Default to localhost for host-based execution (Windows/Mac)
         self.client = QdrantClient(
-            url=os.getenv("QDRANT_URL", "http://qdrant:6333")
+            url=os.getenv("QDRANT_URL", "http://127.0.0.1:6333")
         )
         self.collection_name = "scinets_insights"
-        self._init_collection()
+        try:
+            self._init_collection()
+        except Exception as e:
+            print(f"[Memory] Warning: Failed to initialize Qdrant ({e}). Memory features will be disabled.")
+            self.client = None
 
     def _init_collection(self):
+        if not self.client: return
         try:
             self.client.get_collection(self.collection_name)
         except Exception:
@@ -56,11 +62,20 @@ class MemoryManager:
         vector = embeddings.embed_query(query)
         
         try:
-            results = self.client.search(
-                collection_name=self.collection_name,
-                query_vector=vector,
-                limit=limit
-            )
+            try:
+                # Try newer query_points API first (v1.7+)
+                results = self.client.query_points(
+                    collection_name=self.collection_name,
+                    query=vector,
+                    limit=limit
+                ).points
+            except AttributeError:
+                 # Fallback to older search API
+                results = self.client.search(
+                    collection_name=self.collection_name,
+                    query_vector=vector,
+                    limit=limit
+                )
             
             insights = []
             for res in results:

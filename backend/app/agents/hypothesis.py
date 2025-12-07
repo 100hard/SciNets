@@ -189,13 +189,19 @@ async def hypothesis_node(state: DiscoveryState) -> dict:
     structured_llm = llm.with_structured_output(HypothesisList)
     final_prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a Principal Investigator. Based on the following exploration of the knowledge graph, generate 3 novel, testable scientific hypotheses."),
-        ("human", f"User Query: {state.user_query}\n\nExploration Insights:\n{exploration_summary}\n\n{path_context}\n{hole_exploration_summary}\n\nLiterature Context:\n{state.literature.get('summary', '')}")
+        ("human", "User Query: {user_query}\n\nExploration Insights:\n{exploration_summary}\n\n{path_context}\n{hole_exploration_summary}\n\nLiterature Context:\n{literature_summary}")
     ])
     
     chain = final_prompt | structured_llm
     
     try:
-        result = await chain.ainvoke({})
+        result = await chain.ainvoke({
+            "user_query": state.user_query,
+            "exploration_summary": exploration_summary,
+            "path_context": path_context,
+            "hole_exploration_summary": hole_exploration_summary,
+            "literature_summary": state.literature.get('summary', '')
+        })
         hypotheses = result.hypotheses
         
         # Ensure IDs are set
@@ -224,6 +230,6 @@ async def hypothesis_node(state: DiscoveryState) -> dict:
     selected_id = hypotheses[0].id
     
     return {
-        "hypotheses": hypotheses,
+        "hypotheses": [h.model_dump() for h in hypotheses],
         "selected_hypothesis_id": selected_id
     }

@@ -132,4 +132,4 @@ async def experiment_node(state: DiscoveryState) -> dict:
     experiments = state.experiments or []
     experiments.append(experiment_result)
     
-    return {"experiments": experiments}
+    return {"experiments": [e.model_dump() if hasattr(e, "model_dump") else e for e in experiments]}

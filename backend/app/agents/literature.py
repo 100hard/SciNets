@@ -21,38 +21,75 @@ class ConceptGraph(BaseModel):
     class Config:
         extra = "forbid"
 
-async def literature_node(state: DiscoveryState) -> dict:
+from langchain_core.runnables import RunnableConfig
+
+async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict:
     """
     Literature Agent: Fetches papers, searches web, summarizes, and builds a concept graph.
     """
+    print("DEBUG: Entered literature_node", flush=True)
     query = state.user_query
-    print(f"[Literature] Searching for: {query}")
+    print(f"[Literature] User Query: {query}")
+    
+    # 0. Query Refinement (Crucial for OpenAlex/Search to work with long prompts)
+    refinement_prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are a research librarian. Convert the user's complex natural language query into a precise, keyword-based boolean search string suitable for a library database (like OpenAlex or PubMed). Use AND, OR, and quotes for phrases. Keep it under 200 characters."),
+        ("human", f"User Query: {query}\n\nSearch String:")
+    ])
+    
+    llm = get_cheap_llm()
+    search_query_result = await (refinement_prompt | llm).ainvoke({})
+    search_query = search_query_result.content.strip().replace('"', '') # Clean up
+    print(f"[Literature] refined search query: '{search_query}'")
     
     # 1. Search OpenAlex
-    papers = await search_papers(query, limit=10)
+    from langchain_core.tools import tool
+
+    @tool
+    async def openalex_search_tool(q: str):
+        """Searches OpenAlex for scientific papers."""
+        return await search_papers(q, limit=10)
+
+    # Invoke tool to trigger stream events
+    print(f"[Literature] Searching OpenAlex for: {search_query}")
+    papers = await openalex_search_tool.ainvoke(search_query, config=config)
     
     # 2. Web Search (for latest info/datasets)
-    print("[Literature] Running Web Search...")
-    web_results = ""
-    try:
-        with DDGS() as ddgs:
-            # Standard search
-            results = list(ddgs.text(f"{query} latest research datasets", max_results=3))
-            for r in results:
-                web_results += f"Title: {r['title']}\nLink: {r['href']}\nSnippet: {r['body']}\n\n"
-            
-            # CONTRADICTION MINER (Novelty Engine)
-            if state.goal == "discover":
-                print("[Literature] Running Contradiction Miner...")
-                # Search for debates, conflicts, and limitations
-                contradiction_query = f"{query} controversy debate limitations contradictory results"
-                c_results = list(ddgs.text(contradiction_query, max_results=3))
-                web_results += "\n--- CONTRADICTION MINING FOUND ---\n"
-                for r in c_results:
-                    web_results += f"Title: {r['title']}\nLink: {r['href']}\nSnippet: {r['body']}\n\n"
+    @tool
+    def web_search_tool(query: str, goal: str):
+        """Performs web search for latest info and contradictions."""
+        web_results = ""
+        try:
+            # Try to use DDGS
+            with DDGS() as ddgs:
+                # Standard search
+                # backend="api" is often more stable for bots
+                results = list(ddgs.text(f"{query} latest research datasets", max_results=3))
+                if not results:
+                     # Retry with simpler query
+                     results = list(ddgs.text(query, max_results=3))
+
+                for r in results:
+                    web_results += f"Title: {r.get('title')}\nLink: {r.get('href')}\nSnippet: {r.get('body')}\n\n"
                 
-    except Exception as e:
-        print(f"[Literature] Web search failed: {e}")
+                # CONTRADICTION MINER (Novelty Engine)
+                if goal == "discover":
+                    # Search for debates, conflicts, and limitations
+                    contradiction_query = f"{query} controversy debate limitations"
+                    c_results = list(ddgs.text(contradiction_query, max_results=3))
+                    if c_results:
+                        web_results += "\n--- CONTRADICTION MINING FOUND ---\n"
+                        for r in c_results:
+                            web_results += f"Title: {r.get('title')}\nLink: {r.get('href')}\nSnippet: {r.get('body')}\n\n"
+        except Exception as e:
+            web_results = f"Web search failed: {e}"
+        
+        if not web_results:
+            return "No web results found."
+        return web_results
+
+    print(f"[Literature] Running Web Search for: {search_query}...")
+    web_results = web_search_tool.invoke({"query": search_query, "goal": state.goal}, config=config)
     
     # 3. Process results & Summarize
     processed_papers = {}
@@ -76,51 +113,64 @@ async def literature_node(state: DiscoveryState) -> dict:
     full_text_context += f"\n\nWeb Search Results:\n{web_results}"
     print(f"[Literature] Found {len(papers)} papers and web results.")
     
-    # 4. Build Concept Graph (Iterative & Parallel)
+    # 4. Build Concept Graph (Batch / Fan-In)
     import asyncio
+    from langchain_community.callbacks import get_openai_callback
     
     llm = get_cheap_llm()
     structured_llm = llm.with_structured_output(ConceptGraph)
     
     # SYSTEM PROMPT STRATEGY BASED ON GOAL
     if state.goal == "survey":
-        system_msg = "You are a specialized librarian. Extract the CORE CONSENSUS concepts and DEFINITIVE relationships. Ignore minor details."
+        system_msg = "You are a specialized librarian. Extract the CORE CONSENSUS concepts and DEFINITIVE relationships from the provided abstracts. Ignore minor details."
     elif state.goal == "discover":
-        system_msg = "You are a scientific detective. Extract NOVEL, NON-OBVIOUS, and CONTRADICTING concepts. Focus on the periphery and edge cases."
+        system_msg = "You are a scientific detective. Extract NOVEL, NON-OBVIOUS, and CONTRADICTING concepts from the collection of abstracts. Focus on the periphery and edge cases."
     else:
-        system_msg = "You are a scientific assistant. Extract a granular concept graph from the following abstract."
+        system_msg = "You are a scientific assistant. Extract a granular concept graph from the following abstracts."
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_msg),
-        ("human", "{abstract}")
+        ("human", "Here are the abstracts:\n\n{abstracts}")
     ])
     chain = prompt | structured_llm
 
-    async def extract_from_paper(paper):
-        try:
-            abstract = reconstruct_abstract(paper.get("abstract"))
-            if not abstract: return None
-            return await chain.ainvoke({"abstract": abstract})
-        except Exception as e:
-            print(f"[Literature] Extraction failed for {paper['id']}: {e}")
-            return None
-
-    print(f"[Literature] Extracting graphs from {len(papers)} papers in parallel...")
-    graph_results = await asyncio.gather(*[extract_from_paper(p) for p in papers])
+    # Prepare batch context
+    all_abstracts = []
+    for p in papers:
+        abs_text = reconstruct_abstract(p.get("abstract"))
+        if abs_text:
+            all_abstracts.append(f"Paper ID: {p['id']}\nTitle: {p['title']}\nAbstract: {abs_text}\n")
     
-    # Merge graphs
+    combined_feed = "\n---\n".join(all_abstracts)
+    
+    # 4. EXPLICIT LOGGING TOOL (Heartbeat)
+    @tool
+    def log_heartbeat(msg: str):
+        """Emits a log message to the frontend."""
+        return msg
+
+    print(f"[Literature] Extracting unified graph from {len(papers)} papers (Batch Mode)...")
+    log_heartbeat.invoke(f"Starting unified graph extraction for {len(papers)} papers using GPT-5-Mini...", config=config)
+    
     merged_nodes = set()
     merged_edges = []
     
-    for res in graph_results:
-        if res:
-            merged_nodes.update(res.nodes)
-            # Deduplicate edges based on source-target-relation
-            for edge in res.edges:
-                # Check if edge already exists (simple check)
-                exists = any(e.source == edge.source and e.target == edge.target and e.relation == edge.relation for e in merged_edges)
-                if not exists:
-                    merged_edges.append(edge)
+    try:
+        with get_openai_callback() as cb:
+            # Single Batch Call
+            graph_result = await chain.ainvoke({"abstracts": combined_feed}, config=config)
+            print(f"[Literature] Token Usage (Batch Extraction): {cb}")
+            log_heartbeat.invoke(f"Batch extraction complete. Cost: ${cb.total_cost:.4f}", config=config)
+        
+        if graph_result:
+            merged_nodes.update(graph_result.nodes)
+            # Deduplicate edges
+            for edge in graph_result.edges:
+                merged_edges.append(edge)
+
+    except Exception as e:
+        print(f"[Literature] Batch extraction failed: {e}")
+        log_heartbeat.invoke(f"Error during batch extraction: {e}", config=config)     
     
     # 3.5. APPLY DISCIPLINARY LENS (Inject a node if using a lens)
     if state.lens and state.lens != "none":
@@ -131,14 +181,16 @@ async def literature_node(state: DiscoveryState) -> dict:
 
     concept_graph = {
         "nodes": list(merged_nodes),
-        "edges": [e.dict() for e in merged_edges]
+        "edges": [e.model_dump() for e in merged_edges]
     }
-    print(f"[Literature] Built merged graph with {len(merged_nodes)} nodes and {len(merged_edges)} edges.")
+    print(f"[Literature] Built batch graph with {len(merged_nodes)} nodes and {len(merged_edges)} edges.")
 
     # 4. Normalize Graph (Entity Resolution)
     try:
         print(f"[Literature] Normalizing graph nodes...")
+        # with get_openai_callback() as cb:
         concept_graph = await normalize_graph_nodes(concept_graph)
+        # print(f"[Literature] Token Usage (Normalization): {cb}")
         print(f"[Literature] Graph normalized. Nodes: {len(concept_graph['nodes'])}, Edges: {len(concept_graph['edges'])}")
     except Exception as e:
         print(f"[Literature] Normalization failed: {e}")
@@ -146,7 +198,9 @@ async def literature_node(state: DiscoveryState) -> dict:
     # 5. Densify Graph (Grounded Second Pass)
     try:
         print(f"[Literature] Densifying graph (Second Pass)...")
+        # with get_openai_callback() as cb:
         concept_graph = await densify_graph(concept_graph, papers)
+        # print(f"[Literature] Token Usage (Densification): {cb}")
         print(f"[Literature] Graph densified. Nodes: {len(concept_graph['nodes'])}, Edges: {len(concept_graph['edges'])}")
     except Exception as e:
         print(f"[Literature] Densification failed: {e}")
@@ -224,7 +278,7 @@ async def densify_graph(graph_data: dict, papers: list) -> dict:
             if edge.source in nodes and edge.target in nodes:
                 # Verify edge is new
                 if (edge.source, edge.target, edge.relation) not in existing_edges:
-                    new_edges.append(edge.dict())
+                    new_edges.append(edge.model_dump())
                     existing_edges.add((edge.source, edge.target, edge.relation))
                     
     if new_edges:

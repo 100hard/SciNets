@@ -1,8 +1,6 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-# from app.graph import create_graph
-# from app.state import DiscoveryState
 from pydantic import BaseModel
 import uuid
 from typing import List, Dict, Any
@@ -10,6 +8,15 @@ from dotenv import load_dotenv
 from fastapi.responses import StreamingResponse
 import json
 import asyncio
+import uvicorn
+import os
+import sys
+
+# Ensure backend dir is in path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(current_dir)
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
 
 load_dotenv()
 
@@ -24,9 +31,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory session store for MVP
-# We can't type hint with DiscoveryState here anymore if lazy loading
+# In-memory session store
 sessions: Dict[str, Any] = {}
+
+def custom_serializer(obj):
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if hasattr(obj, "dict"):
+        return obj.dict()
+    return str(obj)
 
 class RunRequest(BaseModel):
     query: str
@@ -59,14 +72,19 @@ async def run_discovery_stream(request: RunRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Init failed: {e}")
 
+        
+
+
     async def event_generator():
         # Emit initial thinking event
         yield f"data: {json.dumps({'type': 'activity', 'data': {'agent': 'orchestrator', 'action': f'Starting discovery for: {request.query}', 'status': 'thinking'}})}\n\n"
         await asyncio.sleep(0.1) # Force flush
         
         try:
+            # Accumulator for final result
+            accumulated_state = {}
+            
             # Use astream_events to get granular updates
-            # 'v2' is required for valid astream_events output in newer langchain versions
             async for event in graph.astream_events(initial_state, version="v1"):
                 kind = event["event"]
                 name = event.get("name", "")
@@ -97,35 +115,47 @@ async def run_discovery_stream(request: RunRequest):
 
                 # 2. TOOL & LOG UPDATES (In-Depth)
                 elif kind == "on_tool_start":
-                    # e.g., name="duckduckgo_search" or "read_paper"
                     yield f"data: {json.dumps({'type': 'log', 'data': f'[TOOL START] {name}: {str(data.get("input"))[:100]}...'})}\n\n"
                     await asyncio.sleep(0)
                 
                 elif kind == "on_tool_end":
                     output = str(data.get("output"))
-                    # Truncate long outputs for the log stream
                     preview = output[:200] + "..." if len(output) > 200 else output
                     yield f"data: {json.dumps({'type': 'log', 'data': f'[TOOL END]   {name} -> {preview}'})}\n\n"
                     await asyncio.sleep(0)
 
-                # 3. CHAT MODEL STREAMING (Thought Process)
+                # 3. CHAT MODEL STREAMING
                 elif kind == "on_chat_model_stream":
-                    # This gives token-by-token updates. Too noisy for now, maybe aggregate or skip.
-                    # For "Deep Dive", users might like to see the "Thinking..." chunks.
                     chunk = data.get("chunk")
                     if chunk and hasattr(chunk, "content") and chunk.content:
                          yield f"data: {json.dumps({'type': 'log_chunk', 'data': chunk.content})}\n\n"
 
-                # 4. FINAL RESULT
-                elif kind == "on_chain_end" and name == "LangGraph":
-                    final_state = event['data']['output']
-                    if hasattr(final_state, "dict"):
-                        res = final_state.dict()
-                    elif isinstance(final_state, dict):
-                        res = final_state
+                elif kind == "on_chain_end":
+                    batch_output = event.get('data', {}).get('output', {})
+                    if hasattr(batch_output, "dict"):
+                        update_dict = batch_output.model_dump()
+                    elif isinstance(batch_output, dict):
+                        update_dict = batch_output
                     else:
-                        res = {} 
-                    yield f"data: {json.dumps({'type': 'result', 'data': res})}\n\n"
+                        update_dict = {}
+                    
+                    # SMART ACCUMULATION: Only pick up known state keys
+                    # This filters out "messages" from sub-agents and other noise
+                    relevant_keys = ["plan", "literature", "hypotheses", "evidence", "experiments", "critique", "user_query", "concept_graph", "domain_tags"]
+                    
+                    has_update = False
+                    for key in relevant_keys:
+                        if key in update_dict:
+                            accumulated_state[key] = update_dict[key]
+                            has_update = True
+                            
+                    if has_update:
+                        # Ensure user_query/goal are present
+                        if "user_query" not in accumulated_state:
+                            accumulated_state["user_query"] = request.query
+                        
+                        # Yield update if we have at least the initial plan or structure
+                        yield f"data: {json.dumps({'type': 'result', 'data': accumulated_state}, default=custom_serializer)}\n\n"
 
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
@@ -144,20 +174,8 @@ async def run_discovery_stream(request: RunRequest):
 
 @app.get("/sessions")
 def get_sessions():
-    """Returns a list of past sessions (summary)."""
-    return [
-        {
-            "id": sid,
-            "query": s.user_query,
-            "hypotheses_count": len(s.hypotheses),
-            "experiments_count": len(s.experiments),
-            "done": s.done
-        }
-        for sid, s in sessions.items()
-    ]
+    return [{"id": k, "query": "session"} for k in sessions]
 
-@app.get("/sessions/{session_id}")
-def get_session(session_id: str):
-    if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return sessions[session_id]
+if __name__ == "__main__":
+    print("Starting SciNets Server on Port 8005...")
+    uvicorn.run(app, host="127.0.0.1", port=8005, log_level="info")

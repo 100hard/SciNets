@@ -58,6 +58,7 @@ class DiscoveryState(BaseModel):
     lens: str = "none"               # Disciplinary lens (e.g., "game theory")
     speculation: str = "medium"      # low, medium, high
     run_experiments: bool = False    # Whether to run python experiments
+    documents: List[str] = []        # User-provided papers/context
     domain_tags: List[str] = []
     plan: Optional[dict] = None
     literature: Optional[dict] = None

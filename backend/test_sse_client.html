@@ -1,0 +1,64 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SciNets SSE Tester</title>
+    <style>
+        body { background: #111; color: #eee; font-family: monospace; padding: 20px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; }
+        #logs { margin-top: 20px; white-space: pre-wrap; background: #222; padding: 10px; border: 1px solid #444; height: 500px; overflow-y: scroll; }
+    </style>
+</head>
+<body>
+    <h1>SSE Stream Test</h1>
+    <button onclick="startStream()">Start Discovery Stream</button>
+    <div id="logs">Waiting...</div>
+
+    <script>
+        async function startStream() {
+            const logs = document.getElementById("logs");
+            logs.textContent = "Connecting to http://127.0.0.1:8000/run_stream...\n";
+            
+            try {
+                const response = await fetch("http://127.0.0.1:8000/run_stream", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        query: "Test Stream",
+                        goal: "discover",
+                        lens: "physics",
+                        speculation: "high",
+                        run_experiments: false,
+                        documents: []
+                    })
+                });
+
+                logs.textContent += `Response Status: ${response.status} ${response.statusText}\n`;
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    logs.textContent += `Error Body: ${text}\n`;
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        logs.textContent += "\n[Stream Completed]";
+                        break;
+                    }
+                    const chunk = decoder.decode(value, { stream: true });
+                    logs.textContent += chunk; // Append raw chunk immediately
+                    logs.scrollTop = logs.scrollHeight;
+                }
+            } catch (e) {
+                logs.textContent += `\nFetch Error: ${e}`;
+            }
+        }
+    </script>
+</body>
+</html>
