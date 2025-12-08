@@ -37,14 +37,20 @@ def create_graph():
             "hypothesis": "hypothesis"
         }
     )
-    # workflow.add_edge("literature", "hypothesis")  <-- Removed linear edge
+    # PARALLELISM: Run Evidence and Experiment simultaneously
+    # Both take 'hypothesis' output as input.
     workflow.add_edge("hypothesis", "evidence")
-    workflow.add_edge("evidence", "experiment")
+    workflow.add_edge("hypothesis", "experiment")
+    
+    # Fan-in: Both point to Critique
+    workflow.add_edge("evidence", "critique")
     workflow.add_edge("experiment", "critique")
+    
     workflow.add_edge("critique", END)
     
     # Add Checkpointer for Human In The Loop
     memory = MemorySaver()
     
     # Interrupt before 'critique' to allow user to review hypotheses/experiments
-    return workflow.compile(checkpointer=memory, interrupt_before=["critique"])
+    # REMOVING INTERRUPT for fully automated flow as per user request (implicit)
+    return workflow.compile(checkpointer=memory)

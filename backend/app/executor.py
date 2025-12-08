@@ -5,8 +5,11 @@ import uuid
 from typing import Dict, Any, Tuple
 
 class LocalExecutor:
-    def __init__(self, work_dir: str = "/app/experiments"):
-        self.work_dir = work_dir
+    def __init__(self, work_dir: str = None):
+        if work_dir is None:
+            self.work_dir = os.path.join(os.getcwd(), "experiments")
+        else:
+            self.work_dir = work_dir
         os.makedirs(self.work_dir, exist_ok=True)
 
     async def run_script(self, code: str, timeout: int = 60) -> Tuple[int, str, str, Dict[str, Any]]:

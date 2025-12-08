@@ -23,27 +23,76 @@ async def plan_node(state: DiscoveryState) -> dict:
         memory_context = "Past Insights:\n" + "\n".join([f"- {i.content}" for i in insights])
         print(f"[Orchestrator] Using {len(insights)} past insights.")
     
+    # MOCK MODE Check
+    if state.mock:
+        print("[Orchestrator] MOCK MODE: Returning dummy domains.")
+        return {
+            "plan": {"steps": ["literature", "hypothesis", "experiment"] if state.run_experiments else ["literature", "hypothesis"], "current_step": "literature"},
+            "domain_tags": ["general", "mock-domain"]
+        }
+    
     # 1. Detect Domains
     llm = get_cheap_llm()
     structured_llm = llm.with_structured_output(DomainClassification)
     
-    available_domains = ", ".join(get_domain_packs().keys())
     
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", f"You are a scientific research assistant. Classify the following query into one or more of these domains: {available_domains}. Consider past insights if relevant."),
-        ("human", f"Query: {state.user_query}\nDisciplinary Lens: {state.lens}\n\n{memory_context}")
-    ])
+    available_domains = list(get_domain_packs().keys())
+    available_domains_str = ", ".join(available_domains)
     
-    chain = prompt | structured_llm
-    result = await chain.ainvoke({})
+    from langchain_core.messages import SystemMessage, HumanMessage
     
-    detected_domains = result.domains
+    # FIX: Add State context (Goal/Speculation)
+    system_msg = f"""You are a scientific research assistant. Classify the following query into one or more of these domains: {available_domains_str}.
+    
+    CONTEXT:
+    - User Goal: {state.goal} (e.g. 'survey' = broad/standard, 'discover' = novel/edge)
+    - Speculation Level: {state.speculation}
+    
+    GUIDELINES:
+    1. If the goal is 'discover', consider adding exploratory domains like 'ml' or 'theory' if applicable.
+    2. If the lens is '{state.lens}', prioritize domains related to it.
+    3. Return ONLY domains from the valid list: {available_domains_str}.
+    """
+    
+    messages = [
+        SystemMessage(content=system_msg),
+        HumanMessage(content=f"Query: {state.user_query}\nDisciplinary Lens: {state.lens}\n\n{memory_context}")
+    ]
+    
+    try:
+        result = await structured_llm.ainvoke(messages)
+        raw_domains = result.domains or []
+    except Exception as e:
+        print(f"[Orchestrator] Domain classification failed: {e}")
+        raw_domains = []
+        
+    # FIX: Post-processing & Normalization
+    normalized_domains = []
+    # Create lookup map for case-insensitive matching
+    domain_lookup = {d.lower(): d for d in available_domains}
+    
+    for d in raw_domains:
+        d_clean = d.strip().lower()
+        if d_clean in domain_lookup:
+            normalized_domains.append(domain_lookup[d_clean])
+            
+    # Fallback
+    if not normalized_domains:
+        normalized_domains = ["general"] if "general" in domain_lookup else [available_domains[0]]
+        
+    # Deduplicate preserving order
+    detected_domains = list(dict.fromkeys(normalized_domains))
     print(f"[Orchestrator] Detected domains: {detected_domains}")
     
-    # 2. Create Plan
-    # For now, we still use a linear plan, but we store the domains for downstream agents.
+    # 2. Create Plan (Dynamic)
+    steps = ["literature", "hypothesis"]
+    
+    # Only add experiment if enabled and not just a survey
+    if state.run_experiments and state.goal != "survey":
+        steps.append("experiment")
+        
     plan = {
-        "steps": ["literature", "hypothesis", "experiment"],
+        "steps": steps,
         "current_step": "literature"
     }
     
