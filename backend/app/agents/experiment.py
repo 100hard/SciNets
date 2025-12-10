@@ -212,7 +212,7 @@ async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict
     
     RULES:
     1. Output a SINGLE JSON object of type `ExperimentAction`.
-    2. The code MUST print a final JSON object to stdout containing metrics (e.g. {{"accuracy": 0.9, "loss": 0.1, "p_value": 0.05}}).
+    2. The code MUST print a final JSON object to stdout containing metrics (e.g. {{{{"accuracy": 0.9, "loss": 0.1, "p_value": 0.05}}}}).
     3. PLOTS: If you generate a plot, save it as 'plot.png' and include "plot": "plot.png" in the final metrics.
     4. NO HIDDEN ERRORS: If execution fails, print a JSON with "error" key.
     5. COMPUTE LIMITS: 

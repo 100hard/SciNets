@@ -169,6 +169,12 @@ async def run_experiment_stream(request: ExperimentRequest):
                     msg = f"[Result] {preview}{duration_str}"
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                     await asyncio.sleep(0)
+                
+                elif kind == "on_custom_event" and name == "log":
+                    start_time = event.get("metadata", {}).get("created_at") # Optional
+                    msg = data.get("message", "")
+                    yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
+                    await asyncio.sleep(0)
 
                 elif kind == "on_chain_end":
                     batch_output = event.get('data', {}).get('output', {})
@@ -265,10 +271,15 @@ async def run_discovery_stream(request: RunRequest):
             
             # Use astream_events to get granular updates
             # Pass CONFIG for thread persistence
-            async for event in graph.astream_events(initial_state, config=config, version="v1"):
+            # V2 is required for reliable custom_event dispatch
+            async for event in graph.astream_events(initial_state, config=config, version="v2"):
                 kind = event["event"]
                 name = event.get("name", "")
                 data = event.get("data", {})
+
+                # DEBUG PRINT (Visible in server console)
+                if kind == "on_custom_event":
+                    print(f"DEBUG_EVENT: {kind} name={name} data={str(data)[:100]}")
                 
                 # 1. MAJOR NODE UPDATES (High Level)
                 if kind == "on_chain_start" and name in ["literature", "hypothesis", "evidence", "experiment", "critique", "plan"]:
@@ -349,12 +360,21 @@ async def run_discovery_stream(request: RunRequest):
                     if event["name"] == "log":
                         log_data = data.get("message", str(data))
                         # Yield as 'log' type for System Terminal
-                        yield f"data: {json.dumps({'type': 'log', 'data': log_data})}\n\n"
+                        yield f"data: {json.dumps({'type': 'log', 'data': log_data})}\\n\\n"
+                        await asyncio.sleep(0)
+                        
                     elif event["name"] == "activity":
-                        # Optional: yield as 'activity' for Left Panel if needed
-                        activity_data = data.get("message", str(data))
-                        yield f"data: {json.dumps({'type': 'activity', 'data': {'status': activity_data}})}\n\n"
-                    await asyncio.sleep(0)
+                        # Yield as 'activity' for Left Panel
+                        # Frontend expects: { id, agent, action, status, timestamp }
+                        # We construct a partial object here
+                        msg = data.get("message", str(data))
+                        activity_data = {
+                            "agent": "scientist", # Default to scientist for these deep thoughts
+                            "action": msg,
+                            "status": "thinking"
+                        }
+                        yield f"data: {json.dumps({'type': 'activity', 'data': activity_data})}\\n\\n"
+                        await asyncio.sleep(0)
 
                 elif kind == "on_chain_end":
                     batch_output = event.get('data', {}).get('output', {})
@@ -391,9 +411,31 @@ async def run_discovery_stream(request: RunRequest):
                 yield f"data: {json.dumps({'type': 'interrupt', 'data': {'next': list(snapshot.next), 'thread_id': thread_id}})}\n\n"
             else:
                 request_log.info("workflow_completed")
-                yield "data: [DONE]\n\n"
-        except Exception:
-            yield "data: [DONE]\n\n"
+                
+                # FAIL-SAFE: Explicitly send the final state to ensure Frontend has the result
+                final_state = snapshot.values
+                # Ensure we only send serializable/relevant parts if needed, or rely on custom_serializer
+                yield f"data: {json.dumps({'type': 'result', 'data': final_state}, default=custom_serializer)}\\n\\n"
+                
+                yield "data: [DONE]\\n\\n"
+        except Exception as e:
+            # Check if it was the dump that failed
+            request_log.error("fail_safe_sync_failed", error=str(e))
+            try:
+                # Fallback: Try sending ONLY the key items (hypotheses, concept_graph) to save the UI
+                snapshot = await graph.aget_state(config)
+                safe_payload = {
+                    "hypotheses": snapshot.values.get("hypotheses"),
+                    "concept_graph": snapshot.values.get("concept_graph"),
+                    "experiments": snapshot.values.get("experiments"),
+                    "visualization_data": snapshot.values.get("visualization_data")
+                }
+                yield f"data: {json.dumps({'type': 'result', 'data': safe_payload}, default=custom_serializer)}\\n\\n"
+            except Exception as e2:
+                request_log.error("fail_safe_fallback_failed", error=str(e2))
+                pass
+            
+            yield "data: [DONE]\\n\\n"
 
     return StreamingResponse(
         event_generator(),

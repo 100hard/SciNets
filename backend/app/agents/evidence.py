@@ -48,7 +48,7 @@ async def evidence_node(state: DiscoveryState, config: RunnableConfig) -> dict:
     # 1. Search OpenAlex with refined query
     # Prefer pre-computed search query if available, else use text
     # Limit increased to 5 for better coverage
-    query = getattr(hypothesis, "search_query", hypothesis.text)
+    query = hypothesis.search_query or hypothesis.text
     
     # Optional: Augment query if it's too short for a paper search
     if len(query.split()) < 3:

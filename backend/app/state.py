@@ -22,6 +22,7 @@ class Hypothesis(BaseModel):
     search_query: Optional[str] = None # Keywords for evidence search
     required_data: List[str] = []
     experiment_idea: str | None = None
+    evidence_summary: Optional[str] = None # Textual summary of evidence (e.g. graph paths)
     evidence: List[EvidenceItem] = []
 
 class ExperimentPlan(BaseModel):

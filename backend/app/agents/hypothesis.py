@@ -206,70 +206,183 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         
         # Limit combinations to avoid explosion
         pairs = list(itertools.combinations(top_nodes, 2))
+        
         # print(f"DEBUG: Checking {len(pairs)} pairs.")
         
         for u, v in pairs:
             try:
-                # FIX: cutoff=4 and limit count to prevent explosion
-                # paths = list(nx.all_simple_paths(G, source=u, target=v, cutoff=5)) # OLD hanging line
-                raw_paths = nx.all_simple_paths(G, source=u, target=v, cutoff=4)
-                # Only take top 5 paths to avoid exponential hang
-                paths = list(itertools.islice(raw_paths, 5))
-                if not paths: continue
+                # FIX: Use shortest_simple_paths (Yen's algorithm) which is efficient for top-k
+                # avoiding the exponential complexity of all_simple_paths even with cutoff
+                # Get more candidates (10) to filter for quality
+                raw_paths = nx.shortest_simple_paths(G, source=u, target=v)
+                candidate_paths = list(itertools.islice(raw_paths, 10))
                 
-                for p in paths:
-                    if len(p) < 3: continue # Skip trivial
+                if not candidate_paths: continue
+                
+                # Pre-calculate degrees and edge counts for specificity/rarity scoring
+                node_degrees = dict(G.degree())
+                edge_counts = {}
+                total_edges_count = G.number_of_edges()
+                for _, _, data in G.edges(data=True):
+                    r = data.get('relation', 'related')
+                    edge_counts[r] = edge_counts.get(r, 0) + 1
+                
+                valid_paths = []
+                import math
+                
+                for p in candidate_paths:
+                    # Filter 1: Hard Length Cap 
+                    if len(p) > 5: continue 
+                    # Filter 2: Triviality 
+                    if len(p) < 3: continue 
                     
-                    # Heuristic Ranking Score
-                    # +1 for every "causal" word in edges
-                    # +1 for path length (specificity)
-                    score = 0
+                    # 1. Edge Score (Mechanistic Strength + Rarity)
+                    edge_score = 0
+                    rarity_accum = 0
                     formatted = []
+                    
                     for i in range(len(p)-1):
                         p1, p2 = p[i], p[i+1]
+                        
                         rel = G.get_edge_data(p1, p2).get('relation', 'related')
                         formatted.append(f"{p1} --[{rel}]-->")
-                        if any(x in rel.lower() for x in ["causes", "leads", "activates", "inhibits"]):
-                            score += 1
+                        
+                        # Base Edge Score (Equal weight)
+                        # We used to add 1.0 here, but now we use 1/Length in the final formula
+                        pass
+                        
+                        # Rarity Score (Capped)
+                        # freq = count / total
+                        freq = edge_counts.get(rel, 1) / (total_edges_count + 1)
+                        r_val = -math.log(freq + 1e-8)
+                        # Cap rarity at 3.0 to prevent one-off noise from dominating
+                        rarity = min(r_val, 3.0)
+                        rarity_accum += rarity
+                            
                     formatted.append(p[-1])
                     
-                    found_paths.append({
+                    avg_rarity = rarity_accum / (len(p)-1) if len(p) > 1 else 0
+                    
+                    # 2. Node Specificity Score (Inverse Degree Centrality)
+                    node_score = 0
+                    intermediate_nodes = p[1:-1]
+                    
+                    if intermediate_nodes:
+                        specs = []
+                        for n in intermediate_nodes:
+                            deg = node_degrees.get(n, 1)
+                            spec = 1.0 / math.log(deg + 2) 
+                            specs.append(spec)
+                        node_score = sum(specs) / len(specs)
+                    else:
+                        node_score = 0.5 
+                        
+                    # Final Score Formula
+                    # Alpha * (1/Length) -> Prefer compact/tight explanations
+                    # Beta * Specificity -> Prefer non-hubs
+                    # Gamma * Rarity -> Prefer novel connections
+                    alpha = 1.0
+                    beta = 1.0
+                    gamma = 0.5
+                    
+                    len_score = 1.0 / len(p)
+                    final_score = (alpha * len_score) + (beta * node_score) + (gamma * avg_rarity)
+                    
+                    valid_paths.append({
                         "str": " ".join(formatted),
-                        "score": score + len(p) * 0.5 # Length bonus
+                        "score": final_score,
+                        "length": len(p),
+                        "components": {
+                            "compactness": round(alpha * len_score, 2),
+                            "specificity": round(beta * node_score, 2),
+                            "novelty": round(gamma * avg_rarity, 2)
+                        },
+                        "nodes": p # Store raw nodes for Jaccard calc
                     })
+                
+                # Sort candidates by score and take best 3 per pair
+                valid_paths.sort(key=lambda x: x["score"], reverse=True)
+                found_paths.extend(valid_paths[:3])
                     
             except Exception:
                 continue
                 
-        # Sort by score desc
+        # Final Global Sort: High score first
         found_paths.sort(key=lambda x: x["score"], reverse=True)
         
+        # LOGGING FOR VERIFICATION
         if found_paths:
-            # Take top 5 distinct paths
-            unique_paths = []
-            seen = set()
-            for p in found_paths:
-                if p["str"] not in seen:
-                    unique_paths.append(p["str"])
-                    seen.add(p["str"])
-                if len(unique_paths) >= 5: break
+            top_debug = [
+                {
+                    "path": p["str"], 
+                    "score": round(p["score"], 2),
+                    "breakdown": p["components"]
+                } 
+                for p in found_paths[:5]
+            ]
+            log.info("path_scoring_results", top_paths=top_debug)
+            log.info("diversity_selection_started", num_candidates=len(found_paths))
+        
+        final_selected_paths = []
+        if found_paths:
+            # DIVERSITY SELECTION (Greedy w/ Jaccard Penalty)
+            def jaccard_overlap(p_nodes, q_nodes):
+                s1, s2 = set(p_nodes), set(q_nodes)
+                inter = len(s1 & s2)
+                union = len(s1 | s2)
+                return inter / union if union > 0 else 0.0
+
+            selected_items = []
+            
+            # We iterate through sorted paths and pick if they are distinct enough
+            for item in found_paths:
+                if len(final_selected_paths) >= 5: break
                 
-            path_context = "Key Multi-Hop Causal Chains found in Graph:\n- " + "\n- ".join(unique_paths)
-            await adispatch_custom_event("log", {"message": f"[Hypothesis] Found {len(unique_paths)} high-value paths."}, config=config)
+                path_nodes = item["nodes"]
+                base_score = item["score"]
+                
+                # Check overlap with already selected
+                max_ov = 0.0
+                if selected_items:
+                    max_ov = max(jaccard_overlap(path_nodes, prev["nodes"]) for prev in selected_items)
+                
+                # Penalize score based on overlap
+                # effective_score = base_score - lambda * overlap
+                lambda_overlap = 3.0 
+                effective_score = base_score - (lambda_overlap * max_ov)
+                
+                # Heuristic: If it's still a "good" path (positive score implies reasonable quality), take it
+                if effective_score > 2.0: # Threshold tailored to our score scale
+                    final_selected_paths.append(item["str"])
+                    selected_items.append(item)
+            
+            log.info("diversity_selection_completed", selected=len(final_selected_paths))
+
+            # Fallback if diversity filtering killed everything (unlikely)
+            if not final_selected_paths:
+                log.warning("diversity_fallback_triggered")
+                final_selected_paths = [p["str"] for p in found_paths[:5]]
+                
+            path_context = "Key Multi-Hop Causal Chains found in Graph:\n- " + "\n- ".join(final_selected_paths)
+            log.info("diversity_log_ready", paths=len(final_selected_paths))
+            # Send visibility update to ACTIVITY FEED (not Terminal)
+            await adispatch_custom_event("activity", {"message": f"Selected {len(final_selected_paths)} diverse causal paths for analysis."}, config=config)
         else:
             await adispatch_custom_event("log", {"message": "[Hypothesis] No significant paths found."}, config=config)
             
     except Exception as e:
+        log.error("hypothesis_path_extraction_critical_failure", error=str(e))
         await adispatch_custom_event("log", {"message": f"[Hypothesis] Path extraction failed: {e}"}, config=config)
 
-    # 3.5 Structural Hole Explorer (The "Novelty Engine")
-    # Only runs if goal is 'discover' or speculation is 'high'
+     # 3.5 Structural Hole Explorer (The "Novelty Engine")
+    log.info("checking_structural_hole_conditions", goal=state.goal, speculation=state.speculation)
     hole_exploration_summary = ""
     if state.goal == "discover" or state.speculation == "high":
-        await adispatch_custom_event("log", {"message": "[Hypothesis] Running Structural Hole Explorer..."}, config=config)
+        log.info("starting_structural_hole_exploration")
+        # Send to Activity Feed
+        await adispatch_custom_event("activity", {"message": "Running Structural Hole Explorer to find missing links..."}, config=config)
         try:
             # A. Detect Communities (Clusters)
-            # Use greedy_modularity_communities which is fast and good for this scale
             import networkx.algorithms.community as nx_comm
             
             # Convert to undirected for community detection
@@ -298,7 +411,8 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
                             if list(lens_community) != list(communities[0]):
                                 c2 = list(lens_community)[:5]
 
-                    await adispatch_custom_event("log", {"message": f"[Hypothesis] Identified Disconnected Clusters:\nCluster A: {c1}\nCluster B: {c2}"}, config=config)
+                    # Terminal log is fine for "hard" data like clusters
+                    # await adispatch_custom_event("log", {"message": f"[Hypothesis] Identified Disconnected Clusters:\nCluster A: {c1}\nCluster B: {c2}"}, config=config)
                     
                     # B. The "Bridge" Prompt (Null Hypothesis Approach)
                     bridge_prompt = f"""
@@ -323,9 +437,14 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
                  await adispatch_custom_event("log", {"message": "[Hypothesis] Graph too small for community detection."}, config=config)
                  
         except Exception as e:
+            log.error("structural_hole_failed", error=str(e))
             await adispatch_custom_event("log", {"message": f"[Hypothesis] Structural Hole Exploration failed: {e}"}, config=config)
 
     # 4. Generate Structured Hypotheses (Structured Template)
+    log.info("preparing_hypothesis_generation")
+    # Send to Activity Feed
+    await adispatch_custom_event("activity", {"message": "Synthesizing novel hypotheses from graph evidence..."}, config=config)
+    
     structured_llm = llm.with_structured_output(HypothesisList)
     
     from langchain_core.messages import SystemMessage, HumanMessage
@@ -341,7 +460,7 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
     REQUIRED OUTPUT STRUCTURE per hypothesis:
     - Statement: A single clear sentence.
     - Causal Chain: The step-by-step mechanism (A -> B -> C).
-    - Evidence: Specific nodes/paths from the graph.
+    - Evidence Summary: Specific nodes/paths from the graph that support this.
     - Scores: Novelty (0-1), Feasibility (0-1), Testability (0-1).
     - Search Query: A precise keyword-based boolean query to validate this hypothesis (e.g. '"protein folding" AND "diffusion"').
     - Tags: Domain tags (e.g. 'bio', 'ml').
@@ -353,8 +472,10 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
     ]
     
     try:
+        log.info("invoking_hypothesis_llm")
         await adispatch_custom_event("log", {"message": f"[Hypothesis] Generating hypotheses (Speculation: {state.speculation or 'Medium'})..."}, config=config)
         result = await structured_llm.ainvoke(messages)
+        log.info("hypothesis_llm_completed", num_hypotheses=len(result.hypotheses))
         hypotheses = result.hypotheses
         
         # 4.5 Deduplication & Selection
