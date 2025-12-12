@@ -455,12 +455,14 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
     GUIDELINES:
     1. Each hypothesis must be NON-OBVIOUS. (Avoid "X is related to Y" - say "X drives Y via Z").
     2. Must be TESTABLE with current technology (simulation or lab).
-    3. Use the graph paths evidence provided.
+    3. Use the graph paths evidence provided, but rewrite them into fluid English. usage. 
+       - CRITICAL: Ensure spaces between words (e.g., "damages interact", NOT "damagesinteract").
+    4. TONE: Use "candidate mechanism" and "potential pathway" language. Avoid absolute certainty (e.g. "This proves...").
     
     REQUIRED OUTPUT STRUCTURE per hypothesis:
-    - Statement: A single clear sentence.
-    - Causal Chain: The step-by-step mechanism (A -> B -> C).
-    - Evidence Summary: Specific nodes/paths from the graph that support this.
+    - Statement: A single clear sentence. START WITH "Statement: ".
+    - Causal Chain: The step-by-step mechanism (A -> B -> C). MUST BE PREFIXED WITH "Causal Chain: ".
+    - Evidence Summary: Specific nodes or paths that support this. Explicitly cite uncertainties.
     - Scores: Novelty (0-1), Feasibility (0-1), Testability (0-1).
     - Search Query: A precise keyword-based boolean query to validate this hypothesis (e.g. '"protein folding" AND "diffusion"').
     - Tags: Domain tags (e.g. 'bio', 'ml').

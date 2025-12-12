@@ -149,6 +149,21 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     
     print(f"[Literature] Found {len(papers)} papers and web results.")
     
+    # 3.5 Generate Executive Abstract (Prose)
+    # The user specifically requested a real abstract, not a list of titles.
+    print("[Literature] Synthesizing executive abstract...")
+    try:
+        abstract_prompt = ChatPromptTemplate.from_messages([
+            ("system", "You are the lead author of a meta-analysis. Write a coherent 2-paragraph Executive Abstract summarizing the key themes, consensus, and novel findings from the provided research context. Do NOT list papers. linking the concepts smoothly."),
+            ("human", f"Research Context:\n{full_text_context}\n\nExecutive Abstract (2 paragraphs):")
+        ])
+        abstract_res = await (abstract_prompt | get_cheap_llm()).ainvoke({})
+        final_summary = abstract_res.content.strip()
+    except Exception as e:
+        print(f"[Literature] Abstract generation failed: {e}")
+        final_summary = "\n".join(summary_lines) # Fallback
+
+    
     # 4. Build Concept Graph (Batch / Fan-In)
     import asyncio
     from langchain_community.callbacks import get_openai_callback
@@ -261,7 +276,7 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     return {
         "literature": {
             "papers": processed_papers,
-            "summary": "\n".join(summary_lines), 
+            "summary": final_summary, 
             "full_context": full_text_context,
             "web_research": web_results # FIX: Separated from full_context
         },
