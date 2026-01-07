@@ -1,0 +1,267 @@
+{
+  "query_id": "Q4_climate_sensitivity",
+  "timestamp": "2025-12-23T15:12:41.152912",
+  "config": {
+    "id": "Q4_climate_sensitivity",
+    "query": "Why do climate sensitivity models produce significantly different warming predictions despite similar emissions scenarios?",
+    "lens": "climate science"
+  },
+  "graph_stats": {
+    "nodes": 146,
+    "edges": 205
+  },
+  "discovery_metrics": {
+    "bridge_attempted": true,
+    "diversity_jaccard": 0.6133333333333335,
+    "stance_counts": {
+      "support": 9,
+      "contradict": 0,
+      "neutral": 0
+    },
+    "grounding": {
+      "symbolic_depth": 4.0,
+      "grounded_depth": 0.0,
+      "drop_rate": 1.0,
+      "collapse_events": 3,
+      "collapsed": true
+    }
+  },
+  "traces": {
+    "exploration": "I followed the required exploration strategy and interrogated the graph multiple times to build a causal picture of why models with nominally the same emissions scenarios can produce very different warming projections. Below I (A) summarize the graph exploration, (B) lay out causal chains that link otherwise disparate nodes, (C) propose a novel, testable breakthrough hypothesis, and (D) give concrete experiments/metrics to test it.\n\nA. What I looked at (graph orientation)\n- Central nodes flagged by the graph: uncertainties, emissions scenario, Global Climate Models (GCMs), CMIP5, climate sensitivity, land surface models, changes in extreme events, and probabilistic surface-warming PDFs to 2100.\n- Key neighbors I inspected: climate sensitivity, uncertainties, GCMs, CMIP5, land surface models, in silico wheat ideotypes, LARS-WG (downscaling), non-stationary GEV (extremes), frozen carbon residence time (FCRt).\n- I traced multiple paths connecting agricultural model outputs (in silico wheat ideotypes), land-surface model structure, and climate sensitivity via CMIP ensembles, downscaling, and uncertainty sampling.\n\nB. Causal chains and mechanistic links (climate-science lens)\nThe graph suggests multiple overlapping causal chains that can produce divergence in warming predictions even when emissions are the same. I focus on mechanistic, climate-science relevant links:\n\n1) Land-surface structural differences -> carbon-cycle feedback -> climate sensitivity\n- Chain: emissions scenario (same forcing) -> GCM physics + land surface model structure -> different representations of soil/vegetation carbon, phenology, evapotranspiration and albedo -> different frozen carbon residence time (FCRt) and CO2 flux trajectories -> different climate system response (climate sensitivity) -> divergent surface warming projections.\n- Mechanism: Structural differences in land-surface models change how long carbon is stored and how surface energy/water fluxes respond to warming. That alters atmospheric CO2 and biophysical feedbacks (albedo/ET), modifying effective climate sensitivity.\n\n2) Downscaling & ensemble selection -> regional feedbacks and extremes -> feedback into global metrics\n- Chain: GCM outputs (from CMIP5/CMIP6) -> selection of GCM subset via climate-sensitivity-index or other sampling -> use of downscalers (e.g., LARS-WG) -> local-scale climate scenarios and extreme-event statistics (non-stationary GEV) -> impacts on land use/agriculture and vegetation physiology -> altered land-cover/management -> altered regional biophysical feedbacks -> changes in global/ regional warming patterns and extremes.\n- Mechanism: Choices in ensemble selection and downscaling create sampling biases of feedback types (e.g., models with stronger land\u2013atmosphere coupling get under/over-represented). Those biases are amplified when used to drive impact models (crop ideotypes), which in turn suggest changes to land management that would feed back to the climate.\n\n3) Model intercomparison conventions -> apparent generational consistency but hidden structural spread\n- Chain: CMIP ensemble design and diagnostics focus (e.g., standard resolutions, global mean targets) -> some metrics show CMIP5/6 consistency at specific targets -> but hidden structural model differences (primarily land-surface, carbon-cycle parameterizations, initial conditions) still produce a spread in probabilistic warming PDFs and extremes.\n- Mechanism: High-level ensemble agreements can mask important structural reasons for spread that only emerge when examining carbon-cycle residence times, vegetation responses, or regional extremes.\n\nC. Novel, testable breakthrough hypothesis\n- Hypothesis: A majority of the inter-model spread in projected warming for identical emissions scenarios is driven not by atmospheric radiative physics or choice of RCP per se, but by structural and parameter differences in land-surface representations (soil carbon turnover, vegetation phenology, evapotranspiration and albedo) and by ensemble/downscaling sampling biases. In particular, variation in frozen carbon residence time (FCRt) across land-surface models is a dominant, under-recognized driver of divergence in climate sensitivity estimates across CMIP ensembles.\n\nWhy this is novel/useful:\n- The graph explicitly flags land surface models as a \"larger source of (structural differences)\" and shows links between land surface models -> FCRt and between land surface model uncertainty -> climate sensitivity. Bringing FCRt forward as a unifying metric that causally links land-model structural differences to global climate sensitivity is a specific, actionable angle not usually foregrounded in simple explanations of spread.\n- It also ties the impact-model side (in silico wheat ideotypes driven by downscaled climates) into the feedback loop: agricultural/land-use responses suggested by impact models can indicate which land-surface parameter regimes produce systematic warming differences.\n\nD. How to test this (experiments & metrics)\n1) Cross-model metric: compute and compare frozen carbon residence time (FCRt) across CMIP land-surface model components\n- If FCRt correlates strongly with each model's effective climate sensitivity / contribution to surface warming PDF, that supports the hypothesis.\n\n2) Controlled module-swap experiments\n- In at least one GCM framework that can interchange land modules (or in an Earth system model of intermediate complexity), run identical atmospheric physics and emissions but swap land-surface modules (different carbon-turnover and phenology parameterizations). Quantify the resulting change in atmospheric CO2 trajectory, radiative forcing, and global mean surface temperature. A large change would be direct causal evidence.\n\n3) Ensemble sampling sensitivity\n- Recompute ensemble warming PDFs and extremes using different GCM selection strategies: (a) full ensemble, (b) subset chosen by climate-sensitivity-index, (c) subset balanced by land-model FCRt values. Check how PDF spread and extreme-event statistics change. This will reveal sampling bias impacts.\n\n4) Integrate crop-model signals as constraints\n- Use the in silico wheat ideotype experiments (driven by GCM/downscaler outputs) to extract consistent phenology/ET/albedo response patterns correlated with warming. Use these observed model-consistent responses (and real-world agricultural observations) to constrain land-surface model parameters, then re-evaluate sensitivity.\n\n5) Evaluate extremes with non-stationary GEV across ensembles\n- Apply the non-stationary GEV method to ensembles before and after land-model standardization to see if extremes' projections converge, indicating land model contributions to extreme-event divergence.\n\nE. Immediate implications and urgent next steps\n- Model intercomparisons should explicitly include FCRt and other land-surface feedback diagnostics as standard outputs.\n- CMIP protocol or model-ensemble design should require tests where land-surface parameterizations are isolated to quantify their contribution to spread.\n- Impact-model drivers (e.g., crop ideotypes) should be used not only for impacts assessment but as reverse constraints on land-surface processes in Earth system models.\n\nConcise causal summary\n- Structural differences in land-surface representation -> different carbon turnover and biophysical feedbacks (FCRt, ET, albedo) -> different effective climate sensitivity and regional feedback patterns -> amplified by downscaling and ensemble selection choices -> divergent warming projections despite identical emissions scenarios.\n\nIf you want, I can:\n- (1) generate a prioritized list of specific land-surface diagnostics and parameter ranges to request in a CMIP-style intercomparison,\n- (2) draft a concrete experiment matrix for the module-swap runs, or\n- (3) search the graph for any additional nodes linking land-use/management decisions (from crop ideotype outputs) to albedo/ET measures so we can further sharpen the testable paths. Which next step would you like?",
+    "structural_holes": "\n\nstructural_hole_analysis:\nShort answer: Yes \u2014 there is a plausible, testable bridge mechanism. The structural hole is primarily that permafrost\u2011carbon feedbacks and the paired\u2011simulation approach have not been systematically applied across multi\u2011model ensembles (like the 22 CMIP3 models), so differences in how models treat permafrost and soil carbon likely drive a nontrivial fraction of the intermodel spread in projected climate response under RCP4.5.\n\n1) Structural holes (missing links) between the clusters\n- Missing multi\u2011model paired experiments: Cluster A (paired simulations, permafrost carbon, RCP4.5) implies a technique (on/off carbon feedback runs) that has not been systematically applied across the models in Cluster B (the 22 CMIP3 ESMs). Thus we lack an ensemble estimate of how much permafrost carbon alters projections and contributes to intermodel spread.\n- Incomplete process representation: Many CMIP3 models either omit dynamic permafrost carbon, or represent soil carbon, thaw, microbial respiration and methane release with very different parameterizations. This is a direct missing link between permafrost feedbacks (A) and intermodel variability (B).\n- Incompatible metrics/experiments: Cluster B documents differences in climate response and \u201cdriving global models,\u201d but these diagnostics rarely isolate biogeochemical feedback contributions (e.g., additional CO2/CH4 from thaw), so we cannot apportion how much of the spread is physics (climate sensitivity) vs biogeochemistry (permafrost carbon).\n- Temporal and spatial scale mismatch: Permafrost processes operate regionally and over decadal\u2013centennial timescales and can produce nonlinear, delayed forcing. Ensemble assessments of global climate response often emphasize equilibrium or transient climate sensitivity without a standardized way to fold in time\u2011dependent soil carbon releases.\n- Gas specificity and radiative forcing: Cluster A includes CO2 and CH4 sources from permafrost; Cluster B analyses of intermodel variability often treat greenhouse gas forcing as externally prescribed (RCP concentrations) rather than as an emergent output of coupled carbon\u2011cycle feedbacks, severing the feedback loop.\n\n2) Is there a plausible underlying mechanism connecting A to B?\nYes. Differences in model representation of permafrost and soil carbon processes produce differences in additional greenhouse forcing under a given scenario (e.g., RCP4.5). That emergent additional forcing interacts with each model\u2019s climate sensitivity and feedback structure to produce divergent climate responses. In short: model differences in permafrost\u2011carbon feedbacks amplify and modulate intermodel spread in warming.\n\n3) Bridge Hypothesis (concise)\nVariability in projected climate change across the 22 CMIP3 models under RCP4.5 is partly attributable to differences in how models represent permafrost\u2011carbon dynamics and associated greenhouse gas releases; when paired simulations (feedback\u2011on versus feedback\u2011off) are performed consistently across the ensemble, a significant portion of the intermodel spread in transient warming and regional patterns can be explained by model\u2011specific magnitudes and timing of permafrost CO2/CH4 emissions and their interaction with each model\u2019s climate sensitivity and feedbacks.\n\nKey mechanistic elements embedded in the hypothesis\n- Permafrost thaw \u2192 additional CO2 and CH4 emissions (magnitude and timing depend on soil carbon pools, thermal hydrology, microbial response, and representation of CH4 pathways).\n- Emitted greenhouse gases constitute additional, emergent radiative forcing that is model\u2011dependent (because of differences in carbon modules and physical feedbacks).\n- Each model\u2019s climate sensitivity and feedback strengths (clouds, water vapor, lapse rate, albedo) determine the climate response to that emergent forcing \u2014 producing intermodel divergence.\n- Nonlinear interactions (e.g., regional warming altering hydrology and vegetation, which modulate soil moisture and microbial activity) introduce further model\u2011specific amplification or damping.\n\n4) How to test the bridge hypothesis (practical experiment)\n- Protocol: Run a standardized paired experiment across the ensemble: transient RCP4.5 forcing with (a) interactive permafrost\u2011carbon module ON and (b) permafrost\u2011carbon feedback suppressed or held to preindustrial (OFF). Keep other forcings identical. If full permafrost modules are absent, implement a standardized emulator that injects prescribed permafrost emissions derived from a benchmark model.\n- Diagnostics:\n  - Cumulative additional CO2 and CH4 from permafrost (global and Arctic).\n  - Emergent additional radiative forcing and its temporal evolution.\n  - Global and regional transient temperature changes and patterns, and changes in effective climate sensitivity (transient and equilibrium if possible).\n  - Attribution regression: regress intermodel warming differences onto permafrost emission magnitudes, plus model ECS/TCS and key feedback parameters.\n- Predictions:\n  - Models with larger permafrost emissions will show systematically larger additional warming relative to their OFF runs.\n  - A meaningful fraction of intermodel variance in transient warming (especially beyond mid\u2011century) will be explained by permafrost emission magnitude and timing, even after accounting for baseline climate sensitivity.\n  - Spatial patterns of warming and hydrological change will differ in coherent ways tied to where permafrost emissions are largest.\n\n5) Implications and uses\n- Quantifies how much of the intermodel spread is due to biogeochemical process representation versus physics \u2014 this prioritizes model development (e.g., improving permafrost modules).\n- Produces emergent correction factors for RCP\u2011style scenarios that treat concentrations as prescribed rather than model\u2011driven.\n- Informs policy-relevant uncertainty bounds for near\u2011term to mid\u2011century warming by explicitly including permafrost feedback uncertainty.\n- Facilitates development of observational constraints/emergent constraints by linking observable metrics (Arctic soil temperature trends, active layer depth, methane hotspots) to modeled emission strength.\n\n6) Caveats and limits\n- CMIP3 is an older generation; many CMIP3 models lack dynamic permafrost modules, so a consistent implementation may require adding an emulator or re-running with newer ESMs (CMIP5/6) for higher fidelity.\n- Permafrost carbon processes are highly uncertain (microbial kinetics, anaerobic vs aerobic decomposition, abrupt thaw slumps), so the bridge will itself have large uncertainties \u2014 but those uncertainties are precisely what explains part of the ensemble spread and should be quantified.\n- Methane\u2019s short lifetime but strong forcing complicates transient diagnostics; need to track both CO2 and CH4 separately.\n\nConclusion (one\u2011line)\nBridging the two clusters is both plausible and urgent: a coordinated multi\u2011model program of paired RCP4.5 simulations that explicitly turns permafrost\u2011carbon feedbacks on and off across models would expose how much intermodel differences in climate response stem from biogeochemical process representation versus purely physical climate sensitivity \u2014 closing the structural hole and yielding clearer attribution of uncertainty."
+  },
+  "outputs": {
+    "hypotheses": [
+      {
+        "id": "H1",
+        "text": "Statement: A candidate mechanism is that structural differences in land\u2011surface model modules drive intermodel spread in effective climate sensitivity primarily via variation in frozen carbon residence time (FCRt), producing divergent warming under identical emissions scenarios. Causal Chain: Land\u2011surface model structural differences (soil carbon turnover parameterizations, permafrost and microbial process representation, vegetation phenology, albedo and evapotranspiration schemes) -> variation in frozen carbon residence time (FCRt) and timing/magnitude of CO2/CH4 fluxes to the atmosphere -> emergent additional greenhouse forcing relative to prescribed RCP concentrations -> modification of each model\u2019s effective climate sensitivity (transient response to emergent forcing) -> divergent global mean and regional warming projections. Evidence Summary: Graph paths flagged land\u2011surface models as a major source of structural differences connected to climate sensitivity; explicit graph links show land surface models -> FCRt and FCRt -> climate sensitivity, and structural\u2011hole analysis identifies missing multi\u2011model paired feedback\u2011on/feedback\u2011off experiments for permafrost carbon as a gap. Uncertainties include the observational constraints on FCRt, representation of abrupt thaw processes, and how methane dynamics map to radiative forcing in transient runs. Scores: Novelty: 0.80, Feasibility: 0.90, Testability: 0.90. Search Query: \"frozen carbon residence time\" AND (\"climate sensitivity\" OR \"permafrost carbon\" OR \"land\u2011surface model\").",
+        "domain_tags": [
+          "climate",
+          "earth-system",
+          "modelling",
+          "biogeochemistry"
+        ],
+        "novelty_score": 0.8,
+        "feasibility_score": 0.9,
+        "testability_score": 0.9,
+        "search_query": "\"frozen carbon residence time\" AND (\"climate sensitivity\" OR \"permafrost carbon\" OR \"land-surface model\")",
+        "required_data": [
+          "CMIP/ESM runs with interactive carbon cycle (RCP/SSP transient runs) including permafrost and soil carbon outputs",
+          "Land\u2011surface model diagnostics: soil carbon pools, turnover rates, active layer depth, vegetation phenology, surface albedo and ET",
+          "Modelled CO2 and CH4 flux time series per model",
+          "Global and regional temperature trajectories (GMST and spatial fields)",
+          "Paired feedback\u2011on / feedback\u2011off experiment results (or emulator outputs if module absent)"
+        ],
+        "experiment_idea": "Conduct coordinated paired experiments across multiple ESMs: (a) standard transient RCP/SSP run with interactive land carbon / permafrost module ON and (b) identical run with permafrost/soil carbon feedbacks suppressed (OFF) or replaced by a standardized emulator. Compute modelwise FCRt, additional cumulative CO2/CH4, emergent radiative forcing, and the change in transient warming and effective climate sensitivity between ON/OFF runs. Perform regression/attribution analysis of intermodel warming spread onto FCRt and baseline ECS/TCS.",
+        "evidence_summary": "Graph exploration identified direct paths linking land\u2011surface model structural differences to climate sensitivity via FCRt; structural\u2011hole analysis emphasized missing multi\u2011model paired permafrost experiments that would isolate this effect. Key neighbors inspected included land surface models, FCRt, CMIP5/6, and uncertainties in carbon\u2011cycle representation.",
+        "evidence": [
+          {
+            "paper_id": "Graph:land-surface->FCRt",
+            "title": "Graph Node: land surface models -> frozen carbon residence time (FCRt)",
+            "venue": null,
+            "year": null,
+            "stance": "support",
+            "strength": 4,
+            "key_points": [
+              "Graph flagged land\u2011surface models as a larger source of structural differences.",
+              "Direct path shown: land surface models -> FCRt -> climate sensitivity."
+            ],
+            "url": null
+          },
+          {
+            "paper_id": "Graph:structural-hole-permafrost",
+            "title": "Structural hole analysis: missing multi\u2011model paired permafrost feedback experiments",
+            "venue": null,
+            "year": null,
+            "stance": "support",
+            "strength": 4,
+            "key_points": [
+              "Many models lack dynamic permafrost modules or use incompatible parameterizations.",
+              "Paired feedback\u2011on/off experiments not systematically applied across ensembles, leaving attribution of spread incomplete."
+            ],
+            "url": null
+          },
+          {
+            "paper_id": "Graph:CMIP5-climate-sensitivity",
+            "title": "Graph Node: CMIP5/CMIP6 ensembles and climate sensitivity spread",
+            "venue": null,
+            "year": null,
+            "stance": "support",
+            "strength": 3,
+            "key_points": [
+              "CMIP ensembles show spread in warming PDFs even under identical emissions scenarios.",
+              "High\u2011level ensemble consistency can mask structural sources of spread such as land processes."
+            ],
+            "url": null
+          }
+        ]
+      },
+      {
+        "id": "H3",
+        "text": "Statement: A candidate mechanism and potential pathway is that crop\u2011model derived impact signals (e.g., in silico wheat ideotype phenology, yield, ET responses) can serve as emergent constraints on land\u2011surface parameterizations (phenology, rooting depth, ET sensitivity, albedo) and, when used to narrow parameter ensembles or to weight model contributions, reduce intermodel spread in effective climate sensitivity. Causal Chain: GCM ensemble outputs -> downscaling (LARS\u2011WG) -> crop/impact models (in silico wheat ideotypes) produce model\u2011specific phenology/yield/ET signatures -> compare those signatures to historical and present\u2011day agricultural observations to identify which land\u2011surface parameter regimes are plausible -> constrain/weight land\u2011surface parameter sets in ESMs or in perturbed\u2011physics ensembles -> reduced structural uncertainty in land\u2011surface responses (including FCRt and biophysical feedbacks) -> narrower spread in emergent radiative forcing and effective climate sensitivity -> reduced divergence in warming projections. Evidence Summary: The graph links in silico wheat ideotypes, downscaling, and land\u2011surface models; it suggests impact\u2011model outputs contain informative, model\u2011dependent signals (phenology, ET, albedo changes) that can function as reverse constraints. Uncertainties include the fidelity of crop models, representativeness of agricultural observations, and socio\u2011economic realism of implied management changes. Scores: Novelty: 0.85, Feasibility: 0.70, Testability: 0.75. Search Query: '\"in silico wheat\" AND (\"land surface\" OR albedo OR evapotranspiration OR phenology)'.",
+        "domain_tags": [
+          "climate",
+          "impacts",
+          "earth-system",
+          "agriculture",
+          "modelling"
+        ],
+        "novelty_score": 0.85,
+        "feasibility_score": 0.7,
+        "testability_score": 0.75,
+        "search_query": "\"in silico wheat\" AND (\"land surface\" OR albedo OR evapotranspiration OR phenology)",
+        "required_data": [
+          "Downscaled GCM outputs used to drive crop models",
+          "In silico crop model outputs (phenology dates, yields, ET, simulated management responses) from multiple driving climates",
+          "Historical agricultural observations (phenology, yields, irrigation events, albedo measurements where available)",
+          "Land\u2011surface model parameter sets and perturbed\u2011parameter ensemble outputs",
+          "CMIP/ESM runs to test constrained parameter updates"
+        ],
+        "experiment_idea": "Run a multi\u2011step experiment: (1) drive a common in silico wheat model with downscaled outputs from a diverse set of parent GCMs and record model\u2011dependent phenology/ET/albedo signatures; (2) compare those signatures to observational datasets to identify plausibility-weighted parameter ranges for land\u2011surface processes; (3) implement constrained parameter sets in a perturbed\u2011parameter land\u2011surface ensemble or via weighting of ESM land modules; (4) evaluate the change in FCRt statistics, emergent GHG fluxes, and spread of effective climate sensitivity and warming PDFs.",
+        "evidence_summary": "Graph exploration shows direct neighbors linking downscaling, in silico wheat ideotypes, and land surface model uncertainty; the exploration suggested that impact model outputs could be repurposed as observationally\u2011anchored constraints on land processes, but uncertainties in model fidelity and socio\u2011economic responses must be addressed.",
+        "evidence": [
+          {
+            "paper_id": "Graph:in-silico-wheat->land-surface",
+            "title": "Graph Node: in silico wheat ideotypes -> signals relevant to land surface parameterization",
+            "venue": null,
+            "year": null,
+            "stance": "support",
+            "strength": 3,
+            "key_points": [
+              "Crop model outputs contain phenology, ET and management signals that reflect the driving climate's land\u2011surface feedback regimes.",
+              "These signals can be compared against observations to identify implausible land\u2011surface behavior."
+            ],
+            "url": null
+          },
+          {
+            "paper_id": "Graph:downscaling-LARS-WG",
+            "title": "Graph Node: LARS\u2011WG downscaler translating GCM biases to regional impact drivers",
+            "venue": null,
+            "year": null,
+            "stance": "support",
+            "strength": 3,
+            "key_points": [
+              "Downscaler choice affects local climatic inputs to crop models (temperature, precipitation, extremes).",
+              "Consistent downscaling enables cross\u2011model comparison of impact signatures."
+            ],
+            "url": null
+          },
+          {
+            "paper_id": "Graph:land-surface-uncertainty",
+            "title": "Graph Node: land surface model parameter uncertainty (phenology, ET, albedo)",
+            "venue": null,
+            "year": null,
+            "stance": "support",
+            "strength": 4,
+            "key_points": [
+              "Land\u2011surface parameters are significant sources of structural spread in ESMs.",
+              "Constraining these parameters with independent signals is a plausible path to reduce uncertainty in coupled responses."
+            ],
+            "url": null
+          }
+        ]
+      },
+      {
+        "id": "H2",
+        "text": "Statement: A potential pathway is that ensemble selection criteria and regional downscaling methods systematically bias the representation of land\u2011atmosphere coupling in impact ensembles, amplifying divergent warming projections by preferentially sampling models with particular land\u2011surface feedback regimes. Causal Chain: Full GCM/ESM ensemble -> selection/subsetting (e.g., climate\u2011sensitivity\u2011index, performance filters) and ranking -> downscaling tools (e.g., LARS\u2011WG) translate selected model biases into regional climate realizations -> impact models (in silico wheat ideotypes, crop models) are driven by the biased regional climates -> modelled land management and vegetation responses (phenology, irrigation, planting dates) imply land\u2011cover and biophysical changes -> altered regional albedo/ET and carbon fluxes -> feedback to atmospheric state and global/regional temperature patterns -> amplified divergence in warming PDFs despite identical global emissions. Evidence Summary: Graph traces show ensemble selection and downscaling nodes (CMIP5, LARS\u2011WG) linked to in silico wheat ideotypes and regional extremes (non\u2011stationary GEV), suggesting selection/downscaling choices can bias feedback types; uncertainties include quantifying the magnitude of selection bias and the degree to which impact\u2011driven land management would be adopted in reality. Scores: Novelty: 0.75, Feasibility: 0.80, Testability: 0.80. Search Query: \"ensemble selection\" AND (downscal* OR \"LARS-WG\") AND (\"land-atmosphere\" OR \"land-surface\").",
+        "domain_tags": [
+          "climate",
+          "modelling",
+          "impacts",
+          "downscaling"
+        ],
+        "novelty_score": 0.75,
+        "feasibility_score": 0.8,
+        "testability_score": 0.8,
+        "search_query": "\"ensemble selection\" AND (downscal* OR \"LARS-WG\") AND (\"land-atmosphere\" OR \"land-surface\")",
+        "required_data": [
+          "Metadata on GCM/ESM selection criteria used for published impact studies",
+          "Downscaled regional climate outputs from different downscalers (e.g., LARS\u2011WG) for the same parent models",
+          "In silico crop model outputs driven by the different downscaled ensembles",
+          "Model diagnostics of land\u2011atmosphere coupling strength (e.g., Bowen ratio, surface flux correlations)",
+          "Land\u2011cover change/management scenarios implied by impact model recommendations"
+        ],
+        "experiment_idea": "Recompute regional and global warming PDFs using alternative ensemble selection strategies: (a) full ensemble, (b) subset chosen by climate\u2011sensitivity or performance, and (c) subset balanced by land\u2011surface metrics (e.g., FCRt or Bowen ratio). Apply identical downscalers (LARS\u2011WG) and drive the same crop/impact models. Compare resulting regional feedback indicators (albedo, ET), emergent land\u2011cover changes, and global/regional temperature PDFs to quantify sampling bias amplification.",
+        "evidence_summary": "Exploration showed paths linking CMIP ensemble design, downscaling (LARS\u2011WG), and in silico wheat ideotype experiments; graph suggests selection/downscaling steps can bias which land\u2011surface feedback regimes are represented in impact ensembles, feeding back to climate via implied land management changes.",
+        "evidence": [
+          {
+            "paper_id": "Graph:CMIP5->downscaling",
+            "title": "Graph Node: CMIP ensembles -> downscalers (LARS\u2011WG) -> regional outputs",
+            "venue": null,
+            "year": null,
+            "stance": "support",
+            "strength": 4,
+            "key_points": [
+              "Downscaling methods are commonly applied to selected GCM subsets to produce regional scenarios.",
+              "Choice of parent GCMs and downscaler affects extreme statistics and local climate signals."
+            ],
+            "url": null
+          },
+          {
+            "paper_id": "Graph:in-silico-wheat",
+            "title": "Graph Node: in silico wheat ideotypes driven by downscaled climates",
+            "venue": null,
+            "year": null,
+            "stance": "support",
+            "strength": 3,
+            "key_points": [
+              "Impact models consume downscaled climate realizations and produce management/phenology outputs that imply land\u2011cover and ET changes.",
+              "These outputs can be used as diagnostic signals of systematic biases in the driving climate realizations."
+            ],
+            "url": null
+          },
+          {
+            "paper_id": "Graph:selection-biases",
+            "title": "Graph Node: ensemble selection and sampling biases affecting feedback representation",
+            "venue": null,
+            "year": null,
+            "stance": "support",
+            "strength": 3,
+            "key_points": [
+              "Selecting subsets by high\u2011level metrics (e.g., skill, ECS) can under/over\u2011represent models with strong land\u2011atmosphere coupling.",
+              "Sampling biases can propagate through downscaling and impact model chains."
+            ],
+            "url": null
+          }
+        ]
+      }
+    ],
+    "symbolic_paths": [
+      [
+        "uncertainties",
+        "climate sensitivity",
+        "IMOGEN\u2013JULES",
+        "emissions scenario"
+      ],
+      [
+        "uncertainties",
+        "regional climate models",
+        "global model",
+        "emissions scenario"
+      ],
+      [
+        "uncertainties",
+        "climate sensitivity",
+        "unconstrained emissions scenario",
+        "emissions scenario"
+      ],
+      [
+        "uncertainties",
+        "CMIP5",
+        "values of the projections",
+        "emissions scenario"
+      ],
+      [
+        "uncertainties",
+        "regional climate models",
+        "cascade of uncertainty",
+        "emissions scenario"
+      ]
+    ],
+    "grounded_paths": [
+      [],
+      [],
+      []
+    ]
+  }
+}

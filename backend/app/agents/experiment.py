@@ -67,16 +67,8 @@ async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict
     if not state.run_experiments:
         await adispatch_custom_event("log", {"message": f"[Experiment] Proposal Mode: Generating potential experiments for: {hypothesis.text}"}, config=config)
         
-        # Check domain relevance (Light filter)
-        stem_domains = ["ml", "stats", "bio", "physics", "chemistry", "materials", "math", "cs"]
-        is_stem = any(tag in stem_domains for tag in (hypothesis.domain_tags or []))
-        
-        # If no domain tags, assume general scientific
-        if not hypothesis.domain_tags: is_stem = True
-            
-        if not is_stem:
-            await adispatch_custom_event("log", {"message": "[Experiment] Non-STEM hypothesis. Skipping experiment proposal."}, config=config)
-            return {"experiment_plans": []}
+        # Domain Check Removed: We assume all generated hypotheses via SciNets are valid targets for experimentation (simulation or data analysis).
+        await adispatch_custom_event("log", {"message": "[Experiment] Generating plans for hypothesis..."}, config=config)
 
         # Define output structure
         class ProposalList(BaseModel):
@@ -315,7 +307,7 @@ async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict
         id=str(uuid.uuid4()),
         hypothesis_id=selected_id,
         status="completed" if solved else "failed",
-        code=current_code,
+        code_snippet=current_code,
         metrics=final_metrics,
         plot_url=plot_url,
         plot_base64=plot_b64,

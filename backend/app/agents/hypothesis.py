@@ -22,6 +22,8 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
     """
     msg = f"hypothesis_generation_started query={state.user_query[:50]}"
     log.info(msg)
+    print(f"DEBUG: ENTERING HYPOTHESIS NODE. Strategy: {state.evaluation_strategy}")
+    print(f"DEBUG: Graph Nodes: {len(state.concept_graph.get('nodes', [])) if state.concept_graph else 0}")
     
     # IDEMPOTENCY CHECK
     if state.hypotheses:
@@ -81,7 +83,7 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         G.add_node(node)
     for edge in graph_data.get("edges", []):
         # Forward edge
-        G.add_edge(edge['source'], edge['target'], relation=edge.get('relation', 'related'))
+        G.add_edge(edge['source'], edge['target'], relation=edge.get('relation', 'related'), papers=edge.get('papers', []))
         # FIX: Inverse edge (Bidirectional by default unless specific)
         directional_rels = ["inhibits", "activates", "causes", "leads to"]
         rel = edge.get('relation', 'related')
@@ -188,6 +190,9 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         await adispatch_custom_event("log", {"message": f"[Hypothesis] Exploration failed: {e}"}, config=config)
         exploration_summary = "Exploration failed. Relying on literature summary."
 
+    state.exploration_trace = exploration_summary
+
+
     # 3. Auto-Extract Interesting Paths (The "Big Picture" Feeder)
     # FIX: Use all_simple_paths with ranking
     # print("DEBUG: Starting path extraction...")
@@ -207,110 +212,86 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         # Limit combinations to avoid explosion
         pairs = list(itertools.combinations(top_nodes, 2))
         
-        # print(f"DEBUG: Checking {len(pairs)} pairs.")
+        if state.evaluation_strategy == "rag":
+           log.info("evaluation_strategy_rag_skip_paths")
+           found_paths = []
+           
+        elif state.evaluation_strategy == "random":
+             # Random Strategy: Pick random pairs and find *any* path
+             import random
+             # Pick random nodes from the graph, not just central
+             all_nodes = list(G.nodes())
+             if len(all_nodes) > 2:
+                 random_pairs = []
+                 for _ in range(20):
+                     u, v = random.sample(all_nodes, 2)
+                     if nx.has_path(G, u, v):
+                         random_pairs.append((u, v))
+                 
+                 for u, v in random_pairs:
+                     try:
+                         # Random walk / path
+                         paths = list(nx.all_simple_paths(G, u, v, cutoff=4))
+                         if paths:
+                             p = random.choice(paths)
+                             # Construct dummy score object
+                             found_paths.append({
+                                 "str": " -> ".join(p),
+                                 "score": random.random(), # Random score
+                                 "length": len(p),
+                                 "components": {},
+                                 "nodes": p
+                             })
+                     except: continue
         
-        for u, v in pairs:
-            try:
-                # FIX: Use shortest_simple_paths (Yen's algorithm) which is efficient for top-k
-                # avoiding the exponential complexity of all_simple_paths even with cutoff
-                # Get more candidates (10) to filter for quality
-                raw_paths = nx.shortest_simple_paths(G, source=u, target=v)
-                candidate_paths = list(itertools.islice(raw_paths, 10))
-                
-                if not candidate_paths: continue
-                
-                # Pre-calculate degrees and edge counts for specificity/rarity scoring
-                node_degrees = dict(G.degree())
-                edge_counts = {}
-                total_edges_count = G.number_of_edges()
-                for _, _, data in G.edges(data=True):
-                    r = data.get('relation', 'related')
-                    edge_counts[r] = edge_counts.get(r, 0) + 1
-                
-                valid_paths = []
-                import math
-                
-                for p in candidate_paths:
-                    # Filter 1: Hard Length Cap 
-                    if len(p) > 5: continue 
-                    # Filter 2: Triviality 
-                    if len(p) < 3: continue 
-                    
-                    # 1. Edge Score (Mechanistic Strength + Rarity)
-                    edge_score = 0
-                    rarity_accum = 0
-                    formatted = []
-                    
-                    for i in range(len(p)-1):
-                        p1, p2 = p[i], p[i+1]
-                        
-                        rel = G.get_edge_data(p1, p2).get('relation', 'related')
-                        formatted.append(f"{p1} --[{rel}]-->")
-                        
-                        # Base Edge Score (Equal weight)
-                        # We used to add 1.0 here, but now we use 1/Length in the final formula
-                        pass
-                        
-                        # Rarity Score (Capped)
-                        # freq = count / total
-                        freq = edge_counts.get(rel, 1) / (total_edges_count + 1)
-                        r_val = -math.log(freq + 1e-8)
-                        # Cap rarity at 3.0 to prevent one-off noise from dominating
-                        rarity = min(r_val, 3.0)
-                        rarity_accum += rarity
-                            
-                    formatted.append(p[-1])
-                    
-                    avg_rarity = rarity_accum / (len(p)-1) if len(p) > 1 else 0
-                    
-                    # 2. Node Specificity Score (Inverse Degree Centrality)
-                    node_score = 0
-                    intermediate_nodes = p[1:-1]
-                    
-                    if intermediate_nodes:
-                        specs = []
-                        for n in intermediate_nodes:
-                            deg = node_degrees.get(n, 1)
-                            spec = 1.0 / math.log(deg + 2) 
-                            specs.append(spec)
-                        node_score = sum(specs) / len(specs)
-                    else:
-                        node_score = 0.5 
-                        
-                    # Final Score Formula
-                    # Alpha * (1/Length) -> Prefer compact/tight explanations
-                    # Beta * Specificity -> Prefer non-hubs
-                    # Gamma * Rarity -> Prefer novel connections
-                    alpha = 1.0
-                    beta = 1.0
-                    gamma = 0.5
-                    
-                    len_score = 1.0 / len(p)
-                    final_score = (alpha * len_score) + (beta * node_score) + (gamma * avg_rarity)
-                    
-                    valid_paths.append({
-                        "str": " ".join(formatted),
-                        "score": final_score,
-                        "length": len(p),
-                        "components": {
-                            "compactness": round(alpha * len_score, 2),
-                            "specificity": round(beta * node_score, 2),
-                            "novelty": round(gamma * avg_rarity, 2)
-                        },
-                        "nodes": p # Store raw nodes for Jaccard calc
-                    })
-                
-                # Sort candidates by score and take best 3 per pair
-                valid_paths.sort(key=lambda x: x["score"], reverse=True)
-                found_paths.extend(valid_paths[:3])
-                    
-            except Exception:
-                continue
-                
-        # Final Global Sort: High score first
-        found_paths.sort(key=lambda x: x["score"], reverse=True)
-        
-        # LOGGING FOR VERIFICATION
+        elif state.evaluation_strategy == "shortest":
+             # Shortest Path only (Dijkstra)
+             for u, v in pairs:
+                 try:
+                     if nx.has_path(G, u, v):
+                         p = nx.shortest_path(G, source=u, target=v)
+                         if len(p) < 2: continue
+                         found_paths.append({
+                             "str": " -> ".join(p),
+                             "score": 1.0/len(p),
+                             "length": len(p),
+                             "components": {},
+                             "nodes": p
+                         })
+                 except: continue
+
+        else:
+             # Full Strategy: Find diverse paths (Yen's or All Simple)
+             # Use Yen's K-Shortest to get distinct paths efficiently
+             for u, v in pairs:
+                 try:
+                     if nx.has_path(G, u, v):
+                         try:
+                             # k_shortest_paths is efficient for finding multiple paths
+                             # We use islice to limit to top 5
+                             paths = list(itertools.islice(nx.shortest_simple_paths(G, u, v), 5))
+                             
+                             for p in paths:
+                                 if len(p) < 2: continue
+                                 found_paths.append({
+                                     "str": " -> ".join(p),
+                                     "score": 1.0/len(p), # Basic length score, refined later by diversity
+                                     "length": len(p),
+                                     "components": {},
+                                     "nodes": p
+                                 })
+                         except Exception as ex:
+                             # Fallback to single path if simple paths fail complexity
+                             p = nx.shortest_path(G, u, v)
+                             found_paths.append({
+                                 "str": " -> ".join(p),
+                                 "score": 1.0/len(p),
+                                 "length": len(p),
+                                 "components": {},
+                                 "nodes": p
+                             })
+                 except: continue
+
         if found_paths:
             top_debug = [
                 {
@@ -322,53 +303,81 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
             ]
             log.info("path_scoring_results", top_paths=top_debug)
             log.info("diversity_selection_started", num_candidates=len(found_paths))
+            
+            # CAPTURE SYMBOLIC PATHS (Raw nodes)
+            # found_paths contains 'nodes' list. We want to save the top ones.
+            # We will finalize this list after diversity selection or fallback.
+
+        
         
         final_selected_paths = []
-        if found_paths:
-            # DIVERSITY SELECTION (Greedy w/ Jaccard Penalty)
-            def jaccard_overlap(p_nodes, q_nodes):
-                s1, s2 = set(p_nodes), set(q_nodes)
-                inter = len(s1 & s2)
-                union = len(s1 | s2)
-                return inter / union if union > 0 else 0.0
-
-            selected_items = []
+        if found_paths and state.evaluation_strategy != "rag":
+            # Strategies for filtering
+            if state.evaluation_strategy in ["random", "shortest", "no_diversity"]:
+                 # Just take top N by whatever score we assigned
+                 # Random: random scores; Shortest: length score; No_Div: quality score
+                 final_selected_paths = [p["str"] for p in found_paths[:5]]
+                 log.info(f"evaluation_selection_{state.evaluation_strategy}", count=len(final_selected_paths))
             
-            # We iterate through sorted paths and pick if they are distinct enough
-            for item in found_paths:
-                if len(final_selected_paths) >= 5: break
-                
-                path_nodes = item["nodes"]
-                base_score = item["score"]
-                
-                # Check overlap with already selected
-                max_ov = 0.0
-                if selected_items:
-                    max_ov = max(jaccard_overlap(path_nodes, prev["nodes"]) for prev in selected_items)
-                
-                # Penalize score based on overlap
-                # effective_score = base_score - lambda * overlap
-                lambda_overlap = 3.0 
-                effective_score = base_score - (lambda_overlap * max_ov)
-                
-                # Heuristic: If it's still a "good" path (positive score implies reasonable quality), take it
-                if effective_score > 2.0: # Threshold tailored to our score scale
-                    final_selected_paths.append(item["str"])
-                    selected_items.append(item)
-            
-            log.info("diversity_selection_completed", selected=len(final_selected_paths))
+            else:
+                # FULL Strategy: Diversity Selection (Greedy w/ Jaccard Penalty)
+                def jaccard_overlap(p_nodes, q_nodes):
+                    s1, s2 = set(p_nodes), set(q_nodes)
+                    inter = len(s1 & s2)
+                    union = len(s1 | s2)
+                    return inter / union if union > 0 else 0.0
 
-            # Fallback if diversity filtering killed everything (unlikely)
-            if not final_selected_paths:
-                log.warning("diversity_fallback_triggered")
-                final_selected_paths = [p["str"] for p in found_paths[:5]]
+                selected_items = []
+                
+                # We iterate through sorted paths and pick if they are distinct enough
+                for item in found_paths:
+                    if len(final_selected_paths) >= 5: break
+                    
+                    path_nodes = item["nodes"]
+                    base_score = item["score"]
+                    
+                    # Check overlap with already selected
+                    max_ov = 0.0
+                    if selected_items:
+                        max_ov = max(jaccard_overlap(path_nodes, prev["nodes"]) for prev in selected_items)
+                    
+                    # Penalize score based on overlap
+                    # effective_score = base_score - lambda * overlap
+                    lambda_overlap = 3.0 
+                    effective_score = base_score - (lambda_overlap * max_ov)
+                    
+                    # Heuristic: If it's still a "good" path (positive score implies reasonable quality), take it
+                    if effective_score > 2.0: # Threshold tailored to our score scale
+                        final_selected_paths.append(item["str"])
+                        selected_items.append(item)
+                
+                log.info("diversity_selection_completed", selected=len(final_selected_paths))
+
+                # Fallback if diversity filtering killed everything (unlikely)
+                if not final_selected_paths:
+                    log.warning("diversity_fallback_triggered")
+                    final_selected_paths = [p["str"] for p in found_paths[:5]]
                 
             path_context = "Key Multi-Hop Causal Chains found in Graph:\n- " + "\n- ".join(final_selected_paths)
             log.info("diversity_log_ready", paths=len(final_selected_paths))
             # Send visibility update to ACTIVITY FEED (not Terminal)
-            await adispatch_custom_event("activity", {"message": f"Selected {len(final_selected_paths)} diverse causal paths for analysis."}, config=config)
+            await adispatch_custom_event("activity", {"message": f"Selected {len(final_selected_paths)} paths (Strategy: {state.evaluation_strategy})."}, config=config)
+
+            # CAPTURE SYMBOLIC PATHS FOR METRICS
+            # Correlate strings back to node lists
+            symbolic_paths_list = []
+            for sp_str in final_selected_paths:
+                # Find matching object in found_paths
+                match = next((p for p in found_paths if p["str"] == sp_str), None)
+                if match:
+                    symbolic_paths_list.append(match["nodes"])
+                else:
+                    # Fallback parse
+                    symbolic_paths_list.append(sp_str.split(" -> "))
+            state.symbolic_paths = symbolic_paths_list
+
         else:
-            await adispatch_custom_event("log", {"message": "[Hypothesis] No significant paths found."}, config=config)
+            await adispatch_custom_event("log", {"message": "[Hypothesis] No significant paths found or RAG mode."}, config=config)
             
     except Exception as e:
         log.error("hypothesis_path_extraction_critical_failure", error=str(e))
@@ -441,6 +450,9 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
             await adispatch_custom_event("log", {"message": f"[Hypothesis] Structural Hole Exploration failed: {e}"}, config=config)
 
     # 4. Generate Structured Hypotheses (Structured Template)
+    state.structural_hole_analysis = hole_exploration_summary
+    state.bridge_attempted = (len(hole_exploration_summary) > 50) # Implies we got a real analysis result
+
     log.info("preparing_hypothesis_generation")
     # Send to Activity Feed
     await adispatch_custom_event("activity", {"message": "Synthesizing novel hypotheses from graph evidence..."}, config=config)
@@ -504,6 +516,59 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
             
             selected_id = hypotheses[0].id
             await adispatch_custom_event("log", {"message": f"[Hypothesis] Generated {len(hypotheses)} hypotheses."}, config=config)
+            
+            # === EVALUATION LOGGING (MANDATORY) ===
+            if state.evaluation_mode:
+                for i, h in enumerate(hypotheses[:3]): # Strict Top-3
+                    # 1. Expand Path Validation
+                    # Note: LLM might not output strict nodes, we attempt to map back or use heuristics
+                    # For metrics, we assume the hypothesis traces a path in the valid graph if possible.
+                    # Or we use the 'path_context' that fed it.
+                    # Ideally, we ask the LLM to output the node list. 
+                    
+                    # Heuristic: Extract entities from 'Causal Chain' string
+                    # "A -> B -> C"
+                    raw_chain = h.evidence_summary or "" # Map 'Causal Chain' to evidence_summary or need new field?
+                    # The prompt asks for "Causal Chain: ...". The Pydantic model 'evidence_summary' is the closest slot.
+                    
+                    chain_nodes = []
+                    if "->" in raw_chain:
+                        chain_nodes = [n.strip() for n in raw_chain.split("->")]
+                    
+                    edges_data = []
+                    path_len = len(chain_nodes)
+                    
+                    if len(chain_nodes) > 1:
+                        for k in range(len(chain_nodes)-1):
+                            u, v = chain_nodes[k], chain_nodes[k+1]
+                            # Try to find edge
+                            papers = []
+                            if G.has_edge(u, v):
+                                papers = G.get_edge_data(u, v).get("papers", [])
+                            elif G.has_edge(v, u): # check reverse
+                                papers = G.get_edge_data(v, u).get("papers", [])
+                            
+                            edges_data.append({
+                                "from": u,
+                                "to": v,
+                                "supporting_papers": papers
+                            })
+                            
+                    eval_log = {
+                        "type": "evaluation_metric_hypothesis",
+                        "query_id": state.experiment_id if hasattr(state, "experiment_id") else "eval_run",
+                        "domain": state.domain_tags[0] if state.domain_tags else "unknown",
+                        "method": state.evaluation_strategy,
+                        "hypothesis_rank": i+1,
+                        "hypothesis_text": h.text,
+                        "path": chain_nodes,
+                        "path_length": path_len if chain_nodes else 0,
+                        "edges": edges_data
+                    }
+                    # log.info(json.dumps(eval_log))
+                    import os
+                    with open("eval_data.jsonl", "a") as f:
+                        f.write(json.dumps(eval_log) + "\n")
         else:
              selected_id = None
              
@@ -525,7 +590,61 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         ]
         selected_id = hypotheses[0].id
     
+    # === METRICS CALCULATION ===
+    grounded_paths_list = []
+    stance_map = {"support": 0, "contradict": 0, "neutral": 0}
+    
+    for h in hypotheses:
+        # Extract Evidence Stance
+        for ev in h.evidence:
+            # Assuming EvidenceItem has 'stance' field (defined in state.py)
+            if hasattr(ev, 'stance'):
+                    stance_map[ev.stance] = stance_map.get(ev.stance, 0) + 1
+                    
+        # Extract Grounded Path (Causal Chain)
+        # The LLM is instructed to put "Causal Chain: A -> B -> C"
+        # We can try to parse 'evidence_summary' if it's there, or we might miss it if logic is fuzzy.
+        # Let's assume the LLM puts the chain in 'evidence_summary' as requested in prompt mapping.
+        raw_chain = h.evidence_summary or ""
+        if "->" in raw_chain:
+                # Clean up
+                chain = [n.strip() for n in raw_chain.replace("Causal Chain:", "").split("->")]
+                grounded_paths_list.append(chain)
+        else:
+                grounded_paths_list.append([])
+
+    # Grounding Metrics
+    total_sym_len = sum(len(p) for p in state.symbolic_paths) if state.symbolic_paths else 0
+    avg_sym_depth = total_sym_len / len(state.symbolic_paths) if state.symbolic_paths else 0
+    
+    total_ground_len = sum(len(p) for p in grounded_paths_list)
+    avg_ground_depth = total_ground_len / len(grounded_paths_list) if grounded_paths_list else 0
+    
+    # Simple drop rate: (1 - avg_ground / avg_sym)
+    drop_rate = 0.0
+    if avg_sym_depth > 0:
+        drop_rate = max(0.0, 1.0 - (avg_ground_depth / avg_sym_depth))
+        
+    collapse_events = sum(1 for p in grounded_paths_list if len(p) < 2)
+    
+    state.grounded_paths = grounded_paths_list
+    state.stance_counts = stance_map
+    state.grounding_metrics = {
+        "symbolic_depth": round(avg_sym_depth, 2),
+        "grounded_depth": round(avg_ground_depth, 2),
+        "drop_rate": round(drop_rate, 2),
+        "collapse_events": collapse_events,
+        "collapsed": collapse_events > 0
+    }
+
     return {
         "hypotheses": hypotheses,
-        "selected_hypothesis_id": selected_id
+        "selected_hypothesis_id": selected_id,
+        "exploration_trace": state.exploration_trace,
+        "structural_hole_analysis": state.structural_hole_analysis,
+        "symbolic_paths": state.symbolic_paths,
+        "grounded_paths": state.grounded_paths,
+        "stance_counts": state.stance_counts,
+        "grounding_metrics": state.grounding_metrics,
+        "bridge_attempted": state.bridge_attempted
     }

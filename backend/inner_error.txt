@@ -1,0 +1,54 @@
+ERROR running query Q6_microbiome_neuro: name 'web_results' is not defined
+
+Traceback (most recent call last):
+  File "c:\Users\dubey\SciNetsV2\backend\run_discovery_benchmark.py", line 95, in run_benchmark
+    lit_update = await lit_runnable.ainvoke(state, config)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dubey\AppData\Local\Programs\Python\Python313\Lib\site-packages\langchain_core\runnables\base.py", line 4884, in ainvoke
+    return await self._acall_with_config(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\dubey\AppData\Local\Programs\Python\Python313\Lib\site-packages\langchain_core\runnables\base.py", line 2101, in _acall_with_config
+    output: Output = await coro_with_context(coro, context)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dubey\AppData\Local\Programs\Python\Python313\Lib\site-packages\langchain_core\runnables\base.py", line 4814, in _ainvoke
+    output = await acall_func_with_variable_args(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        cast("Callable", afunc), value, config, run_manager, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "c:\Users\dubey\SciNetsV2\backend\app\agents\literature.py", line 330, in literature_node
+    # Append insights to context for the next agent
+NameError: name 'web_results' is not defined. Did you mean: 'web_results_text'?
+ERROR running query Q5_alzheimers_infotheory: 'charmap' codec can't encode character '\u03b2' in position 146: character maps to <undefined>
+
+Traceback (most recent call last):
+  File "c:\Users\dubey\SciNetsV2\backend\run_discovery_benchmark.py", line 105, in run_benchmark
+    lit_update = await lit_runnable.ainvoke(state, config)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dubey\AppData\Local\Programs\Python\Python313\Lib\site-packages\langchain_core\runnables\base.py", line 4884, in ainvoke
+    return await self._acall_with_config(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\dubey\AppData\Local\Programs\Python\Python313\Lib\site-packages\langchain_core\runnables\base.py", line 2101, in _acall_with_config
+    output: Output = await coro_with_context(coro, context)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dubey\AppData\Local\Programs\Python\Python313\Lib\site-packages\langchain_core\runnables\base.py", line 4814, in _ainvoke
+    output = await acall_func_with_variable_args(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        cast("Callable", afunc), value, config, run_manager, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "c:\Users\dubey\SciNetsV2\backend\app\agents\literature.py", line 326, in literature_node
+    print(f"[Literature] Graph Analysis:\n{graph_insights}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\dubey\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u03b2' in position 146: character maps to <undefined>

@@ -1,0 +1,177 @@
+[
+  {
+    "query_id": "ML-1",
+    "strategy": "random",
+    "symbolic_path_length": 2.0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 2.0
+  },
+  {
+    "query_id": "ML-1",
+    "strategy": "random",
+    "symbolic_path_length": 2.0,
+    "grounded_path_length": 3,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-1",
+    "strategy": "random",
+    "symbolic_path_length": 2.0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 2.0
+  },
+  {
+    "query_id": "ML-1",
+    "strategy": "full",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 6,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "rag",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "rag",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "rag",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "no_diversity",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "no_diversity",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "no_diversity",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "full",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "full",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "full",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "shortest",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 7,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "shortest",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 2,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "shortest",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 2,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "random",
+    "symbolic_path_length": 1.0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 1.0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "random",
+    "symbolic_path_length": 1.0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 1.0
+  },
+  {
+    "query_id": "ML-2",
+    "strategy": "random",
+    "symbolic_path_length": 1.0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 1.0
+  },
+  {
+    "query_id": "ML-3",
+    "strategy": "random",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-3",
+    "strategy": "random",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-3",
+    "strategy": "random",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-3",
+    "strategy": "rag",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-3",
+    "strategy": "rag",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  },
+  {
+    "query_id": "ML-3",
+    "strategy": "rag",
+    "symbolic_path_length": 0,
+    "grounded_path_length": 0,
+    "dropped_nodes": 0
+  }
+]

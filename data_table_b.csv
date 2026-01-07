@@ -1,0 +1,4 @@
+configuration,avg_path_length,avg_diversity,avg_papers_per_edge
+full,1.5,0.18,0.0
+no_diversity,0.0,0.15,0.0
+no_yen,3.67,0.21,0.0

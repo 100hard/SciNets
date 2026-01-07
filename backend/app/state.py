@@ -56,6 +56,13 @@ class DiscoveryState(BaseModel):
     mock: bool = False               # Enable mock mode for testing
     human_feedback: Optional[str] = None # User feedback for interrupt/resume
     documents: List[str] = []        # User-provided papers/context
+    
+    # Evaluation Config
+    evaluation_mode: bool = False
+    evaluation_strategy: str = "full" # full, rag, random, shortest, no_diversity
+    experiment_id: Optional[str] = None # For tracking logs
+    max_papers: int = 5 # Default paper limit (adjustable for probes)
+    
     domain_tags: List[str] = []
     plan: Optional[dict] = None
     literature: Optional[dict] = None
@@ -67,4 +74,13 @@ class DiscoveryState(BaseModel):
     experiments: List[Experiment] = [] # Completed experiments
     critique: Optional[dict] = None
     done: bool = False
+
+    # Discovery Benchmark Metrics
+    exploration_trace: Optional[str] = None
+    structural_hole_analysis: Optional[str] = None
+    symbolic_paths: List[List[str]] = []
+    grounded_paths: List[List[str]] = []
+    stance_counts: Dict[str, int] = {"support": 0, "contradict": 0, "neutral": 0}
+    grounding_metrics: Dict[str, Any] = {}
+    bridge_attempted: bool = False
 

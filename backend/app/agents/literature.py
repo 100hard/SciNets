@@ -57,7 +57,7 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     
     # 0. Query Refinement (Crucial for OpenAlex/Search to work with long prompts)
     refinement_prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a research librarian. Convert the user's complex natural language query into a precise, keyword-based boolean search string suitable for a library database (like OpenAlex or PubMed). Use AND, OR, and quotes for phrases. Keep it under 200 characters."),
+        ("system", "You are a research librarian. Convert the user's complex natural language query into a precise, keyword-based boolean search string suitable for OpenAlex. Use AND, OR. Keep it under 100 characters. Avoid complex nesting or wildcard characters at the end of the string."),
         ("human", f"User Query: {query}\n\nSearch String:")
     ])
     
@@ -79,7 +79,9 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     @tool
     async def openalex_search_tool(q: str):
         """Searches OpenAlex for scientific papers."""
-        return await search_papers(q, limit=10)
+        limit = state.max_papers if state.max_papers else 5
+        print(f"[Literature] Fetching up to {limit} papers (Probe Mode)...")
+        return await search_papers(q, limit=limit)
 
     # Invoke tool to trigger stream events
     msg = f"[Literature] Searching OpenAlex for: {search_query}"
@@ -89,45 +91,99 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     
     # 2. Web Search (for latest info/datasets)
     @tool
-    def web_search_tool(query: str, goal: str):
-        """Performs web search for latest info and contradictions."""
-        web_results = ""
-        try:
-            # Try to use DDGS
-            with DDGS() as ddgs:
-                # Standard search
-                # backend="api" is often more stable for bots
-                results = list(ddgs.text(f"{query} latest research datasets", max_results=3))
-                if not results:
-                     # Retry with simpler query
-                     results = list(ddgs.text(query, max_results=3))
-
-                for r in results:
-                    web_results += f"Title: {r.get('title')}\nLink: {r.get('href')}\nSnippet: {r.get('body')}\n\n"
-                
-                # CONTRADICTION MINER (Novelty Engine)
-                if goal == "discover":
-                    # Search for debates, conflicts, and limitations
-                    contradiction_query = f"{query} controversy debate limitations"
-                    c_results = list(ddgs.text(contradiction_query, max_results=3))
-                    if c_results:
-                        web_results += "\n--- CONTRADICTION MINING FOUND ---\n"
-                        for r in c_results:
-                            web_results += f"Title: {r.get('title')}\nLink: {r.get('href')}\nSnippet: {r.get('body')}\n\n"
-        except Exception as e:
-            web_results = f"Web search failed: {e}"
+    async def web_search_tool(query: str, goal: str):
+        """Performs web search for latest info and contradictions. Returns JSON string."""
+        import asyncio
+        import json
+        from functools import partial
         
-        if not web_results:
-            return "No web results found."
-        return web_results
+        def _search():
+            final_results = []
+            
+            # BENCHMARK MOCK OVERRIDE REMOVED - USING REAL SEARCH
+            # We use a retry mechanism to handle potential DDGS flakes
+            # Add other mocks as needed or generic fallback
+            
+            for attempt in range(3):
+                try:
+                    import time
+                    if attempt > 0: time.sleep(2)
+                    
+                    # Try to use DDGS
+                    with DDGS() as ddgs:
+                        # Standard search
+                        results = list(ddgs.text(f"{query} latest research", max_results=4))
+                        if not results:
+                             results = list(ddgs.text(query, max_results=4))
+
+                        for r in results:
+                            final_results.append({
+                                "title": r.get("title"),
+                                "url": r.get("href"),
+                                "snippet": r.get("body"),
+                                "source": "web"
+                            })
+                        
+                        # CONTRADICTION MINER
+                        if goal == "discover":
+                            contradiction_query = f"{query} controversy debate limitations"
+                            c_results = list(ddgs.text(contradiction_query, max_results=3))
+                            for r in c_results:
+                                final_results.append({
+                                    "title": "[Contradiction] " + r.get("title", ""),
+                                    "url": r.get("href"),
+                                    "snippet": r.get("body"),
+                                    "source": "web_contradiction"
+                                })
+                    # If we got here, success
+                    break
+                except Exception as e:
+                    print(f"[Literature] Web search attempt {attempt+1} failed: {e}")
+                    if attempt == 2:
+                        return json.dumps({"error": str(e), "results": []})
+            
+            return json.dumps({"results": final_results})
+
+        # Run blocking search in a thread
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _search)
 
     print(f"[Literature] Running Web Search for: {search_query}...")
-    web_results = web_search_tool.invoke({"query": search_query, "goal": state.goal}, config=config)
+    # Use ainvoke for async tool
+    web_json_str = await web_search_tool.ainvoke({"query": search_query, "goal": state.goal}, config=config)
+    try:
+        web_data = json.loads(web_json_str)
+        web_items = web_data.get("results", [])
+    except:
+        web_items = []
+        
+    # Format for context
+    web_results_text = ""
+    for item in web_items:
+        web_results_text += f"Title: {item.get('title')}\nLink: {item.get('url')}\nSnippet: {item.get('snippet')}\n\n"
     
     # 3. Process results & Summarize
     processed_papers = {}
     summary_lines = []
     full_text_context = ""
+    
+    # Fallback to Web Results if OpenAlex failed
+    if not papers or len(papers) == 0:
+        print("[Literature] OpenAlex returned 0 papers. Falling back to Web Search results.")
+        import uuid
+        for item in web_items:
+            # Create pseudo-paper
+            pid = f"WEB-{str(uuid.uuid4())[:8]}"
+            papers.append({
+                "id": pid,
+                "title": item.get("title", "Unknown Web Source"),
+                "publication_year": 2024,
+                "abstract": item.get("snippet", ""),
+                "host_venue": "Web Search",
+                "landing_page_url": item.get("url"),
+                "abstract_inverted_index": None # Flag for reconstruct
+            })
+
     
     for paper in papers:
         pid = paper["id"]
@@ -143,7 +199,7 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
         summary_lines.append(f"- {paper['title']} ({paper['publication_year']})")
         full_text_context += f"Title: {paper['title']}\nAbstract: {abstract_text}\n\n"
 
-    full_text_context += f"\n\nWeb Search Results:\n{web_results}"
+    full_text_context += f"\n\nWeb Search Results:\n{web_results_text}"
     # FIX: Do NOT pollute scientific context with web results for the Hypothesis Agent.
     # We kept the above line for reference, but we will store it separately in the state return.
     
@@ -179,8 +235,14 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     else:
         system_msg = "You are a scientific assistant. Extract a granular concept graph from the following abstracts."
 
-    # FIX: Stronger Hallucination Guardrails
-    system_msg += "\n\nCRITICAL DO NOT HALLUCINATE: Only extract concepts explicitly appearing in the abstracts. Do NOT infer, guess, or invent scientific terms not present in the text."
+    # FIX: Stronger Hallucination Guardrails & Entity Enforcement
+    system_msg += """
+    
+    CRITICAL RULES:
+    1. NODES MUST BE NOUN PHRASES (e.g., "Dopamine", "Synaptic Plasticity").
+    2. DO NOT create nodes that are full sentences, titles, or verb phrases (e.g., "Running increases neurogenesis" is BANNED).
+    3. DO NOT HALLUCINATE: Only extract concepts explicitly appearing in the abstracts.
+    """
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_msg),
@@ -261,7 +323,10 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     concept_graph = clean_graph(concept_graph)
     
     graph_insights = analyze_graph(concept_graph)
-    print(f"[Literature] Graph Analysis:\n{graph_insights}")
+    try:
+        print(f"[Literature] Graph Analysis:\n{graph_insights.encode('utf-8', 'ignore').decode('utf-8')}")
+    except:
+        print("[Literature] Graph Analysis: (Content hidden due to encoding error)")
     
     # Append insights to context for the next agent
     full_text_context += f"\n\nGraph Analysis Insights:\n{graph_insights}"
@@ -278,7 +343,7 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
             "papers": processed_papers,
             "summary": final_summary, 
             "full_context": full_text_context,
-            "web_research": web_results # FIX: Separated from full_context
+            "web_research": web_results_text # FIX: Separated from full_context
         },
         "concept_graph": concept_graph
     }
