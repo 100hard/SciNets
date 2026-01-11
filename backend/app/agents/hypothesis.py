@@ -6,6 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from typing import List
 import uuid
+import asyncio
 from langchain_core.runnables import RunnableConfig
 import logging
 from langchain_core.callbacks import adispatch_custom_event
@@ -176,15 +177,21 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
     # Log exploration start
     await adispatch_custom_event("log", {"message": f"[Hypothesis] Exploring graph ({len(G.nodes())} nodes)..."}, config=config)
     try:
-        exploration_result = await explorer_agent.ainvoke({"messages": [
-            ("system", system_prompt),
-            ("human", exploration_prompt)
-        ]}, {"recursion_limit": 100})
+        # Add timeout to prevent explorer from hanging on complex graphs
+        exploration_result = await asyncio.wait_for(
+            explorer_agent.ainvoke({"messages": [
+                ("system", system_prompt),
+                ("human", exploration_prompt)
+            ]}, {"recursion_limit": 100}),
+            timeout=60.0  # 60 second timeout
+        )
         exploration_summary = exploration_result["messages"][-1].content
         log.info("graph_exploration_completed", summary_length=len(exploration_summary))
-        # print("DEBUG: Passed exploration completion log.")
         await adispatch_custom_event("log", {"message": "[Hypothesis] Exploration complete."}, config=config)
-        # print("DEBUG: Passed event dispatch.")
+    except asyncio.TimeoutError:
+        log.warning("graph_exploration_timeout", timeout_seconds=60)
+        await adispatch_custom_event("log", {"message": "[Hypothesis] Exploration timed out after 60s. Using partial results."}, config=config)
+        exploration_summary = "Exploration timed out. Relying on literature summary and automated path extraction."
     except Exception as e:
         log.error("graph_exploration_failed", error=str(e))
         await adispatch_custom_event("log", {"message": f"[Hypothesis] Exploration failed: {e}"}, config=config)
@@ -508,11 +515,12 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         hypotheses = unique_hypotheses
         
         if hypotheses:
-            # FIX: Sort by (Novelty + Testability) / 2
-            # Assuming these fields exist in your Pydantic model. If not, they need to be added or parsed from text.
-            # Since the user asked for this sort, we assume the model supports it or we use heuristic.
-            # Check pydantic model in app.state first? Assuming it has scores.
-            hypotheses.sort(key=lambda h: (h.novelty_score + h.testability_score)/2, reverse=True)
+            # Composite scoring: balanced weighting of novelty, feasibility, and testability
+            # Novelty weighted slightly higher for discovery-focused results
+            def composite_score(h):
+                return (0.4 * h.novelty_score + 0.3 * h.feasibility_score + 0.3 * h.testability_score)
+            
+            hypotheses.sort(key=composite_score, reverse=True)
             
             selected_id = hypotheses[0].id
             await adispatch_custom_event("log", {"message": f"[Hypothesis] Generated {len(hypotheses)} hypotheses."}, config=config)

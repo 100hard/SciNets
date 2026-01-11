@@ -35,17 +35,21 @@ class ExperimentPlan(BaseModel):
     cost_estimate: Literal["low", "medium", "high"]
 
 class Experiment(BaseModel):
+    id: str = ""
     hypothesis_id: str
     plan_id: Optional[str] = None # Link to the plan if applicable
+    status: str = "pending"
     code_snippet: Optional[str] = None
     metrics: Optional[dict] = None
     plot_url: Optional[str] = None
     plot_base64: Optional[str] = None
+    result_summary: Optional[str] = None
 
 class Insight(BaseModel):
     content: str
     domain: str
     confidence: float = 0.0
+    source: Optional[str] = None  # Track insight origin (e.g., 'experiment_critique')
 
 class DiscoveryState(BaseModel):
     user_query: str

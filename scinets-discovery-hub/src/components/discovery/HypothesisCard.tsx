@@ -1,0 +1,280 @@
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  ChevronDown, ChevronUp, CheckCircle, AlertCircle, 
+  Minus, ArrowRight, Link2
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface MechanismNode {
+  id: string;
+  label: string;
+}
+
+interface Evidence {
+  paper: string;
+  stance: "supporting" | "contradicting" | "neutral";
+  confidence: number;
+  excerpt?: string;
+}
+
+export interface Hypothesis {
+  id: string;
+  statement: string;
+  status: "supported" | "mixed" | "abstained";
+  supportingCount: number;
+  contradictingCount: number;
+  mechanismChain: MechanismNode[];
+  evidence: Evidence[];
+  groundingExplanation: string;
+  synthesis: string;
+}
+
+interface HypothesisCardProps {
+  hypothesis: Hypothesis;
+  index: number;
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+const statusConfig = {
+  supported: { 
+    label: "Supported", 
+    color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+  },
+  mixed: { 
+    label: "Mixed", 
+    color: "bg-amber-500/10 text-amber-400 border-amber-500/20" 
+  },
+  abstained: { 
+    label: "Abstained", 
+    color: "bg-foreground/10 text-foreground-muted border-foreground/20" 
+  },
+};
+
+export const HypothesisCard = ({
+  hypothesis,
+  index,
+  isExpanded,
+  onToggle,
+}: HypothesisCardProps) => {
+  const [showSynthesis, setShowSynthesis] = useState(false);
+  const config = statusConfig[hypothesis.status];
+
+  const supportingEvidence = hypothesis.evidence.filter(e => e.stance === "supporting");
+  const contradictingEvidence = hypothesis.evidence.filter(e => e.stance === "contradicting");
+  const neutralEvidence = hypothesis.evidence.filter(e => e.stance === "neutral");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      className="border border-border rounded-lg bg-background/30 overflow-hidden"
+    >
+      {/* Collapsed header */}
+      <button
+        onClick={onToggle}
+        className="w-full px-4 py-4 flex items-start justify-between hover:bg-foreground/5 transition-colors text-left"
+      >
+        <div className="flex-1 mr-4">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-xs text-foreground-muted font-medium">H{index + 1}</span>
+            <span className={cn(
+              "text-[10px] px-2 py-0.5 rounded-full border font-medium",
+              config.color
+            )}>
+              {config.label}
+            </span>
+          </div>
+          <p className="text-sm text-foreground leading-relaxed">
+            {hypothesis.statement}
+          </p>
+          <div className="flex items-center gap-4 mt-2 text-xs text-foreground-muted">
+            <span className="flex items-center gap-1">
+              <CheckCircle className="w-3 h-3 text-emerald-400" />
+              {hypothesis.supportingCount} supporting
+            </span>
+            <span className="flex items-center gap-1">
+              <AlertCircle className="w-3 h-3 text-red-400" />
+              {hypothesis.contradictingCount} contradicting
+            </span>
+          </div>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="w-4 h-4 text-foreground-muted flex-shrink-0 mt-1" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-foreground-muted flex-shrink-0 mt-1" />
+        )}
+      </button>
+
+      {/* Expanded content */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-6 border-t border-border pt-4">
+              {/* A. Mechanistic Chain */}
+              <div>
+                <h4 className="text-xs font-medium text-foreground mb-3 flex items-center gap-2">
+                  <Link2 className="w-3.5 h-3.5 text-foreground-muted" />
+                  Mechanistic Chain
+                </h4>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {hypothesis.mechanismChain.map((node, i) => (
+                    <div key={node.id} className="flex items-center gap-2">
+                      <button
+                        className={cn(
+                          "px-3 py-1.5 rounded border border-border bg-foreground/5",
+                          "text-xs text-foreground hover:border-foreground/30 transition-colors"
+                        )}
+                      >
+                        {node.label}
+                      </button>
+                      {i < hypothesis.mechanismChain.length - 1 && (
+                        <ArrowRight className="w-3.5 h-3.5 text-foreground-muted" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* B. Evidence Table */}
+              <div>
+                <h4 className="text-xs font-medium text-foreground mb-3">Evidence</h4>
+                
+                {/* Supporting */}
+                {supportingEvidence.length > 0 && (
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-xs text-foreground-muted">Supporting ({supportingEvidence.length})</span>
+                    </div>
+                    <div className="border border-border rounded divide-y divide-border">
+                      {supportingEvidence.map((ev, i) => (
+                        <div key={i} className="px-3 py-2 flex items-center justify-between">
+                          <span className="text-xs text-foreground">{ev.paper}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 bg-foreground/10 rounded overflow-hidden">
+                              <div 
+                                className="h-full bg-emerald-400/60"
+                                style={{ width: `${ev.confidence * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-foreground-muted w-8">
+                              {Math.round(ev.confidence * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Contradicting */}
+                {contradictingEvidence.length > 0 && (
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                      <span className="text-xs text-foreground-muted">Contradicting ({contradictingEvidence.length})</span>
+                    </div>
+                    <div className="border border-border rounded divide-y divide-border">
+                      {contradictingEvidence.map((ev, i) => (
+                        <div key={i} className="px-3 py-2 flex items-center justify-between">
+                          <span className="text-xs text-foreground">{ev.paper}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 bg-foreground/10 rounded overflow-hidden">
+                              <div 
+                                className="h-full bg-red-400/60"
+                                style={{ width: `${ev.confidence * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-foreground-muted w-8">
+                              {Math.round(ev.confidence * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Neutral */}
+                {neutralEvidence.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Minus className="w-3.5 h-3.5 text-foreground-muted" />
+                      <span className="text-xs text-foreground-muted">Neutral ({neutralEvidence.length})</span>
+                    </div>
+                    <div className="border border-border rounded divide-y divide-border">
+                      {neutralEvidence.map((ev, i) => (
+                        <div key={i} className="px-3 py-2 flex items-center justify-between">
+                          <span className="text-xs text-foreground">{ev.paper}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 bg-foreground/10 rounded overflow-hidden">
+                              <div 
+                                className="h-full bg-foreground/30"
+                                style={{ width: `${ev.confidence * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-foreground-muted w-8">
+                              {Math.round(ev.confidence * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* C. Grounding Status */}
+              <div>
+                <h4 className="text-xs font-medium text-foreground mb-2">Grounding Status</h4>
+                <p className="text-xs text-foreground-muted leading-relaxed">
+                  {hypothesis.groundingExplanation}
+                </p>
+              </div>
+
+              {/* D. Natural Language Explanation */}
+              <div>
+                <button
+                  onClick={() => setShowSynthesis(!showSynthesis)}
+                  className="flex items-center gap-2 text-xs text-foreground-muted hover:text-foreground transition-colors"
+                >
+                  {showSynthesis ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                  <span className="font-medium">Generated Synthesis</span>
+                </button>
+                
+                <AnimatePresence>
+                  {showSynthesis && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-3 p-3 border border-border rounded bg-foreground/5">
+                        <p className="text-xs text-foreground-muted leading-relaxed italic">
+                          {hypothesis.synthesis}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};

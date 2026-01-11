@@ -8,6 +8,7 @@ import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from app.state import DiscoveryState, Hypothesis
 from app.agents.hypothesis import hypothesis_node
+from langchain_core.runnables import RunnableConfig
 
 
 @pytest.fixture
@@ -58,7 +59,10 @@ async def test_hypothesis_node_generates_hypotheses(mock_state):
         mock_llm.ainvoke = AsyncMock(return_value=Mock(content="Bridge analysis complete"))
         mock_get_llm.return_value = mock_llm
         
-        result = await hypothesis_node(mock_state)
+        # Create a mock config
+        mock_config = RunnableConfig(configurable={"thread_id": "test-thread"})
+        
+        result = await hypothesis_node(mock_state, mock_config)
         
         assert "hypotheses" in result
         assert len(result["hypotheses"]) > 0
@@ -96,7 +100,10 @@ async def test_hypothesis_node_handles_empty_graph():
         mock_llm.ainvoke = AsyncMock(return_value=Mock(content="No graph available"))
         mock_get_llm.return_value = mock_llm
         
-        result = await hypothesis_node(state)
+        # Create a mock config
+        mock_config = RunnableConfig(configurable={"thread_id": "test-thread"})
+        
+        result = await hypothesis_node(state, mock_config)
         
         # Should still return hypotheses even with empty graph
         assert "hypotheses" in result

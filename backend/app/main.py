@@ -3,9 +3,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 # from app.graph import create_graph
 # from app.state import DiscoveryState
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Literal
 from dotenv import load_dotenv
 from fastapi.responses import StreamingResponse
 import json
@@ -30,11 +30,21 @@ sessions: Dict[str, Any] = {}
 
 class RunRequest(BaseModel):
     query: str
-    goal: str = "discover"
+    goal: Literal["discover", "survey", "write"] = "discover"
     lens: str = "none"
-    speculation: str = "medium"
+    speculation: Literal["low", "medium", "high"] = "medium"
     run_experiments: bool = False
     documents: List[str] = []
+    
+    @field_validator('query')
+    @classmethod
+    def validate_query(cls, v: str) -> str:
+        if len(v) > 2000:
+            raise ValueError('Query must be under 2000 characters')
+        if len(v) < 10:
+            raise ValueError('Query must be at least 10 characters')
+        return v
+
 
 @app.post("/run_stream")
 async def run_discovery_stream(request: RunRequest):

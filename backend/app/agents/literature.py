@@ -10,6 +10,7 @@ class Edge(BaseModel):
     source: str
     target: str
     relation: str
+    supporting_papers: List[str] = []  # Track which papers support this edge
 
     class Config:
         extra = "forbid"
@@ -18,9 +19,6 @@ class ConceptGraph(BaseModel):
     nodes: List[str] = Field(description="List of key concepts")
     edges: List[Edge] = Field(description="List of relationships")
     
-    class Config:
-        extra = "forbid"
-
     class Config:
         extra = "forbid"
 
@@ -199,9 +197,8 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
         summary_lines.append(f"- {paper['title']} ({paper['publication_year']})")
         full_text_context += f"Title: {paper['title']}\nAbstract: {abstract_text}\n\n"
 
-    full_text_context += f"\n\nWeb Search Results:\n{web_results_text}"
-    # FIX: Do NOT pollute scientific context with web results for the Hypothesis Agent.
-    # We kept the above line for reference, but we will store it separately in the state return.
+    # NOTE: Web results stored separately in 'web_research' field, not added to full_text_context
+    # to avoid polluting scientific context for hypothesis generation
     
     print(f"[Literature] Found {len(papers)} papers and web results.")
     
@@ -255,7 +252,6 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     batches = [papers[i:i + batch_size] for i in range(0, len(papers), batch_size)]
     
     print(f"[Literature] Extracting graph in {len(batches)} batches (Size={batch_size})...")
-    print(f"[Literature] Extracting graph in {len(batches)} batches (Size={batch_size})...")
     
     merged_nodes = set()
     merged_edges = []
@@ -283,7 +279,6 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
             merged_edges.extend(res.edges)
             print(f"[Literature] Batch {i+1}/{len(batches)} success. Found {len(res.nodes)} nodes.")
             
-    print(f"[Literature] Batch extraction complete. Total Nodes: {len(merged_nodes)}")
     print(f"[Literature] Batch extraction complete. Total Nodes: {len(merged_nodes)}")
     
     # 3.5. APPLY DISCIPLINARY LENS (Inject a node if using a lens)

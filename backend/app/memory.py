@@ -7,15 +7,21 @@ import uuid
 class MemoryManager:
     def __init__(self):
         # Default to localhost for host-based execution (Windows/Mac)
-        self.client = QdrantClient(
-            url=os.getenv("QDRANT_URL", "http://127.0.0.1:6333")
-        )
-        self.collection_name = "scinets_insights"
+        self._available = False
         try:
+            self.client = QdrantClient(
+                url=os.getenv("QDRANT_URL", "http://127.0.0.1:6333")
+            )
+            self.collection_name = "scinets_insights"
             self._init_collection()
+            self._available = True
         except Exception as e:
             print(f"[Memory] Warning: Failed to initialize Qdrant ({e}). Memory features will be disabled.")
             self.client = None
+
+    def is_available(self) -> bool:
+        """Check if memory storage is available."""
+        return self._available and self.client is not None
 
     def _init_collection(self):
         if not self.client: return
@@ -33,6 +39,10 @@ class MemoryManager:
 
     def store_insight(self, insight: Insight):
         """Stores an insight in Qdrant."""
+        if not self.is_available():
+            print("[Memory] Skipping store - Qdrant unavailable")
+            return
+            
         from langchain_openai import OpenAIEmbeddings
         embeddings = OpenAIEmbeddings()
         
@@ -47,7 +57,8 @@ class MemoryManager:
                     payload={
                         "content": insight.content,
                         "domain": insight.domain,
-                        "confidence": insight.confidence
+                        "confidence": insight.confidence,
+                        "source": insight.source  # Track insight origin
                     }
                 )
             ]
@@ -56,6 +67,9 @@ class MemoryManager:
 
     def retrieve_insights(self, query: str, limit: int = 3) -> list[Insight]:
         """Retrieves relevant insights for a query."""
+        if not self.is_available():
+            return []
+            
         from langchain_openai import OpenAIEmbeddings
         embeddings = OpenAIEmbeddings()
         
@@ -83,7 +97,8 @@ class MemoryManager:
                     insights.append(Insight(
                         content=res.payload["content"],
                         domain=res.payload["domain"],
-                        confidence=res.payload["confidence"]
+                        confidence=res.payload["confidence"],
+                        source=res.payload.get("source")  # Include source if available
                     ))
             
             print(f"[Memory] Retrieved {len(insights)} insights.")

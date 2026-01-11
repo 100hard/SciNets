@@ -1,11 +1,17 @@
 import httpx
 from typing import List, Dict, Any
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 OPENALEX_API_URL = "https://api.openalex.org/works"
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type(httpx.HTTPError)
+)
 async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
-    Search for papers on OpenAlex.
+    Search for papers on OpenAlex with retry logic.
     """
     params = {
         "search": query,
@@ -13,7 +19,7 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         "sort": "relevance_score:desc"
     }
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(OPENALEX_API_URL, params=params)
             response.raise_for_status()
@@ -34,7 +40,7 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
             return results
         except httpx.HTTPError as e:
             print(f"Error fetching from OpenAlex: {e}")
-            return []
+            raise  # Re-raise to trigger retry
 
 def reconstruct_abstract(inverted_index: Dict[str, List[int]]) -> str:
     """

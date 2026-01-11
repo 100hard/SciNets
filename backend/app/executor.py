@@ -1,4 +1,4 @@
-import subprocess
+import asyncio
 import os
 import json
 import uuid
@@ -14,7 +14,7 @@ class LocalExecutor:
 
     async def run_script(self, code: str, timeout: int = 60) -> Tuple[int, str, str, Dict[str, Any]]:
         """
-        Runs a Python script and returns (exit_code, stdout, stderr, metrics).
+        Runs a Python script asynchronously and returns (exit_code, stdout, stderr, metrics).
         Metrics are parsed from the last line of stdout if it's valid JSON.
         """
         script_id = str(uuid.uuid4())
@@ -24,18 +24,25 @@ class LocalExecutor:
             f.write(code)
             
         try:
-            # Run the script
-            process = subprocess.run(
-                ["python", script_path],
-                capture_output=True,
-                text=True,
-                timeout=timeout,
+            # Run the script asynchronously
+            process = await asyncio.create_subprocess_exec(
+                "python", script_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
                 cwd=self.work_dir
             )
             
-            exit_code = process.returncode
-            stdout = process.stdout
-            stderr = process.stderr
+            try:
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+                stdout = stdout_bytes.decode('utf-8', errors='replace')
+                stderr = stderr_bytes.decode('utf-8', errors='replace')
+                exit_code = process.returncode or 0
+            except asyncio.TimeoutError:
+                process.kill()
+                await process.wait()
+                return -1, "", "Execution timed out.", {"error": "timeout"}
             
             # Try to parse metrics from stdout (look for the last JSON object)
             metrics = {}
@@ -52,7 +59,6 @@ class LocalExecutor:
             
             return exit_code, stdout, stderr, metrics
 
-        except subprocess.TimeoutExpired:
-            return -1, "", "Execution timed out.", {}
         except Exception as e:
-            return -1, "", str(e), {}
+            return -1, "", str(e), {"error": str(e)}
+

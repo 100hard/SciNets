@@ -101,8 +101,6 @@ async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict
                  p.hypothesis_id = hypothesis.id
                  plans.append(p)
                  
-                 plans.append(p)
-                 
             await adispatch_custom_event("log", {"message": f"[Experiment] Proposed {len(plans)} plans."}, config=config)
             return {"experiment_plans": plans}
             

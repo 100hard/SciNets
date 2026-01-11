@@ -67,75 +67,6 @@ Template-based experiments implemented by you:
 
 ML pipelines (regression/classification)
 
-AI Scientist Platform — Plan
-
-Working title: SciNets / AI Scientist
-Style: Single-founder, “vibe coding” friendly, but with enough structure that you don’t drown.
-
-0. High-Level Overview
-
-Goal:
-Build an AI assistant that can, for multiple scientific domains:
-
-Understand a research question
-
-Retrieve and structure literature (multi-domain)
-
-Build a small, per-session concept graph
-
-Generate and rank hypotheses
-
-Collect literature evidence for each hypothesis
-
-Run lightweight computational experiments where possible
-
-Produce a structured, reproducible report
-
-Non-goals (for now):
-
-Heavy simulations (DFT, AutoDock-scale docking)
-
-Global, persistent knowledge graph over millions of papers
-
-Paid sandbox services (E2B, Modal)
-
-Fully autonomous lab (wet-lab integration, robotics, etc.)
-
-1. Tech Stack
-1.1 Backend
-
-Language: Python 3.11+
-
-Framework: FastAPI (REST + SSE/WebSockets)
-
-Orchestration: LangGraph (multi-agent workflows)
-
-Schema / Types: Pydantic models
-
-LLMs:
-
-Primary reasoning: Claude 3.5 Sonnet / GPT-4.1
-
-Utility / cheap tasks: Claude Haiku / GPT-4o-mini
-
-1.2 Tools Layer
-
-Knowledge Tools
-
-OpenAlex API (core literature search)
-
-Optional later: PubMed, arXiv, Materials Project API
-
-Computation Tools
-
-No external sandbox initially.
-
-Phase 1:
-
-Template-based experiments implemented by you:
-
-ML pipelines (regression/classification)
-
 Basic statistical tests (t-test, ANOVA, correlations)
 
 Simple bio analyses (using BioPython on toy/public datasets)
@@ -279,7 +210,6 @@ class DiscoveryState(BaseModel):
     selected_hypothesis_id: str | None = None
     experiments: list[dict] | None = None
     critique: dict | None = None
-    critique: dict | None = None
     done: bool = False
     # Note: Keep this state lightweight. Store heavy text/vectors in DB/Qdrant.
 
@@ -296,10 +226,6 @@ Call plan_research_steps(question, domain_tags) tool.
 Configure which steps (nodes) to run in LangGraph.
 
 Literature Agent
-
-Multi-query OpenAlex search.
-
-Filter & rank by year, relevance, citations.
 
 Multi-query OpenAlex search.
 

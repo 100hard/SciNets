@@ -11,7 +11,6 @@ import json
 import asyncio
 import uvicorn
 import os
-import os
 import sys
 import time
 
@@ -69,7 +68,6 @@ class RunRequest(BaseModel):
     run_experiments: bool = False
     documents: List[str] = []
     thread_id: str | None = None # For resuming sessions
-    thread_id: str | None = None # For resuming sessions
     feedback: str | None = None # User feedback when resuming
     mock: bool = False
 
@@ -111,7 +109,7 @@ async def run_experiment_stream(request: ExperimentRequest):
 
     async def event_generator():
         data = {'agent': 'orchestrator', 'action': 'Initializing experiment environment...', 'status': 'thinking'}
-        yield f"data: {json.dumps({'type': 'activity', 'data': data, 'thread_id': thread_id})}\\n\\n"
+        yield f"data: {json.dumps({'type': 'activity', 'data': data, 'thread_id': thread_id})}\n\n"
         await asyncio.sleep(0.1)
 
         try:
@@ -360,7 +358,7 @@ async def run_discovery_stream(request: RunRequest):
                     if event["name"] == "log":
                         log_data = data.get("message", str(data))
                         # Yield as 'log' type for System Terminal
-                        yield f"data: {json.dumps({'type': 'log', 'data': log_data})}\\n\\n"
+                        yield f"data: {json.dumps({'type': 'log', 'data': log_data})}\n\n"
                         await asyncio.sleep(0)
                         
                     elif event["name"] == "activity":
@@ -373,7 +371,7 @@ async def run_discovery_stream(request: RunRequest):
                             "action": msg,
                             "status": "thinking"
                         }
-                        yield f"data: {json.dumps({'type': 'activity', 'data': activity_data})}\\n\\n"
+                        yield f"data: {json.dumps({'type': 'activity', 'data': activity_data})}\n\n"
                         await asyncio.sleep(0)
 
                 elif kind == "on_chain_end":
@@ -415,9 +413,9 @@ async def run_discovery_stream(request: RunRequest):
                 # FAIL-SAFE: Explicitly send the final state to ensure Frontend has the result
                 final_state = snapshot.values
                 # Ensure we only send serializable/relevant parts if needed, or rely on custom_serializer
-                yield f"data: {json.dumps({'type': 'result', 'data': final_state}, default=custom_serializer)}\\n\\n"
+                yield f"data: {json.dumps({'type': 'result', 'data': final_state}, default=custom_serializer)}\n\n"
                 
-                yield "data: [DONE]\\n\\n"
+                yield "data: [DONE]\n\n"
         except Exception as e:
             # Check if it was the dump that failed
             request_log.error("fail_safe_sync_failed", error=str(e))
@@ -430,12 +428,12 @@ async def run_discovery_stream(request: RunRequest):
                     "experiments": snapshot.values.get("experiments"),
                     "visualization_data": snapshot.values.get("visualization_data")
                 }
-                yield f"data: {json.dumps({'type': 'result', 'data': safe_payload}, default=custom_serializer)}\\n\\n"
+                yield f"data: {json.dumps({'type': 'result', 'data': safe_payload}, default=custom_serializer)}\n\n"
             except Exception as e2:
                 request_log.error("fail_safe_fallback_failed", error=str(e2))
                 pass
             
-            yield "data: [DONE]\\n\\n"
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         event_generator(),

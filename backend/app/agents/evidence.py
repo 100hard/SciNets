@@ -47,7 +47,6 @@ async def evidence_node(state: DiscoveryState, config: RunnableConfig) -> dict:
     
     # 1. Search OpenAlex with refined query
     # Prefer pre-computed search query if available, else use text
-    # Limit increased to 5 for better coverage
     query = hypothesis.search_query or hypothesis.text
     
     # Optional: Augment query if it's too short for a paper search
@@ -55,7 +54,31 @@ async def evidence_node(state: DiscoveryState, config: RunnableConfig) -> dict:
         query += " scientific papers"
         
     print(f"  > Query: {query}")
-    papers = await search_papers(query, limit=5)
+    
+    # Main search for relevant papers
+    papers = await search_papers(query, limit=4)
+    
+    # ADVERSARIAL SEARCH: Also search for potential contradictions to reduce confirmation bias
+    # This helps find papers that might challenge or limit the hypothesis
+    await adispatch_custom_event("log", {"message": "[Evidence] Running adversarial search for contradictions..."}, config=config)
+    
+    # Build contradiction query by adding limiting terms
+    contradiction_terms = ["limitations", "controversy", "challenges", "contradicts", "fails", "negative results"]
+    # Extract key concepts from hypothesis (first 3 significant words)
+    key_words = [w for w in query.split() if len(w) > 4][:3]
+    contradiction_query = f"{' '.join(key_words)} ({' OR '.join(contradiction_terms)})"
+    
+    try:
+        contradiction_papers = await search_papers(contradiction_query, limit=2)
+        if contradiction_papers:
+            print(f"  > Found {len(contradiction_papers)} potential contradiction papers")
+            # Add to papers list, marking them as from adversarial search
+            for p in contradiction_papers:
+                # Avoid duplicates
+                if not any(existing['id'] == p['id'] for existing in papers):
+                    papers.append(p)
+    except Exception as e:
+        print(f"[Evidence] Adversarial search failed: {e}")
     
     if not papers:
         print("[Evidence] No papers found.")
