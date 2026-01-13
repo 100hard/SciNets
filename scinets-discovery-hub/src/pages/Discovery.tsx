@@ -7,6 +7,9 @@ import { PaperCurationStep, CandidatePaper } from "@/components/discovery/PaperC
 import { DiscoveryExecutionStep } from "@/components/discovery/DiscoveryExecutionStep";
 import { startDiscoveryStream, SSECallback } from "@/lib/api";
 import type { Hypothesis, DiscoveryResult, ActivityEvent, ConceptGraph } from "@/lib/types";
+import { Loader2 } from "lucide-react";
+import { SearchOverlay } from "@/components/discovery/SearchOverlay";
+
 
 export interface GraphNode {
   id: string;
@@ -33,7 +36,7 @@ export interface AgentActivity {
   nodeId?: string;
 }
 
-type DiscoveryStep = "query" | "clarification" | "curation" | "execution";
+type DiscoveryStep = "query" | "clarification" | "searching" | "curation" | "execution";
 
 const Discovery = () => {
   const [step, setStep] = useState<DiscoveryStep>("query");
@@ -51,7 +54,12 @@ const Discovery = () => {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
   const [conceptGraph, setConceptGraph] = useState<ConceptGraph | null>(null);
+  const [literatureCount, setLiteratureCount] = useState<number>(0);
   const [logs, setLogs] = useState<string[]>([]);
+
+  // Prevent double execution
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [isSearching, setIsSearching] = useState(false); // New searching state
 
   // Abort controller for cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -73,13 +81,32 @@ const Discovery = () => {
     setAnswers(a);
     setError(null);
 
-    // Fetch real papers from backend before showing curation step
+    // TRANSITION TO SEARCHING STEP (reusing Execution UI)
+    setStep("searching");
+
+    // Simulate initial agent activity
+    setActivities([
+      {
+        id: "act-search-1",
+        agent: "scientist",
+        action: "Initializing Literature Search...",
+        status: "thinking",
+        timestamp: new Date()
+      }
+    ]);
+    setLogs([
+      "Literature Agent initialized.",
+      `Query optimized: "${query}"`,
+      "Connecting to OpenAlex Knowledge Graph..."
+    ]);
+
+    // Fetch real papers from backend
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
       const response = await fetch(`${API_URL}/search_papers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, max_papers: 15 })
+        body: JSON.stringify({ query: query, max_papers: 10 })
       });
 
       if (!response.ok) {
@@ -97,24 +124,44 @@ const Discovery = () => {
         locked: false
       }));
 
-      setCuratedPapers(fetchedPapers);
-      setStep("curation");
+      // Simulate completion before transition
+      setActivities(prev => [...prev, {
+        id: "act-search-complete",
+        agent: "scientist",
+        action: `Found ${fetchedPapers.length} candidate papers.`,
+        status: "complete",
+        timestamp: new Date()
+      }]);
+      setLogs(prev => [...prev, "Search complete. Transitioning to curation..."]);
+
+      // Small delay to let user see "Complete" status
+      setTimeout(() => {
+        setCuratedPapers(fetchedPapers);
+        setStep("curation");
+      }, 1500);
+
     } catch (err) {
       console.error("Paper fetch failed:", err);
-      setError("Failed to fetch papers. Starting discovery with automatic paper selection.");
-      // Fallback: skip curation and let backend find papers
-      setStep("execution");
-      startDiscovery(a, []);
+      // Fallback: show curation with empty list (allows manual entry)
+      setCuratedPapers([]);
+      setStep("curation");
     }
   };
 
   const handlePaperCurationSubmit = (selectedPapers: CandidatePaper[]) => {
+    if (isDiscovering) return; // Prevent double-click
     setCuratedPapers(selectedPapers);
     setStep("execution");
     startDiscovery(answers!, selectedPapers);
   };
 
   const startDiscovery = async (clarificationAnswers: ClarificationAnswers, selectedPapers: CandidatePaper[]) => {
+    if (isDiscovering) {
+      console.warn("Discovery already in progress, ignoring duplicate call.");
+      return;
+    }
+    setIsDiscovering(true);
+
     // Reset state
     setNodes([]);
     setEdges([]);
@@ -151,6 +198,11 @@ const Discovery = () => {
         // Update hypotheses if present
         if (result.hypotheses && result.hypotheses.length > 0) {
           setHypotheses(result.hypotheses);
+        }
+
+        // Update literature stats if present
+        if (result.literature && (result.literature as any).papers) {
+          setLiteratureCount((result.literature as any).papers.length);
         }
 
         // Update concept graph if present
@@ -190,6 +242,7 @@ const Discovery = () => {
       onError: (errorMsg: string) => {
         setError(errorMsg);
         console.error('Discovery error:', errorMsg);
+        setIsDiscovering(false); // Enable retry
       },
 
       onInterrupt: (data) => {
@@ -199,6 +252,7 @@ const Discovery = () => {
 
       onDone: () => {
         setIsComplete(true);
+        setIsDiscovering(false);
       },
     };
 
@@ -215,7 +269,8 @@ const Discovery = () => {
         query,
         goal: clarificationAnswers.goal as 'discover' | 'survey' | 'write',
         // REMOVED: run_experiments - experiments are user-triggered post-discovery
-        documents: selectedPapers.map(p => p.doi || p.title),
+        // CandidatePaper uses 'id' (OpenAlex URL) as the identifier. Title is fallback.
+        documents: selectedPapers.map(p => p.id || p.title),
         // Note: depth/timeline are frontend-only for now
         // Backend could accept max_papers if we extend RunRequest
       },
@@ -233,13 +288,13 @@ const Discovery = () => {
       <NetworkBackground />
 
       <div className="relative z-10 pt-24 px-6 pb-6 h-screen flex flex-col">
-        {step === "query" && (
+        {step === "query" && !isSearching && (
           <div className="flex-1 flex items-center justify-center">
             <DiscoveryQueryStep onSubmit={handleQuerySubmit} />
           </div>
         )}
 
-        {step === "clarification" && (
+        {step === "clarification" && !isSearching && (
           <div className="flex-1 flex items-center justify-center">
             <DiscoveryClarificationStep
               query={query}
@@ -248,6 +303,31 @@ const Discovery = () => {
             />
           </div>
         )}
+
+        {/* Reuse Execution Step for Searching Phase */}
+        {(step === "execution" || step === "searching") && answers && (
+          <div className="flex-1 min-h-0">
+            <DiscoveryExecutionStep
+              query={query}
+              papers={papers}
+              answers={answers}
+              curatedPapers={curatedPapers}
+              literatureCount={literatureCount} // Pass real count
+              nodes={nodes}
+              edges={edges}
+              activities={activities}
+              isComplete={isComplete}
+              onNodeSelect={handleNodeSelect}
+              hypotheses={hypotheses}
+              conceptGraph={conceptGraph}
+              logs={logs}
+              error={error}
+              threadId={threadId}
+            />
+          </div>
+        )}
+
+        {/* ... (rest of render steps) ... */}
 
         {step === "curation" && (
           <div className="flex-1 flex items-center justify-center overflow-auto py-8">
@@ -260,25 +340,7 @@ const Discovery = () => {
           </div>
         )}
 
-        {step === "execution" && answers && (
-          <div className="flex-1 min-h-0">
-            <DiscoveryExecutionStep
-              query={query}
-              papers={papers}
-              answers={answers}
-              curatedPapers={curatedPapers}
-              nodes={nodes}
-              edges={edges}
-              activities={activities}
-              isComplete={isComplete}
-              onNodeSelect={handleNodeSelect}
-              hypotheses={hypotheses}
-              conceptGraph={conceptGraph}
-              logs={logs}
-              error={error}
-            />
-          </div>
-        )}
+
       </div>
     </div>
   );

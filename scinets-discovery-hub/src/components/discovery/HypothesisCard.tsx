@@ -28,7 +28,7 @@ interface Evidence {
 export interface Hypothesis {
   id: string;
   statement: string;
-  status: "supported" | "mixed" | "abstained";
+  status: "supported" | "mixed" | "abstained" | "failed";
   supportingCount: number;
   contradictingCount: number;
   mechanismChain: MechanismNode[];
@@ -42,6 +42,7 @@ interface HypothesisCardProps {
   index: number;
   isExpanded: boolean;
   onToggle: () => void;
+  threadId?: string | null;
 }
 
 const statusConfig = {
@@ -57,6 +58,10 @@ const statusConfig = {
     label: "Abstained",
     color: "bg-foreground/10 text-foreground-muted border-foreground/20"
   },
+  failed: {
+    label: "Data Failure",
+    color: "bg-red-500/10 text-red-500 border-red-500/20"
+  },
 };
 
 export const HypothesisCard = ({
@@ -64,6 +69,7 @@ export const HypothesisCard = ({
   index,
   isExpanded,
   onToggle,
+  threadId,
 }: HypothesisCardProps) => {
   const [showSynthesis, setShowSynthesis] = useState(false);
   const [showExperimentModal, setShowExperimentModal] = useState(false);
@@ -85,11 +91,13 @@ export const HypothesisCard = ({
     setExperimentCritique(null);
 
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+      const activeThreadId = threadId || `local-${Date.now()}`;
       const response = await fetch(`${API_BASE}/run_experiment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          thread_id: activeThreadId,
           hypothesis_id: hypothesis.id,
           hypothesis_text: hypothesis.statement,
           intent: experimentConfig.intent,

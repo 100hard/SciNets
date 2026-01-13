@@ -32,7 +32,7 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
                     "title": item.get("title"),
                     "publication_year": item.get("publication_year"),
                     "abstract": item.get("abstract_inverted_index"), # OpenAlex returns inverted index, need to reconstruct or fetch text
-                    "host_venue": item.get("host_venue", {}).get("display_name"),
+                    "host_venue": (item.get("host_venue") or {}).get("display_name"),
                     "cited_by_count": item.get("cited_by_count"),
                     "landing_page_url": item.get("landing_page_url")
                 }
@@ -93,7 +93,7 @@ async def get_paper_citations(paper_id: str, limit: int = 5) -> List[Dict[str, A
                     "title": item.get("title"),
                     "publication_year": item.get("publication_year"),
                     "abstract": item.get("abstract_inverted_index"),
-                    "host_venue": item.get("host_venue", {}).get("display_name"),
+                    "host_venue": (item.get("host_venue") or {}).get("display_name"),
                     "cited_by_count": item.get("cited_by_count"),
                     "landing_page_url": item.get("landing_page_url"),
                     "source": "citation_expansion"  # Mark source for weighting

@@ -53,26 +53,41 @@ async def gather_evidence_for_hypothesis(
     
     print(f"  > [H:{hypothesis.id[:8]}] Query: {query}")
     
-    # Main search (increased from 4 to 6)
-    papers = await search_papers(query, limit=6)
-    
-    # ADVERSARIAL SEARCH: Find contradictions
-    contradiction_terms = ["limitations", "controversy", "challenges", "contradicts", "fails", "negative results"]
-    key_words = [w for w in query.split() if len(w) > 4][:3]
-    contradiction_query = f"{' '.join(key_words)} ({' OR '.join(contradiction_terms)})"
-    
+    papers = []
     try:
-        contradiction_papers = await search_papers(contradiction_query, limit=3)
-        if contradiction_papers:
-            print(f"  > [H:{hypothesis.id[:8]}] Found {len(contradiction_papers)} contradiction papers")
-            for p in contradiction_papers:
-                if not any(existing['id'] == p['id'] for existing in papers):
-                    papers.append(p)
+        # Main search (increased from 4 to 6)
+        papers = await search_papers(query, limit=6)
+        
+        # ADVERSARIAL SEARCH: Find contradictions (Only if primary search works)
+        if papers:
+            contradiction_terms = ["limitations", "controversy", "challenges", "contradicts", "fails", "negative results"]
+            key_words = [w for w in query.split() if len(w) > 4][:3]
+            contradiction_query = f"{' '.join(key_words)} ({' OR '.join(contradiction_terms)})"
+            
+            try:
+                contradiction_papers = await search_papers(contradiction_query, limit=3)
+                if contradiction_papers:
+                    print(f"  > [H:{hypothesis.id[:8]}] Found {len(contradiction_papers)} contradiction papers")
+                    for p in contradiction_papers:
+                        if not any(existing['id'] == p['id'] for existing in papers):
+                            papers.append(p)
+            except Exception as e:
+                print(f"[Evidence] Adversarial search failed for {hypothesis.id[:8]}: {e}")
+                # We continue with primary papers
+        
     except Exception as e:
-        print(f"[Evidence] Adversarial search failed for {hypothesis.id[:8]}: {e}")
-    
+        error_msg = str(e)
+        print(f"[Evidence] Primary search failed for {hypothesis.id[:8]}: {e}")
+        # CHECK: Is this an external API failure?
+        if "500" in error_msg or "502" in error_msg or "503" in error_msg or "ConnectError" in error_msg:
+             hypothesis.evidence_status = "failed_external"
+             hypothesis.evidence_summary = "Evidence gathering failed due to external API errors (OpenAlex)."
+             await adispatch_custom_event("log", {"message": f"[Evidence] API Failure for H:{hypothesis.id[:8]}. Marking as failed_external."}, config=config)
+             return hypothesis
+
     if not papers:
         print(f"[Evidence] No papers found for hypothesis {hypothesis.id[:8]}")
+        hypothesis.evidence_status = "partial" # No evidence found, but not an error
         return hypothesis
     
     # 2. Classify each paper
@@ -146,6 +161,9 @@ async def gather_evidence_for_hypothesis(
         # Update hypothesis
         hypothesis.evidence = evidence_items
         hypothesis.evidence_summary = verdict
+        hypothesis.evidence_status = "complete" # Success
+    else:
+        hypothesis.evidence_status = "partial" # Papers found but classification failed for all?
     
     return hypothesis
 

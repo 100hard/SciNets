@@ -27,6 +27,8 @@ interface DiscoveryExecutionStepProps {
   conceptGraph?: ConceptGraph | null;
   logs?: string[];
   error?: string | null;
+  literatureCount?: number;
+  threadId?: string | null;
 }
 
 // Process-focused status config - no discovery verbs
@@ -75,6 +77,8 @@ export const DiscoveryExecutionStep = ({
   conceptGraph = null,
   logs = [],
   error = null,
+  literatureCount = 0,
+  threadId = null,
 }: DiscoveryExecutionStepProps) => {
   const activityRef = useRef<HTMLDivElement>(null);
   const logsRef = useRef<HTMLDivElement>(null);
@@ -139,6 +143,8 @@ export const DiscoveryExecutionStep = ({
         onNodeSelect={onNodeSelect}
         hypotheses={hypotheses}
         conceptGraph={conceptGraph}
+        literatureCount={literatureCount}
+        threadId={threadId}
       />
     );
   }

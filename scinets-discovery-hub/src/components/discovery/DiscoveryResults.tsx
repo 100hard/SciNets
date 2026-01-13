@@ -19,6 +19,8 @@ interface DiscoveryResultsProps {
   // New props from real API
   hypotheses?: APIHypothesis[];
   conceptGraph?: ConceptGraph | null;
+  literatureCount?: number;
+  threadId?: string | null;
 }
 
 // Convert backend hypothesis to UI format
@@ -27,9 +29,13 @@ function convertHypothesis(apiHypothesis: APIHypothesis, index: number): UIHypot
   const contradictingCount = (apiHypothesis.evidence || []).filter(e => e.stance === 'contradict').length;
 
   // Determine status based on evidence
-  let status: 'supported' | 'mixed' | 'abstained';
+  let status: 'supported' | 'mixed' | 'abstained' | 'failed';
   const evidenceList = apiHypothesis.evidence || [];
-  if (evidenceList.length === 0) {
+  const evidenceStatus = (apiHypothesis as any).evidence_status; // Access dynamic property
+
+  if (evidenceStatus === 'failed_external') {
+    status = 'failed';
+  } else if (evidenceList.length === 0) {
     status = 'abstained';
   } else if (contradictingCount === 0 && supportingCount > 0) {
     status = 'supported';
@@ -117,6 +123,8 @@ export const DiscoveryResults = ({
   onNodeSelect,
   hypotheses: apiHypotheses = [],
   conceptGraph = null,
+  literatureCount = 0,
+  threadId = null,
 }: DiscoveryResultsProps) => {
   // Convert API hypotheses to UI format, fallback to mock if empty
   const displayHypotheses: UIHypothesis[] = apiHypotheses.length > 0
@@ -139,6 +147,9 @@ export const DiscoveryResults = ({
 
   const edgeCount = conceptGraph ? conceptGraph.edges.length : edges.length;
 
+  // Use real backend count if available (fixes "0 Papers Analyzed" bug)
+  const displayPaperCount = literatureCount > 0 ? literatureCount : curatedPapers.length;
+
   // Generate reflection based on real hypotheses if available
   const reflection: ReflectionData = apiHypotheses.length > 0 ? {
     overallConfidence: apiHypotheses.some(h =>
@@ -159,7 +170,7 @@ export const DiscoveryResults = ({
       ...apiHypotheses.slice(0, 2).map(h => h.experiment_idea || `Test hypothesis: ${h.id}`).filter(Boolean),
     ],
     caveats: [
-      `Analysis based on ${curatedPapers.length} papers`,
+      `Analysis based on ${displayPaperCount} papers`,
       apiHypotheses.length === 0 ? "No hypotheses generated yet" : `Generated ${apiHypotheses.length} hypotheses`,
     ],
   } : mockReflection;
@@ -177,7 +188,7 @@ export const DiscoveryResults = ({
 
         <div className="grid grid-cols-4 gap-4">
           <div className="text-center">
-            <p className="text-2xl font-medium text-foreground">{curatedPapers.length}</p>
+            <p className="text-2xl font-medium text-foreground">{displayPaperCount}</p>
             <p className="text-xs text-foreground-muted">Papers Analyzed</p>
           </div>
           <div className="text-center">
@@ -244,6 +255,7 @@ export const DiscoveryResults = ({
             index={index}
             isExpanded={expandedHypotheses.includes(hypothesis.id)}
             onToggle={() => toggleHypothesis(hypothesis.id)}
+            threadId={threadId}
           />
         ))}
       </motion.div>

@@ -55,10 +55,12 @@ def custom_serializer(obj):
         return obj.model_dump()
     if hasattr(obj, "dict"):
         return obj.dict()
-    # Handle lists of pydantic objects
     if isinstance(obj, list):
         return [custom_serializer(i) for i in obj]
     return str(obj)
+
+# Concurrency Control
+active_threads: set[str] = set()
 
 class RunRequest(BaseModel):
     query: str
@@ -261,12 +263,19 @@ async def run_discovery_stream(request: RunRequest):
     # Bind request ID to logger for this request
     request_log = log.bind(request_id=request_id, query=request.query[:50])
     
+    # Check concurrency
+    thread_id = request.thread_id or str(uuid.uuid4())
+    if thread_id in active_threads:
+        log.warning("concurrency_blocked", thread_id=thread_id)
+        raise HTTPException(status_code=409, detail="Pipeline already running for this thread. Please wait.")
+    
+    # Acquire Lock
+    active_threads.add(thread_id)
+    
     try:
         from app.graph import create_graph
         from app.state import DiscoveryState
         
-        # Determine Thread ID
-        thread_id = request.thread_id or str(uuid.uuid4())
         config = {"configurable": {"thread_id": thread_id}}
 
         request_log.info(
@@ -300,24 +309,23 @@ async def run_discovery_stream(request: RunRequest):
             )
 
     except Exception as e:
+        active_threads.discard(thread_id) # Release on init failure
         import traceback
         request_log.error("discovery_init_failed", error=str(e), traceback=traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Init failed: {e}")
 
     async def event_generator():
-        # Emit initial thinking event with Thread ID
-        data = {'agent': 'orchestrator', 'action': f'Starting discovery for: {request.query}', 'status': 'thinking'}
-        yield f"data: {json.dumps({'type': 'activity', 'data': data, 'thread_id': thread_id})}\n\n"
-        await asyncio.sleep(0.1) # Force flush
-        
         try:
+            # Emit initial thinking event with Thread ID
+            data = {'agent': 'orchestrator', 'action': f'Starting discovery for: {request.query}', 'status': 'thinking'}
+            yield f"data: {json.dumps({'type': 'activity', 'data': data, 'thread_id': thread_id})}\n\n"
+            await asyncio.sleep(0.1) # Force flush
+        
             # Accumulator for final result
             accumulated_state = {}
             start_times = {} # Track durations
             
             # Use astream_events to get granular updates
-            # Pass CONFIG for thread persistence
-            # V2 is required for reliable custom_event dispatch
             async for event in graph.astream_events(initial_state, config=config, version="v2"):
                 kind = event["event"]
                 name = event.get("name", "")
@@ -355,9 +363,6 @@ async def run_discovery_stream(request: RunRequest):
                     run_id = event.get("run_id")
                     if run_id:
                         start_times[run_id] = time.time()
-                        
-                        # Smart Formatting:
-                        pass
                     msg = f"[TOOL START] {name}"
                     if name == "get_neighbors":
                         node = data.get("input", {}).get("node", "?")
@@ -376,13 +381,11 @@ async def run_discovery_stream(request: RunRequest):
                     await asyncio.sleep(0)
                 
                 elif kind == "on_tool_end":
-                    # Smart Summary for Tool End
                     run_id = event.get("run_id")
                     duration_str = ""
                     if run_id and run_id in start_times:
                         duration = time.time() - start_times[run_id]
                         duration_str = f" ({duration:.2f}s)"
-                        # Clean up memory
                         del start_times[run_id]
 
                     output = str(data.get("output"))
@@ -395,92 +398,58 @@ async def run_discovery_stream(request: RunRequest):
                         msg = f"[Tool Error] {preview}"
                     else:
                         msg = f"[Result] {preview}"
-                    
                     msg += duration_str
-                    
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                     await asyncio.sleep(0)
                 
                 elif kind == "on_custom_event":
-                    # Added for Agent Log Synchronization
                     if event["name"] == "log":
                         log_data = data.get("message", str(data))
-                        # Yield as 'log' type for System Terminal
                         yield f"data: {json.dumps({'type': 'log', 'data': log_data})}\n\n"
                         await asyncio.sleep(0)
-                        
                     elif event["name"] == "activity":
-                        # Yield as 'activity' for Left Panel
-                        # Frontend expects: { id, agent, action, status, timestamp }
-                        # We construct a partial object here
                         msg = data.get("message", str(data))
-                        activity_data = {
-                            "agent": "scientist", # Default to scientist for these deep thoughts
-                            "action": msg,
-                            "status": "thinking"
-                        }
+                        activity_data = {"agent": "scientist", "action": msg, "status": "thinking"}
                         yield f"data: {json.dumps({'type': 'activity', 'data': activity_data})}\n\n"
                         await asyncio.sleep(0)
 
                 elif kind == "on_chain_end":
                     batch_output = event.get('data', {}).get('output', {})
-                    if hasattr(batch_output, "dict"):
-                        update_dict = batch_output.model_dump()
-                    elif isinstance(batch_output, dict):
-                        update_dict = batch_output
+                    if hasattr(batch_output, "dict"): update_dict = batch_output.model_dump()
+                    elif isinstance(batch_output, dict): update_dict = batch_output
+                    else: update_dict = {}
                     
-                    # SMART ACCUMULATION: Only pick up known state keys
                     relevant_keys = ["plan", "literature", "hypotheses", "evidence", "experiments", "experiment_plans", "critique", "user_query", "concept_graph", "domain_tags"]
-                    
                     has_update = False
                     for key in relevant_keys:
                         if key in update_dict:
                             accumulated_state[key] = update_dict[key]
                             has_update = True
-                            
                     if has_update:
-                        if "user_query" not in accumulated_state:
-                            accumulated_state["user_query"] = request.query
-                        
+                        if "user_query" not in accumulated_state: accumulated_state["user_query"] = request.query
                         yield f"data: {json.dumps({'type': 'result', 'data': accumulated_state}, default=custom_serializer)}\n\n"
 
         except Exception as e:
             request_log.error("stream_loop_error", error=str(e), thread_id=thread_id)
             yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
         
+        finally:
+            # RELEASE LOCK
+            active_threads.discard(thread_id)
+            print(f"DEBUG: Released lock for {thread_id}")
+
         # Check if we are interrupted or done
         try:
             snapshot = await graph.aget_state(config)
             if snapshot.next:
-                # We are paused/interrupted
                 request_log.info("workflow_interrupted", next_nodes=list(snapshot.next))
                 yield f"data: {json.dumps({'type': 'interrupt', 'data': {'next': list(snapshot.next), 'thread_id': thread_id}})}\n\n"
             else:
                 request_log.info("workflow_completed")
-                
-                # FAIL-SAFE: Explicitly send the final state to ensure Frontend has the result
-                final_state = snapshot.values
-                # Ensure we only send serializable/relevant parts if needed, or rely on custom_serializer
-                yield f"data: {json.dumps({'type': 'result', 'data': final_state}, default=custom_serializer)}\n\n"
-                
+                yield f"data: {json.dumps({'type': 'result', 'data': snapshot.values}, default=custom_serializer)}\n\n"
                 yield "data: [DONE]\n\n"
         except Exception as e:
-            # Check if it was the dump that failed
             request_log.error("fail_safe_sync_failed", error=str(e))
-            try:
-                # Fallback: Try sending ONLY the key items (hypotheses, concept_graph) to save the UI
-                snapshot = await graph.aget_state(config)
-                safe_payload = {
-                    "hypotheses": snapshot.values.get("hypotheses"),
-                    "concept_graph": snapshot.values.get("concept_graph"),
-                    "experiments": snapshot.values.get("experiments"),
-                    "visualization_data": snapshot.values.get("visualization_data")
-                }
-                yield f"data: {json.dumps({'type': 'result', 'data': safe_payload}, default=custom_serializer)}\n\n"
-            except Exception as e2:
-                request_log.error("fail_safe_fallback_failed", error=str(e2))
-                pass
-            
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(

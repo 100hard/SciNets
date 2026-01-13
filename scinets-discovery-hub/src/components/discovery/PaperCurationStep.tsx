@@ -24,18 +24,8 @@ interface PaperCurationStepProps {
   onBack: () => void;
 }
 
-// Fallback mock papers (only used if no candidatePapers provided)
-const fallbackCandidates: CandidatePaper[] = [
-  {
-    id: "p1",
-    title: "Loading papers...",
-    year: 2024,
-    venue: "Please wait",
-    rationale: "Fetching papers from OpenAlex",
-    selected: true,
-    locked: false,
-  },
-];
+// Fallback removed - we trust props
+// const fallbackCandidates: CandidatePaper[] = [];
 
 export const PaperCurationStep = ({
   query,
@@ -43,16 +33,14 @@ export const PaperCurationStep = ({
   onSubmit,
   onBack,
 }: PaperCurationStepProps) => {
-  // Use candidatePapers from API if available, otherwise use fallback
-  const [papers, setPapers] = useState<CandidatePaper[]>(
-    candidatePapers && candidatePapers.length > 0 ? candidatePapers : fallbackCandidates
-  );
+  // Use candidatePapers from API, empty if none
+  const [papers, setPapers] = useState<CandidatePaper[]>(candidatePapers || []);
   const [manualTitle, setManualTitle] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Update papers when candidatePapers prop changes
   useEffect(() => {
-    if (candidatePapers && candidatePapers.length > 0) {
+    if (candidatePapers) {
       setPapers(candidatePapers);
     }
   }, [candidatePapers]);
@@ -198,6 +186,12 @@ export const PaperCurationStep = ({
 
         {/* Paper rows */}
         <div className="divide-y divide-border max-h-[400px] overflow-auto">
+          {papers.length === 0 && (
+            <div className="p-8 text-center text-foreground-muted">
+              <p className="mb-2">No papers found for this query.</p>
+              <p className="text-xs">Try manually adding a paper or going back to refine your query.</p>
+            </div>
+          )}
           {papers.map((paper) => (
             <div
               key={paper.id}

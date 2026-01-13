@@ -202,14 +202,14 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
                 ("system", system_prompt),
                 ("human", exploration_prompt)
             ]}, {"recursion_limit": 100}),
-            timeout=60.0  # 60 second timeout
+            timeout=180.0  # 180 second timeout (Increased for stability)
         )
         exploration_summary = exploration_result["messages"][-1].content
         log.info("graph_exploration_completed", summary_length=len(exploration_summary))
         await adispatch_custom_event("log", {"message": "[Hypothesis] Exploration complete."}, config=config)
     except asyncio.TimeoutError:
-        log.warning("graph_exploration_timeout", timeout_seconds=60)
-        await adispatch_custom_event("log", {"message": "[Hypothesis] Exploration timed out after 60s. Using partial results."}, config=config)
+        log.warning("graph_exploration_timeout", timeout_seconds=180)
+        await adispatch_custom_event("log", {"message": "[Hypothesis] Exploration timed out after 180s. Using partial results."}, config=config)
         exploration_summary = "Exploration timed out. Relying on literature summary and automated path extraction."
     except Exception as e:
         log.error("graph_exploration_failed", error=str(e))
@@ -373,7 +373,8 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
                     effective_score = base_score - (lambda_overlap * max_ov)
                     
                     # Heuristic: If it's still a "good" path (positive score implies reasonable quality), take it
-                    if effective_score > 2.0: # Threshold tailored to our score scale
+                    # FIX: Lowered threshold from 2.0 to 0.05 since scores are normalized 0-1
+                    if effective_score > 0.05: 
                         final_selected_paths.append(item["str"])
                         selected_items.append(item)
                 

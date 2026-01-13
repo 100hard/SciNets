@@ -62,6 +62,26 @@ async def critique_node(state: DiscoveryState, config: RunnableConfig) -> dict:
         if hypothesis.stability_reason:
             stability_context += f" ({hypothesis.stability_reason})"
 
+    # Handle External API Failure specifically
+    evidence_status = getattr(hypothesis, "evidence_status", "complete")
+    if evidence_status == "failed_external":
+        await adispatch_custom_event("log", {"message": "[Critique] Verdict: Inconclusive (External API Failure)"}, config=config)
+        return {
+            "critique": {
+                "summary": "Evidence gathering failed due to external API errors.",
+                "recommendation": "Inconclusive: Retry later when external services are stable.",
+                "full_output": {
+                    "interpretation": "Cannot assess due to missing evidence.",
+                    "structural_assessment": "Analysis blocked by external API failure.",
+                    "limitations": ["External API (OpenAlex) 500/503 errors"],
+                    "suggestions": ["Retry evidence gathering"],
+                    "decision": "Inconclusive",
+                    "confidence": 0.0
+                }
+            },
+            "done": True
+        }
+
     from pydantic import BaseModel, Field
     from typing import List, Literal
     

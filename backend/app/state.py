@@ -40,6 +40,9 @@ class Hypothesis(BaseModel):
     # unstable: contradictory evidence or low confidence
     stability_class: Literal["stable", "speculative", "fragile", "unstable"] = "speculative"
     stability_reason: Optional[str] = None  # Human-readable explanation
+    
+    # Evidence status (New Stability Feature)
+    evidence_status: Literal["complete", "partial", "failed_external"] = "complete"
 
 class ExperimentPlan(BaseModel):
     id: str
@@ -113,7 +116,7 @@ class DiscoveryState(BaseModel):
     evaluation_mode: bool = False
     evaluation_strategy: str = "full" # full, rag, random, shortest, no_diversity
     experiment_id: Optional[str] = None # For tracking logs (evaluation runs)
-    max_papers: int = 15 # Default paper limit (increased for denser graphs)
+    max_papers: int = 10 # Default paper limit (reduced from 15 to 10)
     
     # Tier 2: Citation expansion (optional, weighted not dominant)
     enable_citation_expansion: bool = False  # Set to True to expand via citations
