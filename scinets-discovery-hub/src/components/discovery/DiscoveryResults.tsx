@@ -23,12 +23,13 @@ interface DiscoveryResultsProps {
 
 // Convert backend hypothesis to UI format
 function convertHypothesis(apiHypothesis: APIHypothesis, index: number): UIHypothesis {
-  const supportingCount = apiHypothesis.evidence.filter(e => e.stance === 'support').length;
-  const contradictingCount = apiHypothesis.evidence.filter(e => e.stance === 'contradict').length;
+  const supportingCount = (apiHypothesis.evidence || []).filter(e => e.stance === 'support').length;
+  const contradictingCount = (apiHypothesis.evidence || []).filter(e => e.stance === 'contradict').length;
 
   // Determine status based on evidence
   let status: 'supported' | 'mixed' | 'abstained';
-  if (apiHypothesis.evidence.length === 0) {
+  const evidenceList = apiHypothesis.evidence || [];
+  if (evidenceList.length === 0) {
     status = 'abstained';
   } else if (contradictingCount === 0 && supportingCount > 0) {
     status = 'supported';
@@ -39,7 +40,7 @@ function convertHypothesis(apiHypothesis: APIHypothesis, index: number): UIHypot
   }
 
   // Convert evidence to UI format
-  const evidence = apiHypothesis.evidence.map(e => ({
+  const evidence = (apiHypothesis.evidence || []).map(e => ({
     paper: `${e.title}${e.venue ? ` - ${e.venue}` : ''}${e.year ? ` (${e.year})` : ''}`,
     stance: e.stance === 'support' ? 'supporting' as const :
       e.stance === 'contradict' ? 'contradicting' as const : 'neutral' as const,
@@ -47,7 +48,7 @@ function convertHypothesis(apiHypothesis: APIHypothesis, index: number): UIHypot
   }));
 
   // Create mechanism chain from domain tags or required data
-  const mechanismChain = apiHypothesis.domain_tags.slice(0, 4).map((tag, i) => ({
+  const mechanismChain = (apiHypothesis.domain_tags || []).slice(0, 4).map((tag, i) => ({
     id: `m${i}`,
     label: tag,
   }));

@@ -1,7 +1,7 @@
 """Basic tests to verify pytest setup and imports."""
 
 import pytest
-from app.state import DiscoveryState, Hypothesis, Experiment
+from app.state import DiscoveryState, Hypothesis, Experiment, ExperimentState
 
 
 @pytest.mark.unit
@@ -9,27 +9,43 @@ def test_imports():
     """Verify all critical imports work."""
     from app.graph import create_graph
     from app.llm import get_llm
-    from app.state import DiscoveryState
+    from app.state import DiscoveryState, ExperimentState
     
     assert create_graph is not None
     assert get_llm is not None
     assert DiscoveryState is not None
+    assert ExperimentState is not None
 
 
 @pytest.mark.unit
 def test_discovery_state_creation():
-    """Test DiscoveryState can be created."""
+    """Test DiscoveryState can be created (without run_experiments)."""
     state = DiscoveryState(
         user_query="Test query",
         goal="discover",
         lens="none",
-        speculation="medium",
-        run_experiments=True
+        speculation="medium"
+        # REMOVED: run_experiments - experiments are now user-triggered only
     )
     
     assert state.user_query == "Test query"
     assert state.goal == "discover"
-    assert state.run_experiments is True
+
+
+@pytest.mark.unit
+def test_experiment_state_creation():
+    """Test ExperimentState can be created for on-demand experiments."""
+    exp_state = ExperimentState(
+        hypothesis_id="h-123",
+        hypothesis_text="Test hypothesis",
+        intent="validate_direction",
+        data_source="synthetic",
+        seed=42
+    )
+    
+    assert exp_state.hypothesis_id == "h-123"
+    assert exp_state.intent == "validate_direction"
+    assert exp_state.seed == 42
 
 
 @pytest.mark.unit
@@ -58,3 +74,4 @@ def test_hypothesis_serialization():
     h_reloaded = Hypothesis(**json.loads(json_str))
     assert h_reloaded.id == h.id
     assert h_reloaded.text == h.text
+

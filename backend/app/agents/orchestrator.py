@@ -5,15 +5,18 @@ from app.memory import MemoryManager
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from typing import List
+from langchain_core.runnables import RunnableConfig
+from langchain_core.callbacks import adispatch_custom_event
 
 class DomainClassification(BaseModel):
     domains: List[str] = Field(description="List of relevant domains (e.g., 'bio', 'ml', 'materials')")
 
-async def plan_node(state: DiscoveryState) -> dict:
+async def plan_node(state: DiscoveryState, config: RunnableConfig) -> dict:
     """
     Orchestrator Agent: Detects domains and plans the research steps, using long-term memory.
     """
     print(f"[Orchestrator] Planning for query: {state.user_query}")
+    await adispatch_custom_event("log", {"message": f"[Orchestrator] Analyzing request: {state.user_query}"}, config=config)
     
     # 0. Retrieve Memory
     memory = MemoryManager()
@@ -22,12 +25,14 @@ async def plan_node(state: DiscoveryState) -> dict:
     if insights:
         memory_context = "Past Insights:\n" + "\n".join([f"- {i.content}" for i in insights])
         print(f"[Orchestrator] Using {len(insights)} past insights.")
+        await adispatch_custom_event("log", {"message": f"[Orchestrator] Retrieved {len(insights)} relevant past insights."}, config=config)
     
     # MOCK MODE Check
     if state.mock:
         print("[Orchestrator] MOCK MODE: Returning dummy domains.")
+        await adispatch_custom_event("log", {"message": "[Orchestrator] MOCK MODE enabled."}, config=config)
         return {
-            "plan": {"steps": ["literature", "hypothesis", "experiment"] if state.run_experiments else ["literature", "hypothesis"], "current_step": "literature"},
+            "plan": {"steps": ["literature", "hypothesis"], "current_step": "literature"},
             "domain_tags": ["general", "mock-domain"]
         }
     
@@ -64,6 +69,7 @@ async def plan_node(state: DiscoveryState) -> dict:
         raw_domains = result.domains or []
     except Exception as e:
         print(f"[Orchestrator] Domain classification failed: {e}")
+        await adispatch_custom_event("log", {"message": f"[Orchestrator] Domain classification failed: {e}"}, config=config)
         raw_domains = []
         
     # FIX: Post-processing & Normalization
@@ -83,20 +89,22 @@ async def plan_node(state: DiscoveryState) -> dict:
     # Deduplicate preserving order
     detected_domains = list(dict.fromkeys(normalized_domains))
     print(f"[Orchestrator] Detected domains: {detected_domains}")
+    await adispatch_custom_event("log", {"message": f"[Orchestrator] Identified Domains: {', '.join(detected_domains)}"}, config=config)
     
     # 2. Create Plan (Dynamic)
+    # NOTE: Experiments are NOT part of default discovery pipeline anymore
+    # They are user-triggered only via POST /run_experiment
     steps = ["literature", "hypothesis"]
-    
-    # Only add experiment if enabled and not just a survey
-    if state.run_experiments and state.goal != "survey":
-        steps.append("experiment")
         
     plan = {
         "steps": steps,
         "current_step": "literature"
     }
     
+    await adispatch_custom_event("log", {"message": "[Orchestrator] Execution Plan: Literature -> Hypothesis"}, config=config)
+    
     return {
         "plan": plan,
         "domain_tags": detected_domains
     }
+

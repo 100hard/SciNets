@@ -74,7 +74,12 @@ class RunRequest(BaseModel):
 class ExperimentRequest(BaseModel):
     thread_id: str
     hypothesis_id: str
-    plan_id: str
+    thread_id: str
+    hypothesis_id: str
+    hypothesis_text: str # Required for experiment context
+    plan_id: Optional[str] = None
+    intent: str = "stress_test"
+    data_source: str = "synthetic"
 
 @app.post("/experiment_stream")
 async def run_experiment_stream(request: ExperimentRequest):
@@ -86,8 +91,8 @@ async def run_experiment_stream(request: ExperimentRequest):
     request_log = log.bind(request_id=f"exp_{str(uuid.uuid4())[:8]}", thread_id=thread_id)
     
     try:
-        from app.graph import create_graph
-        graph = create_graph()
+        from app.experiment_graph import create_experiment_graph
+        graph = create_experiment_graph()
         config = {"configurable": {"thread_id": thread_id}}
         
         request_log.info("starting_experiment_execution", 
@@ -95,12 +100,14 @@ async def run_experiment_stream(request: ExperimentRequest):
                          plan=request.plan_id)
 
         # Update State to trigger execution mode
-        # FIX: Explicitly 'rewind' to the experiment node by updating state AS that node
+        # The experiment graph relies on the state being populated with the right ID
         graph.update_state(config, {
-            "selected_hypothesis_id": request.hypothesis_id,
-            "selected_experiment_plan_id": request.plan_id,
-            "run_experiments": True
-        }, as_node="hypothesis")
+            "hypothesis_id": request.hypothesis_id,
+            "hypothesis_text": request.hypothesis_text,
+            "intent": request.intent,
+            "data_source": request.data_source,
+            "experiment_result": None # Reset result
+        })
         
     except Exception as e:
         import traceback
@@ -201,6 +208,47 @@ async def run_experiment_stream(request: ExperimentRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"}
     )
+
+class SearchRequest(BaseModel):
+    query: str
+    max_papers: int = 10
+
+@app.post("/search_papers")
+async def search_papers_endpoint(request: SearchRequest):
+    """
+    Stand-alone endpoint for the 'Curation' step in frontend.
+    Fetches papers from OpenAlex based on the query.
+    """
+    log.info("paper_search_request", query=request.query)
+    try:
+        from app.tools.openalex import search_papers
+        
+        # Simple refinement: quote the query if it's too simple? 
+        # Actually OpenAlex works best with simple keywords or boolean
+        results = await search_papers(request.query, limit=request.max_papers)
+        
+        # Transform for frontend if needed (frontend expects id, title, year, venue, abstract/rationale)
+        # Our tool returns: id, title, publication_year, abstract(inverted), host_venue...
+        
+        papers = []
+        from app.tools.openalex import reconstruct_abstract
+        
+        for p in results:
+            abstract_text = reconstruct_abstract(p.get("abstract")) if p.get("abstract") else "No abstract available."
+            papers.append({
+                "id": p["id"],
+                "title": p["title"],
+                "year": p["publication_year"],
+                "venue": p["host_venue"] or "Unknown Venue",
+                "abstract": abstract_text,
+                "rationale": abstract_text[:200] + "...",
+                "url": p.get("landing_page_url")
+            })
+            
+        return {"papers": papers}
+    except Exception as e:
+        log.error("paper_search_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/run_stream")
 async def run_discovery_stream(request: RunRequest):

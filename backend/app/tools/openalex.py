@@ -56,3 +56,51 @@ def reconstruct_abstract(inverted_index: Dict[str, List[int]]) -> str:
     
     word_index.sort()
     return " ".join([word for _, word in word_index])
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type(httpx.HTTPError)
+)
+async def get_paper_citations(paper_id: str, limit: int = 5) -> List[Dict[str, Any]]:
+    """
+    Fetch papers that cite the given paper (citation expansion).
+    Uses OpenAlex's cites filter. Returns papers weighted by relevance.
+    
+    NOTE: This is OPTIONAL expansion - use sparingly to avoid bias toward dominant narratives.
+    """
+    # Extract OpenAlex ID from URL if needed
+    if paper_id.startswith("https://"):
+        paper_id = paper_id.split("/")[-1]
+    
+    params = {
+        "filter": f"cites:{paper_id}",
+        "per-page": limit,
+        "sort": "cited_by_count:desc"  # High-impact citations first
+    }
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.get(OPENALEX_API_URL, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = []
+            for item in data.get("results", []):
+                paper = {
+                    "id": item.get("id"),
+                    "title": item.get("title"),
+                    "publication_year": item.get("publication_year"),
+                    "abstract": item.get("abstract_inverted_index"),
+                    "host_venue": item.get("host_venue", {}).get("display_name"),
+                    "cited_by_count": item.get("cited_by_count"),
+                    "landing_page_url": item.get("landing_page_url"),
+                    "source": "citation_expansion"  # Mark source for weighting
+                }
+                results.append(paper)
+            return results
+        except httpx.HTTPError as e:
+            print(f"Error fetching citations from OpenAlex: {e}")
+            raise
+

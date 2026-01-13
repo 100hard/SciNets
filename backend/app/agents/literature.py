@@ -1,5 +1,5 @@
 from app.state import DiscoveryState
-from app.tools.openalex import search_papers, reconstruct_abstract
+from app.tools.openalex import search_papers, reconstruct_abstract, get_paper_citations
 from app.llm import get_cheap_llm, get_llm
 from langchain_core.prompts import ChatPromptTemplate
 from duckduckgo_search import DDGS
@@ -40,6 +40,7 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
 
     if state.mock:
         print("[Literature] MOCK MODE: Returning dummy data.")
+        await adispatch_custom_event("log", {"message": "[Literature] MOCK MODE: Returning dummy literature data."}, config=config)
         return {
             "literature": {
                 "papers": {"MOCK-1": {"title": "Mock Paper", "year": 2024, "venue": "Mock Venue", "abstract": "This is a mock abstract.", "url": "http://mock"}},
@@ -86,6 +87,37 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     print(msg)
     await adispatch_custom_event("log", {"message": msg}, config=config)
     papers = await openalex_search_tool.ainvoke(search_query, config=config)
+    
+    # 1.5 OPTIONAL: Citation Expansion (Tier 2)
+    # Expands corpus via citations - weighted, not dominant
+    # CONSTRAINT: Disable when speculation is high to preserve structural-hole discovery
+    should_expand = state.enable_citation_expansion and state.speculation != "high"
+    
+    if should_expand and papers:
+        await adispatch_custom_event("log", {"message": "[Literature] Citation expansion enabled. Fetching citing papers..."}, config=config)
+        
+        # Only expand from top 3 seed papers to avoid explosion
+        seed_papers = papers[:3]
+        expanded_papers = []
+        
+        for seed in seed_papers:
+            seed_id = seed.get("id", "")
+            if seed_id:
+                try:
+                    # Fetch 3 citing papers per seed (weighted, not dominant)
+                    citations = await get_paper_citations(seed_id, limit=3)
+                    for cp in citations:
+                        # Avoid duplicates
+                        if not any(p.get("id") == cp.get("id") for p in papers + expanded_papers):
+                            expanded_papers.append(cp)
+                except Exception as e:
+                    print(f"[Literature] Citation fetch failed for {seed_id}: {e}")
+        
+        if expanded_papers:
+            print(f"[Literature] Added {len(expanded_papers)} papers via citation expansion.")
+            papers.extend(expanded_papers)
+    elif state.speculation == "high" and state.enable_citation_expansion:
+        await adispatch_custom_event("log", {"message": "[Literature] Citation expansion SKIPPED (speculation=high, preserving structural holes)"}, config=config)
     
     # 2. Web Search (for latest info/datasets)
     @tool
@@ -147,8 +179,16 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
         return await loop.run_in_executor(None, _search)
 
     print(f"[Literature] Running Web Search for: {search_query}...")
-    # Use ainvoke for async tool
-    web_json_str = await web_search_tool.ainvoke({"query": search_query, "goal": state.goal}, config=config)
+    
+    # TEMPORARY FIX: Disable DuckDuckGo search on Windows due to Errno 22
+    # The DDGS context manager doesn't work well with asyncio on Windows
+    import sys
+    if sys.platform == 'win32':
+        print("[Literature] Web search disabled on Windows (asyncio compatibility issue)")
+        web_json_str = '{"results": []}'
+    else:
+        # Use ainvoke for async tool
+        web_json_str = await web_search_tool.ainvoke({"query": search_query, "goal": state.goal}, config=config)
     try:
         web_data = json.loads(web_json_str)
         web_items = web_data.get("results", [])

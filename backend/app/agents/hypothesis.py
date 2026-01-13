@@ -1,10 +1,10 @@
-from app.state import DiscoveryState, Hypothesis
+from app.state import DiscoveryState, Hypothesis, CausalChain
 from app.llm import get_llm
 from app.domains import get_domain_packs
 from app.logging_config import get_logger
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 import uuid
 import asyncio
 from langchain_core.runnables import RunnableConfig
@@ -13,8 +13,27 @@ from langchain_core.callbacks import adispatch_custom_event
 
 log = get_logger(__name__)
 
+
+class GeneratedCausalChain(BaseModel):
+    """LLM output structure for causal chains."""
+    nodes: List[str] = Field(description="Ordered list of concepts: ['A', 'B', 'C'] for A -> B -> C")
+    relations: List[str] = Field(default=[], description="Relations between nodes: ['causes', 'leads to']")
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Confidence in this chain")
+
+
+class GeneratedHypothesis(BaseModel):
+    """LLM output structure for hypothesis generation."""
+    text: str = Field(description="The hypothesis statement")
+    domain_tags: List[str] = Field(description="Domain tags e.g. ['bio', 'ml']")
+    novelty_score: float = Field(ge=0.0, le=1.0)
+    feasibility_score: float = Field(ge=0.0, le=1.0)
+    testability_score: float = Field(ge=0.0, le=1.0)
+    causal_chain: GeneratedCausalChain = Field(description="Structured causal mechanism")
+    search_query: Optional[str] = Field(default=None, description="Boolean search query for validation")
+
+
 class HypothesisList(BaseModel):
-    hypotheses: List[Hypothesis]
+    hypotheses: List[GeneratedHypothesis]
 
 async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict:
     """
@@ -468,23 +487,25 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
     
     from langchain_core.messages import SystemMessage, HumanMessage
     
-    # Improved Prompt with Novelty/Feasibility Scoring and Deduplication awareness
+    # Improved Prompt with Novelty/Feasibility Scoring and STRUCTURED causal chains
     system_msg = f"""You are a Principal Investigator. Generate 3 NOVEL, TESTABLE scientific hypotheses based on the provided exploration.
     
     GUIDELINES:
     1. Each hypothesis must be NON-OBVIOUS. (Avoid "X is related to Y" - say "X drives Y via Z").
     2. Must be TESTABLE with current technology (simulation or lab).
-    3. Use the graph paths evidence provided, but rewrite them into fluid English. usage. 
+    3. Use the graph paths evidence provided, but rewrite them into fluid English.
        - CRITICAL: Ensure spaces between words (e.g., "damages interact", NOT "damagesinteract").
     4. TONE: Use "candidate mechanism" and "potential pathway" language. Avoid absolute certainty (e.g. "This proves...").
     
     REQUIRED OUTPUT STRUCTURE per hypothesis:
-    - Statement: A single clear sentence. START WITH "Statement: ".
-    - Causal Chain: The step-by-step mechanism (A -> B -> C). MUST BE PREFIXED WITH "Causal Chain: ".
-    - Evidence Summary: Specific nodes or paths that support this. Explicitly cite uncertainties.
-    - Scores: Novelty (0-1), Feasibility (0-1), Testability (0-1).
-    - Search Query: A precise keyword-based boolean query to validate this hypothesis (e.g. '"protein folding" AND "diffusion"').
-    - Tags: Domain tags (e.g. 'bio', 'ml').
+    - text: A single clear hypothesis statement.
+    - causal_chain: A STRUCTURED object with:
+        - nodes: List of concepts in order, e.g. ["Sleep deprivation", "Cortisol", "Memory impairment"]
+        - relations: List of relations between consecutive nodes, e.g. ["increases", "causes"]
+        - confidence: 0.0-1.0 confidence in this chain
+    - Scores: novelty_score, feasibility_score, testability_score (all 0-1).
+    - search_query: A precise keyword-based boolean query to validate this hypothesis.
+    - domain_tags: Domain tags (e.g. ['bio', 'ml']).
     """
     
     messages = [
@@ -499,20 +520,64 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         log.info("hypothesis_llm_completed", num_hypotheses=len(result.hypotheses))
         hypotheses = result.hypotheses
         
-        # 4.5 Deduplication & Selection
-        # Simple dedupe by checking text overlap or just distinct first words
-        unique_hypotheses = []
-        seen_texts = set()
+        # 4.5 Convert GeneratedHypothesis -> Hypothesis with Semantic Deduplication (Tier 2)
         
-        for h in hypotheses:
-            # Normalize text for dedupe
-            simp_text = h.text.lower().strip()[:50] 
-            if simp_text not in seen_texts:
-                if not h.id: h.id = str(uuid.uuid4())
-                unique_hypotheses.append(h)
-                seen_texts.add(simp_text)
+        # Semantic similarity function (uses difflib as fallback, embeddings if available)
+        def semantic_similarity(text1: str, text2: str) -> float:
+            """
+            Compute semantic similarity between two hypothesis texts.
+            Uses difflib SequenceMatcher as a lightweight approximation.
+            For production, could integrate sentence-transformers.
+            """
+            import difflib
+            # Normalize texts
+            t1 = text1.lower().strip()
+            t2 = text2.lower().strip()
+            
+            # Use SequenceMatcher for semantic-ish similarity
+            ratio = difflib.SequenceMatcher(None, t1, t2).ratio()
+            return ratio
+        
+        converted_hypotheses = []
+        SIMILARITY_THRESHOLD = 0.85  # Hypotheses above this are considered duplicates
+        
+        for gen_h in hypotheses:
+            # Check semantic similarity with already converted hypotheses
+            is_duplicate = False
+            for existing in converted_hypotheses:
+                sim = semantic_similarity(gen_h.text, existing.text)
+                if sim > SIMILARITY_THRESHOLD:
+                    log.info("hypothesis_deduplicated", 
+                             new_text=gen_h.text[:50], 
+                             existing_text=existing.text[:50],
+                             similarity=round(sim, 2))
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
+                # Convert GeneratedCausalChain -> CausalChain
+                causal_chain = CausalChain(
+                    nodes=gen_h.causal_chain.nodes,
+                    relations=gen_h.causal_chain.relations,
+                    source="hypothesis_generation",
+                    confidence=gen_h.causal_chain.confidence
+                ) if gen_h.causal_chain else None
                 
-        hypotheses = unique_hypotheses
+                # Convert to full Hypothesis object
+                hyp = Hypothesis(
+                    id=str(uuid.uuid4()),
+                    text=gen_h.text,
+                    domain_tags=gen_h.domain_tags,
+                    novelty_score=gen_h.novelty_score,
+                    feasibility_score=gen_h.feasibility_score,
+                    testability_score=gen_h.testability_score,
+                    search_query=gen_h.search_query,
+                    causal_chain=causal_chain,
+                    evidence=[]
+                )
+                converted_hypotheses.append(hyp)
+                
+        hypotheses = converted_hypotheses
         
         if hypotheses:
             # Composite scoring: balanced weighting of novelty, feasibility, and testability
@@ -528,20 +593,8 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
             # === EVALUATION LOGGING (MANDATORY) ===
             if state.evaluation_mode:
                 for i, h in enumerate(hypotheses[:3]): # Strict Top-3
-                    # 1. Expand Path Validation
-                    # Note: LLM might not output strict nodes, we attempt to map back or use heuristics
-                    # For metrics, we assume the hypothesis traces a path in the valid graph if possible.
-                    # Or we use the 'path_context' that fed it.
-                    # Ideally, we ask the LLM to output the node list. 
-                    
-                    # Heuristic: Extract entities from 'Causal Chain' string
-                    # "A -> B -> C"
-                    raw_chain = h.evidence_summary or "" # Map 'Causal Chain' to evidence_summary or need new field?
-                    # The prompt asks for "Causal Chain: ...". The Pydantic model 'evidence_summary' is the closest slot.
-                    
-                    chain_nodes = []
-                    if "->" in raw_chain:
-                        chain_nodes = [n.strip() for n in raw_chain.split("->")]
+                    # Use structured causal_chain instead of string parsing
+                    chain_nodes = h.causal_chain.nodes if h.causal_chain else []
                     
                     edges_data = []
                     path_len = len(chain_nodes)
@@ -549,7 +602,7 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
                     if len(chain_nodes) > 1:
                         for k in range(len(chain_nodes)-1):
                             u, v = chain_nodes[k], chain_nodes[k+1]
-                            # Try to find edge
+                            # Try to find edge in graph
                             papers = []
                             if G.has_edge(u, v):
                                 papers = G.get_edge_data(u, v).get("papers", [])
@@ -573,7 +626,6 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
                         "path_length": path_len if chain_nodes else 0,
                         "edges": edges_data
                     }
-                    # log.info(json.dumps(eval_log))
                     import os
                     with open("eval_data.jsonl", "a") as f:
                         f.write(json.dumps(eval_log) + "\n")
@@ -644,6 +696,58 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         "collapse_events": collapse_events,
         "collapsed": collapse_events > 0
     }
+
+    # === STABILITY CLASSIFICATION (Tier 2) ===
+    # Classify hypotheses based on causal chain properties and graph grounding
+    # This is DIAGNOSTIC, not rejection - all hypotheses are kept
+    def classify_stability(h: Hypothesis, graph: nx.DiGraph) -> tuple:
+        """
+        Classify hypothesis stability based on causal chain properties.
+        Returns (stability_class, reason).
+        """
+        # Default to speculative
+        if not h.causal_chain or not h.causal_chain.nodes:
+            return ("speculative", "No structured causal chain provided")
+        
+        nodes = h.causal_chain.nodes
+        confidence = h.causal_chain.confidence
+        
+        # Check graph grounding
+        grounded_nodes = sum(1 for n in nodes if n in graph)
+        grounding_ratio = grounded_nodes / len(nodes) if nodes else 0
+        
+        # Check edge existence
+        edges_exist = 0
+        edges_total = len(nodes) - 1
+        if edges_total > 0:
+            for i in range(edges_total):
+                if graph.has_edge(nodes[i], nodes[i+1]) or graph.has_edge(nodes[i+1], nodes[i]):
+                    edges_exist += 1
+            edge_ratio = edges_exist / edges_total
+        else:
+            edge_ratio = 0
+        
+        # Classification logic
+        if grounding_ratio >= 0.8 and edge_ratio >= 0.6 and confidence >= 0.7:
+            return ("stable", f"Well-grounded: {grounded_nodes}/{len(nodes)} nodes in graph, {edges_exist}/{edges_total} edges verified")
+        elif grounding_ratio >= 0.5 and confidence >= 0.5:
+            return ("speculative", f"Partially grounded: {grounded_nodes}/{len(nodes)} nodes, confidence {confidence:.2f}")
+        elif edge_ratio < 0.3 or len(nodes) < 2:
+            return ("fragile", f"Weak edges: only {edges_exist}/{edges_total} connections verified in graph")
+        else:
+            return ("unstable", f"Low grounding ({grounding_ratio:.0%}) or confidence ({confidence:.2f})")
+    
+    # Apply classification to all hypotheses
+    for h in hypotheses:
+        stability, reason = classify_stability(h, G)
+        h.stability_class = stability
+        h.stability_reason = reason
+    
+    log.info("stability_classification_complete", 
+             stable=sum(1 for h in hypotheses if h.stability_class == "stable"),
+             speculative=sum(1 for h in hypotheses if h.stability_class == "speculative"),
+             fragile=sum(1 for h in hypotheses if h.stability_class == "fragile"),
+             unstable=sum(1 for h in hypotheses if h.stability_class == "unstable"))
 
     return {
         "hypotheses": hypotheses,

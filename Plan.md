@@ -1,338 +1,176 @@
-AI Scientist Platform — Plan
+# SciNets — Architecture Plan
 
-Working title: SciNets / AI Scientist
-Style: Single-founder, “vibe coding” friendly, but with enough structure that you don’t drown.
+**Working title:** SciNets / AI Scientist  
+**Style:** Single-founder, "vibe coding" friendly, but with enough structure that you don't drown.
 
-0. High-Level Overview
+---
 
-Goal:
+## 0. High-Level Overview
+
+### Goal
 Build an AI assistant that can, for multiple scientific domains:
 
-Understand a research question
-
-Retrieve and structure literature (multi-domain)
-
-Build a small, per-session concept graph
-
-Generate and rank hypotheses
-
-Collect literature evidence for each hypothesis
-
-Run lightweight computational experiments where possible
-
-Produce a structured, reproducible report
-
-Non-goals (for now):
-
-Heavy simulations (DFT, AutoDock-scale docking)
-
-Global, persistent knowledge graph over millions of papers
-
-Paid sandbox services (E2B, Modal)
-
-Fully autonomous lab (wet-lab integration, robotics, etc.)
-
-1. Tech Stack
-1.1 Backend
-
-Language: Python 3.11+
-
-Framework: FastAPI (REST + SSE/WebSockets)
-
-Orchestration: LangGraph (multi-agent workflows)
-
-Schema / Types: Pydantic models
-
-LLMs:
-
-Primary reasoning: Claude 3.5 Sonnet / GPT-4.1
-
-Utility / cheap tasks: Claude Haiku / GPT-4o-mini
-
-1.2 Tools Layer
-
-Knowledge Tools
-
-OpenAlex API (core literature search)
-
-Optional later: PubMed, arXiv, Materials Project API
-
-Computation Tools
-
-No external sandbox initially.
-
-Phase 1:
-
-Template-based experiments implemented by you:
-
-ML pipelines (regression/classification)
-
-Basic statistical tests (t-test, ANOVA, correlations)
-
-Simple bio analyses (using BioPython on toy/public datasets)
-
-Phase 2:
-
-Restricted local execution (Docker container) with:
-
-Whitelisted imports (if using python image)
-
-Timeouts & Memory limits
-
-Phase 3:
-
-Docker-based sandbox on your own server:
-
-Short-lived containers with CPU/RAM limits
-
-Vector Store
-
-Qdrant (per-session paper embeddings, maybe experiment notes)
-
-Concept Graph
-
-In-memory via NetworkX or Python dicts
-
-Per-session only (rebuilt each run)
-
-Stored in Postgres as JSONB if needed
-
-1.3 Data & Storage
-
-PostgreSQL (Neon / Supabase)
-
-Users
-
-Sessions
-
-Hypotheses
-
-Evidence items
-
-Experiment metadata
-
-Object Storage (Cloudflare R2 or Supabase Storage)
-
-Plots (images)
-
-Datasets (uploaded/generated)
-
-Code snippets/artifacts
-
-Redis (Upstash)
-
-Caching OpenAlex responses
-
-Lightweight session state / rate-limiting
-
-1.4 Frontend
-
-Next.js 14 (App Router)
-
-React + TailwindCSS + shadcn/ui
-
-SSE/WebSockets from FastAPI for streaming progress
-
-Plotly.js for plots (via react-plotly.js)
-
-Cytoscape.js (or similar) for small concept graph visualization
-
-1.5 Dev/Deploy
-
-Dev:
-
-docker-compose for backend + Postgres + Qdrant + Redis
-
-Next.js via npm run dev locally
-
-Deploy:
-
-Backend: Railway / Render (container)
-
-Frontend: Vercel
-
-DB: Neon / Supabase
-
-Storage: R2 / Supabase
-
-2. Core Architecture
-2.1 Domain Packs (Multi-Domain)
-
-Each DomainPack defines:
-
-name: "bio", "ml", "materials", "generic_ds"
-
-tools: allowed knowledge/computation tools for that domain
-
-prompts: domain-specific prompt fragments (hypotheses, experiments)
-
-constraints: hard rules (e.g., “no heavy simulations”; “API-only for materials”)
-
-MVP packs:
-
-bio
-
-ml
-
-materials (API-only, no DFT)
-
-generic_ds
-
-2.2 State Model
-class EvidenceItem(BaseModel):
-    paper_id: str
-    title: str
-    venue: str | None
-    year: int | None
-    stance: Literal["support", "contradict", "neutral"]
-    strength: int  # 1–5
-    key_points: list[str]
-    url: str | None = None
-
-class Hypothesis(BaseModel):
-    id: str
-    text: str
-    domain_tags: list[str]
-    novelty_score: float
-    feasibility_score: float
-    testability_score: float
-    required_data: list[str] = []
-    experiment_idea: str | None = None
-    evidence: list[EvidenceItem] = []
-
+1. Understand a research question
+2. Retrieve and structure literature (multi-domain)
+3. Build a small, per-session concept graph
+4. Generate and rank hypotheses with structured causal chains
+5. Collect literature evidence for each hypothesis
+6. **User-triggered** computational experiments on specific hypotheses
+7. Produce a structured, reproducible report
+
+### Non-goals (for now)
+- Heavy simulations (DFT, AutoDock-scale docking)
+- Global, persistent knowledge graph over millions of papers
+- Paid sandbox services (E2B, Modal)
+- Fully autonomous lab (wet-lab integration, robotics, etc.)
+
+---
+
+## 1. Tech Stack
+
+### 1.1 Backend
+- **Language:** Python 3.11+
+- **Framework:** FastAPI (REST + SSE)
+- **Orchestration:** LangGraph (multi-agent workflows)
+- **Schema/Types:** Pydantic models
+- **LLMs:**
+  - Primary reasoning: Claude 3.5 Sonnet / GPT-4.1
+  - Utility/cheap tasks: Claude Haiku / GPT-4o-mini
+
+### 1.2 Tools Layer
+
+**Knowledge Tools:**
+- OpenAlex API (core literature search)
+- DuckDuckGo (web search for latest info) - *disabled on Windows*
+- Optional: PubMed, arXiv, Materials Project API
+
+**Computation Tools:**
+- Template-based experiments (ML pipelines, statistical tests)
+- User-triggered only via `/run_experiment` endpoint
+
+### 1.3 Data & Storage
+- PostgreSQL (sessions, hypotheses, evidence)
+- Redis (caching, rate-limiting)
+- In-memory concept graph (NetworkX/dicts, per-session)
+
+### 1.4 Frontend
+- Vite + React + TypeScript
+- TailwindCSS + shadcn/ui
+- SSE streaming for real-time agent updates
+- Cytoscape.js for concept graph visualization
+
+---
+
+## 2. Core Architecture
+
+### 2.1 Agent Pipeline
+
+```
+PLAN → LITERATURE → HYPOTHESIS → EVIDENCE → CRITIQUE → END
+         │
+         └── User can trigger: POST /run_experiment → EXPERIMENT_SUBGRAPH
+```
+
+**Key Design Decision:** Experiments are **NOT** part of the default discovery pipeline.
+They are user-triggered post-discovery on specific hypotheses.
+
+### 2.2 Agents
+
+| Agent | Role |
+|-------|------|
+| **Orchestrator** | Detect domains, create research plan |
+| **Literature** | Search OpenAlex, build concept graph, summarize papers |
+| **Hypothesis** | Generate hypotheses with structured causal chains |
+| **Evidence** | Collect supporting/contradicting evidence per hypothesis |
+| **Critique** | Structural assessment (no experiments) - verdicts: Structurally Supported/Undermined |
+| **Experiment** | User-triggered only, runs on specific hypothesis via separate endpoint |
+
+### 2.3 State Models
+
+```python
 class DiscoveryState(BaseModel):
     user_query: str
-    domain_tags: list[str] = []
-    plan: dict | None = None
-    literature: dict | None = None
-    concept_graph: dict | None = None  # or pointer/id
-    hypotheses: list[Hypothesis] | None = None
-    selected_hypothesis_id: str | None = None
-    experiments: list[dict] | None = None
-    critique: dict | None = None
+    goal: str = "discover"  # discover, survey, write
+    lens: str = "none"      # disciplinary lens
+    speculation: str = "medium"  # low, medium, high
+    mock: bool = False
+    max_papers: int = 15
+    
+    domain_tags: List[str] = []
+    plan: Optional[dict] = None
+    literature: Optional[dict] = None
+    concept_graph: Optional[dict] = None
+    hypotheses: List[Hypothesis] = []
+    critique: Optional[dict] = None
     done: bool = False
-    # Note: Keep this state lightweight. Store heavy text/vectors in DB/Qdrant.
+    
+    # NOTE: experiments removed from default state
+    # They are handled separately via ExperimentState
 
-2.3 Agents
+class ExperimentState(BaseModel):
+    """State for user-triggered experiments (separate from discovery)"""
+    hypothesis_id: str
+    hypothesis_text: str
+    intent: str = "simulate"  # simulate, sensitivity, fit
+    data_source: str = "synthetic"
+    seed: int = 42
+    result: Optional[dict] = None
+```
 
-Orchestrator Agent
+### 2.4 Domain Packs
 
-Detect domains from user query (rule + small LLM call).
+Each DomainPack defines:
+- `name`: "bio", "ml", "materials", "generic_ds"
+- `tools`: allowed knowledge/computation tools
+- `prompts`: domain-specific prompt fragments
+- `constraints`: hard rules
 
-Load domain packs.
+---
 
-Call plan_research_steps(question, domain_tags) tool.
+## 3. API Endpoints
 
-Configure which steps (nodes) to run in LangGraph.
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/run_stream` | POST | Start discovery, SSE stream of agent events |
+| `/run_experiment` | POST | User-triggered experiment on a hypothesis |
+| `/sessions` | GET | List past sessions |
+| `/docs` | GET | Swagger UI |
 
-Literature Agent
+---
 
-Multi-query OpenAlex search.
+## 4. Frontend Flow
 
-Filter & rank by year, relevance, citations.
+```
+Query → Clarification → Execution (SSE) → Results
+                              │
+                              └── "Explore Computationally" button
+                                  on each hypothesis card
+```
 
-Two-pass processing:
+**Key Components:**
+- `DiscoveryQueryStep` - Enter research question
+- `DiscoveryClarificationStep` - Set goal, speculation level
+- `DiscoveryExecutionStep` - Real-time agent activity display
+- `HypothesisCard` - Shows hypothesis with "Explore computationally" button
+- `ExperimentConfigModal` - Configure and trigger experiment
 
-1. Triage: Cheap LLM (Haiku/4o-mini) filters papers based on title/abstract.
+---
 
-2. Synthesis: Strong LLM (Sonnet/GPT-4) summarizes top candidates.
+## 5. Principles
 
-evaluate strength per hypothesis,
+1. Start from end-to-end flow, then deepen each step
+2. Prefer small, well-defined tools over giant prompts
+3. Keep the concept graph small and session-local
+4. Use stronger models only for planning/hypotheses/critique
+5. Always attach evidence to hypotheses
+6. Experiments are explorations, not validations
+7. UI should always answer:
+   - What was the question?
+   - What did the agents do?
+   - What hypotheses did they propose?
+   - What evidence backs them?
+   - What should I explore next?
 
-identify contradictions,
+---
 
-suggest explicit next experiments.
-
-Export:
-
-Generate markdown report from DiscoveryState.
-
-Optional: convert to PDF server-side (or leave to client tools).
-
-Frontend Tasks
-
-Final UI shape:
-
-Agent Log (toggle)
-
-Full Literature, Concept Graph, Hypotheses, Evidence, Experiments, Final Report sections.
-
-Improve:
-
-Loading/skeleton states per section.
-
-Error messages per step.
-
-Add:
-
-Export buttons (download markdown; PDF optional).
-
-Session history page (/sessions).
-
-Tests for Phase 3
-
-Backend:
-
-Unit tests:
-
-Additional experiment templates run end-to-end on dummy datasets.
-
-Critique generator:
-
-Given known combinations of evidence + metrics, returns structured critique without crashing.
-
-Integration tests:
-
-For a multi-domain question:
-
-Some hypotheses get experiments; others only evidence.
-
-Final report contains:
-
-per-hypothesis critique,
-
-recommended next steps.
-
-Frontend:
-
-Manual tests:
-
-Full run:
-
-Check all sections populate and are scrollable.
-
-Evidence and experiments update correctly for chosen hypothesis.
-
-Export:
-
-Markdown file is well-structured and readable.
-
-Sessions:
-
-Previous runs appear and reload correctly.
-
-5. Principles to Keep in Mind While Vibe Coding
-
-Start from end-to-end flow, then deepen each step.
-
-Prefer small, well-defined tools (functions) over giant prompts.
-
-Keep the concept graph small and session-local.
-
-Use bigger models only for planning/hypotheses/critique; cheaper ones for summarization.
-
-Always attach evidence to hypotheses, even where no experiment runs.
-
-UI should always answer:
-
-What was the question?
-
-What did the agents do?
-
-What hypotheses did they propose?
-
-What evidence backs them?
-
-What should I do next?
-
-This plan is the “plan.md” you can keep in the repo root and evolve as you build.
+*This plan reflects the current system architecture as of January 2026.*

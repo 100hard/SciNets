@@ -1,116 +1,99 @@
-from app.state import DiscoveryState, EvidenceItem
+from app.state import DiscoveryState, EvidenceItem, Hypothesis
 from app.tools.openalex import search_papers, reconstruct_abstract
 from app.llm import get_cheap_llm
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Literal, List
 from langchain_core.runnables import RunnableConfig
 from langchain_core.callbacks import adispatch_custom_event
+import asyncio
 
 class EvidenceClassification(BaseModel):
     stance: Literal["support", "contradict", "neutral"] = Field(description="Does the paper support, contradict, or is neutral to the hypothesis?")
     strength: int = Field(description="Strength of evidence (1-5)", ge=1, le=5)
     key_points: list[str] = Field(description="Key points from the paper relevant to the hypothesis")
 
-async def evidence_node(state: DiscoveryState, config: RunnableConfig) -> dict:
-    """
-    Evidence Agent: Finds and classifies evidence for the selected hypothesis.
-    """
-    selected_id = state.selected_hypothesis_id
-    if not state.hypotheses:
-        return {}
-        
-    hypothesis = next((h for h in state.hypotheses if h.id == selected_id), None)
-    if not hypothesis:
-        return {}
 
-    # IDEMPOTENCY CHECK
+async def gather_evidence_for_hypothesis(
+    hypothesis: Hypothesis,
+    llm,
+    structured_llm,
+    config: RunnableConfig
+) -> Hypothesis:
+    """
+    Hypothesis-Conditional Evidence Evaluator.
+    
+    This function evaluates how the literature corpus RELATES to a specific hypothesis.
+    It runs ONLY after hypotheses exist and operates independently for each hypothesis.
+    
+    EPISTEMIC BOUNDARY (STRICTLY ENFORCED):
+    - This agent MUST NOT modify the concept graph
+    - This agent MUST NOT extract new concepts
+    - This agent MUST NOT perform structural reasoning
+    - This agent is STANCE-AGNOSTIC until it receives a hypothesis
+    
+    Role separation:
+    - Literature Agent answers: "What exists in the corpus?"
+    - Evidence Agent answers: "How does the corpus relate to this hypothesis?"
+    
+    Returns updated hypothesis with evidence items attached.
+    """
+    # Skip if already has evidence (idempotency)
     if hypothesis.evidence:
-        await adispatch_custom_event("log", {"message": "[Evidence] Skipping (already cached)"}, config=config)
-        return {}
-
-    if state.mock:
-        await adispatch_custom_event("log", {"message": "[Evidence] MOCK MODE: Returning dummy evidence."}, config=config)
-        dummy_ev = EvidenceItem(
-            paper_id="mock-1",
-            title="Mock Evidence Paper",
-            stance="support",
-            strength=5,
-            key_points=["Mock Point 1", "Mock Point 2"]
-        )
-        return {"hypotheses": [
-            h if h.id != selected_id else h.copy(update={"evidence": [dummy_ev]}) 
-            for h in state.hypotheses
-        ]}
-
-    await adispatch_custom_event("log", {"message": f"[Evidence] Searching for evidence for: {hypothesis.text}"}, config=config)
+        return hypothesis
+    
+    await adispatch_custom_event("log", {
+        "message": f"[Evidence] Gathering evidence for H: {hypothesis.text[:60]}..."
+    }, config=config)
     
     # 1. Search OpenAlex with refined query
-    # Prefer pre-computed search query if available, else use text
     query = hypothesis.search_query or hypothesis.text
-    
-    # Optional: Augment query if it's too short for a paper search
     if len(query.split()) < 3:
         query += " scientific papers"
-        
-    print(f"  > Query: {query}")
     
-    # Main search for relevant papers
-    papers = await search_papers(query, limit=4)
+    print(f"  > [H:{hypothesis.id[:8]}] Query: {query}")
     
-    # ADVERSARIAL SEARCH: Also search for potential contradictions to reduce confirmation bias
-    # This helps find papers that might challenge or limit the hypothesis
-    await adispatch_custom_event("log", {"message": "[Evidence] Running adversarial search for contradictions..."}, config=config)
+    # Main search (increased from 4 to 6)
+    papers = await search_papers(query, limit=6)
     
-    # Build contradiction query by adding limiting terms
+    # ADVERSARIAL SEARCH: Find contradictions
     contradiction_terms = ["limitations", "controversy", "challenges", "contradicts", "fails", "negative results"]
-    # Extract key concepts from hypothesis (first 3 significant words)
     key_words = [w for w in query.split() if len(w) > 4][:3]
     contradiction_query = f"{' '.join(key_words)} ({' OR '.join(contradiction_terms)})"
     
     try:
-        contradiction_papers = await search_papers(contradiction_query, limit=2)
+        contradiction_papers = await search_papers(contradiction_query, limit=3)
         if contradiction_papers:
-            print(f"  > Found {len(contradiction_papers)} potential contradiction papers")
-            # Add to papers list, marking them as from adversarial search
+            print(f"  > [H:{hypothesis.id[:8]}] Found {len(contradiction_papers)} contradiction papers")
             for p in contradiction_papers:
-                # Avoid duplicates
                 if not any(existing['id'] == p['id'] for existing in papers):
                     papers.append(p)
     except Exception as e:
-        print(f"[Evidence] Adversarial search failed: {e}")
+        print(f"[Evidence] Adversarial search failed for {hypothesis.id[:8]}: {e}")
     
     if not papers:
-        print("[Evidence] No papers found.")
-        # Mark hypothesis status if possible (assuming field exists or just log)
-        # hypothesis.evidence_status = "no_papers_found" 
-        return {"hypotheses": state.hypotheses} 
-
+        print(f"[Evidence] No papers found for hypothesis {hypothesis.id[:8]}")
+        return hypothesis
     
-    evidence_items = []
-    llm = get_cheap_llm()
-    structured_llm = llm.with_structured_output(EvidenceClassification)
+    # 2. Classify each paper
+    from langchain_core.messages import SystemMessage, HumanMessage
     
-    tasks = []
+    system_msg = """You are a critical scientist. Evaluate if the abstract supports or contradicts the hypothesis.
     
-    async def process_paper(paper):
+    DEFINITIONS:
+    - "support": Abstract explicitly matches the hypothesis mechanism or outcome.
+    - "contradict": Abstract explicitly refutes the mechanism or shows opposite outcome.
+    - "neutral": Abstract is irrelevant, tangential, or inconclusive.
+    
+    STRENGTH SCALE (1-5):
+    1: Tenuous/Weak (e.g. indirect inference)
+    5: Definitive/Strong (e.g. direct experimental trial matching exact variables)
+    """
+    
+    async def classify_paper(paper):
         abstract = reconstruct_abstract(paper.get("abstract"))
-        if not abstract: return None
-            
-        # 2. Classify Stance (Tightened Prompt)
-        from langchain_core.messages import SystemMessage, HumanMessage
-        
-        system_msg = """You are a critical scientist. Evaluate if the abstract supports or contradicts the hypothesis.
-        
-        DEFINITIONS:
-        - "support": Abstract explicitly matches the hypothesis mechanism or outcome.
-        - "contradict": Abstract explicitly refutes the mechanism or shows opposite outcome.
-        - "neutral": Abstract is irrelevant, tangential, or inconclusive.
-        
-        STRENGTH SCALE (1-5):
-        1: Tenuous/Weak (e.g. indirect inference)
-        5: Definitive/Strong (e.g. direct experimental trial matching exact variables)
-        """
+        if not abstract:
+            return None
         
         messages = [
             SystemMessage(content=system_msg),
@@ -119,7 +102,6 @@ async def evidence_node(state: DiscoveryState, config: RunnableConfig) -> dict:
         
         try:
             result = await structured_llm.ainvoke(messages)
-            
             return EvidenceItem(
                 paper_id=paper["id"],
                 title=paper["title"],
@@ -130,29 +112,25 @@ async def evidence_node(state: DiscoveryState, config: RunnableConfig) -> dict:
                 key_points=result.key_points,
                 url=paper["landing_page_url"]
             )
-            
         except Exception as e:
             print(f"[Evidence] Error classifying paper: {e}")
             return None
-
-    import asyncio
-    evidence_items = await asyncio.gather(*[process_paper(p) for p in papers])
+    
+    # Process papers in parallel
+    await adispatch_custom_event("log", {"message": f"[Evidence] Analyzing {len(papers)} papers for H:{hypothesis.text[:30]}..."}, config=config)
+    evidence_items = await asyncio.gather(*[classify_paper(p) for p in papers])
     evidence_items = [e for e in evidence_items if e is not None]
     
-    # 3. Compute Aggregates & Summary
+    # 3. Compute summary
     if evidence_items:
-        # Metrics
         num_support = sum(1 for e in evidence_items if e.stance == "support")
         num_contradict = sum(1 for e in evidence_items if e.stance == "contradict")
         num_neutral = sum(1 for e in evidence_items if e.stance == "neutral")
         
-        # Weighted Score: Support(+Strength) - Contradict(-Strength)
-        support_score = sum(e.strength for e in evidence_items if e.stance == "support") - \
-                        sum(e.strength for e in evidence_items if e.stance == "contradict")
+        print(f"[Evidence] H:{hypothesis.id[:8]} Aggregates: +{num_support} / -{num_contradict} ~{num_neutral}")
+        await adispatch_custom_event("log", {"message": f"[Evidence] Result for H:{hypothesis.text[:20]}... : +{num_support} (Support), -{num_contradict} (Contradict)"}, config=config)
         
-        print(f"[Evidence] Aggregates: +{num_support} / -{num_contradict} ~{num_neutral} (Score: {support_score})")
-        
-        # Synthesis LLM Pass
+        # Generate verdict
         summary_prompt = f"""Given the following evidence items, write a 1-sentence VERDICT on the hypothesis.
         Mention if it is broadly supported, disputed, or lacks specific data.
         
@@ -164,19 +142,81 @@ async def evidence_node(state: DiscoveryState, config: RunnableConfig) -> dict:
             verdict = summary_res.content
         except:
             verdict = "Analysis complete."
-            
-        # Attach to hypothesis (assuming dynamic fields allowed or exists)
-        # We can store this in a 'result_summary' or similar if strictly typed
-        updated_hypotheses = []
-        for h in state.hypotheses:
-            if h.id == selected_id:
-                h.evidence = evidence_items
-                if hasattr(h, "evidence_summary"): # Backward compatibility check
-                     h.evidence_summary = verdict
-                # Also store the score if desired
-                # h.evidence_score = support_score
-            updated_hypotheses.append(h)
-    else:
-        updated_hypotheses = state.hypotheses
+        
+        # Update hypothesis
+        hypothesis.evidence = evidence_items
+        hypothesis.evidence_summary = verdict
+    
+    return hypothesis
 
-    return {"hypotheses": updated_hypotheses}
+
+async def evidence_node(state: DiscoveryState, config: RunnableConfig) -> dict:
+    """
+    Evidence Agent: Hypothesis-Conditional Evaluator
+    
+    Finds and classifies evidence for ALL hypotheses (top 3).
+    Processes each hypothesis independently for epistemic symmetry.
+    
+    ROLE CLARIFICATION:
+    - Runs ONLY after hypotheses are generated
+    - Evaluates each hypothesis independently
+    - Reuses literature retrieval utilities with different objective
+    - STANCE-AGNOSTIC until hypotheses exist
+    
+    STRICTLY PROHIBITED:
+    - Graph modification
+    - Concept extraction  
+    - Structural reasoning
+    - Influencing hypothesis ranking
+    
+    EPISTEMIC BOUNDARY:
+    - Literature Agent: "What exists in the corpus?"
+    - Evidence Agent: "How does the corpus relate to this specific hypothesis?"
+    """
+    if not state.hypotheses:
+        return {}
+    
+    # MOCK MODE
+    if state.mock:
+        await adispatch_custom_event("log", {"message": "[Evidence] MOCK MODE: Returning dummy evidence for all hypotheses."}, config=config)
+        dummy_ev = EvidenceItem(
+            paper_id="mock-1",
+            title="Mock Evidence Paper",
+            stance="support",
+            strength=5,
+            key_points=["Mock Point 1", "Mock Point 2"]
+        )
+        return {"hypotheses": [
+            h.model_copy(update={"evidence": [dummy_ev]}) 
+            for h in state.hypotheses
+        ]}
+    
+    # Check if all have evidence already (idempotency)
+    if all(h.evidence for h in state.hypotheses[:3]):
+        await adispatch_custom_event("log", {"message": "[Evidence] Skipping (all hypotheses already have evidence)"}, config=config)
+        return {}
+    
+    await adispatch_custom_event("log", {
+        "message": f"[Evidence] Gathering evidence for {min(3, len(state.hypotheses))} hypotheses..."
+    }, config=config)
+    
+    llm = get_cheap_llm()
+    structured_llm = llm.with_structured_output(EvidenceClassification)
+    
+    # Process top 3 hypotheses in PARALLEL
+    hypotheses_to_process = state.hypotheses[:3]
+    
+    updated_hypotheses = await asyncio.gather(*[
+        gather_evidence_for_hypothesis(h, llm, structured_llm, config)
+        for h in hypotheses_to_process
+    ])
+    
+    # Merge: updated top 3 + remaining unchanged
+    final_hypotheses = list(updated_hypotheses) + state.hypotheses[3:]
+    
+    await adispatch_custom_event("log", {
+        "message": f"[Evidence] Completed evidence gathering for {len(updated_hypotheses)} hypotheses."
+    }, config=config)
+    
+    return {"hypotheses": final_hypotheses}
+

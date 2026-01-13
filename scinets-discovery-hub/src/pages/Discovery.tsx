@@ -69,9 +69,43 @@ const Discovery = () => {
     setStep("clarification");
   };
 
-  const handleClarificationSubmit = (a: ClarificationAnswers) => {
+  const handleClarificationSubmit = async (a: ClarificationAnswers) => {
     setAnswers(a);
-    setStep("curation");
+    setError(null);
+
+    // Fetch real papers from backend before showing curation step
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/search_papers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, max_papers: 15 })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Paper search failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const fetchedPapers: CandidatePaper[] = data.papers.map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        year: p.year,
+        venue: p.venue,
+        rationale: p.abstract?.substring(0, 100) + '...' || p.rationale,
+        selected: true,
+        locked: false
+      }));
+
+      setCuratedPapers(fetchedPapers);
+      setStep("curation");
+    } catch (err) {
+      console.error("Paper fetch failed:", err);
+      setError("Failed to fetch papers. Starting discovery with automatic paper selection.");
+      // Fallback: skip curation and let backend find papers
+      setStep("execution");
+      startDiscovery(a, []);
+    }
   };
 
   const handlePaperCurationSubmit = (selectedPapers: CandidatePaper[]) => {
@@ -180,7 +214,7 @@ const Discovery = () => {
       {
         query,
         goal: clarificationAnswers.goal as 'discover' | 'survey' | 'write',
-        run_experiments: clarificationAnswers.runExperiments,
+        // REMOVED: run_experiments - experiments are user-triggered post-discovery
         documents: selectedPapers.map(p => p.doi || p.title),
         // Note: depth/timeline are frontend-only for now
         // Backend could accept max_papers if we extend RunRequest
@@ -219,6 +253,7 @@ const Discovery = () => {
           <div className="flex-1 flex items-center justify-center overflow-auto py-8">
             <PaperCurationStep
               query={query}
+              candidatePapers={curatedPapers}
               onSubmit={handlePaperCurationSubmit}
               onBack={() => setStep("clarification")}
             />

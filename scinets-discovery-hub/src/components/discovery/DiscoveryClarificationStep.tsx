@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, ArrowRight, Calendar, Target, Code, FileSearch } from "lucide-react";
+import { Bot, ArrowRight, Calendar, Target, FileSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ClarificationAnswers {
   timeline: string;
   goal: string;
-  runExperiments: boolean;
+  // REMOVED: runExperiments - experiments are now post-discovery user-triggered only
   depth: string;
 }
 
@@ -34,15 +34,15 @@ const depthOptions = [
   { value: "deep", label: "Deep dive", desc: "100+ papers, exhaustive coverage" },
 ];
 
-export const DiscoveryClarificationStep = ({ 
-  query, 
-  onSubmit, 
-  onBack 
+export const DiscoveryClarificationStep = ({
+  query,
+  onSubmit,
+  onBack
 }: DiscoveryClarificationStepProps) => {
   const [answers, setAnswers] = useState<ClarificationAnswers>({
     timeline: "recent",
     goal: "discover",
-    runExperiments: false,
+    // REMOVED: runExperiments
     depth: "standard",
   });
 
@@ -160,36 +160,7 @@ export const DiscoveryClarificationStep = ({
           </div>
         </div>
 
-        {/* Run Experiments Toggle */}
-        <div className={cn(
-          "flex items-center justify-between px-4 py-3 rounded-lg border",
-          answers.runExperiments ? "border-foreground/30 bg-foreground/5" : "border-border"
-        )}>
-          <div className="flex items-center gap-3">
-            <Code className="w-4 h-4 text-foreground-muted" />
-            <div>
-              <p className="text-xs font-medium text-foreground">Run Python experiments</p>
-              <p className="text-[10px] text-foreground-muted">Generate and execute code for data analysis</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setAnswers({ ...answers, runExperiments: !answers.runExperiments })}
-            className={cn(
-              "w-10 h-5 rounded-full transition-colors relative",
-              answers.runExperiments ? "bg-foreground" : "bg-border"
-            )}
-          >
-            <motion.div
-              className={cn(
-                "w-4 h-4 rounded-full absolute top-0.5",
-                answers.runExperiments ? "bg-background" : "bg-foreground-muted"
-              )}
-              animate={{ left: answers.runExperiments ? "22px" : "2px" }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            />
-          </button>
-        </div>
+        {/* NOTE: Experiment toggle REMOVED - experiments are now post-discovery user-triggered only */}
 
         {/* Actions */}
         <div className="flex gap-3 pt-2">

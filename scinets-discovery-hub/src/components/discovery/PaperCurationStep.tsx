@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  ArrowLeft, ArrowRight, Check, Lock, Unlock, 
+import {
+  ArrowLeft, ArrowRight, Check, Lock, Unlock,
   Upload, Plus, X, FileText, Calendar, Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,97 +19,55 @@ interface CandidatePaper {
 
 interface PaperCurationStepProps {
   query: string;
+  candidatePapers?: CandidatePaper[];
   onSubmit: (papers: CandidatePaper[]) => void;
   onBack: () => void;
 }
 
-// Mock candidate papers from Literature Agent
-const initialCandidates: CandidatePaper[] = [
+// Fallback mock papers (only used if no candidatePapers provided)
+const fallbackCandidates: CandidatePaper[] = [
   {
     id: "p1",
-    title: "Sleep, synaptic homeostasis, and the role of the glymphatic system",
-    year: 2019,
-    venue: "Nature Neuroscience",
-    rationale: "Foundational work on glymphatic clearance during sleep",
+    title: "Loading papers...",
+    year: 2024,
+    venue: "Please wait",
+    rationale: "Fetching papers from OpenAlex",
     selected: true,
-    locked: false,
-  },
-  {
-    id: "p2",
-    title: "The sleep-wake cycle regulates brain interstitial fluid tau in mice and CSF tau in humans",
-    year: 2019,
-    venue: "Science",
-    rationale: "Direct evidence linking sleep patterns to tau protein dynamics",
-    selected: true,
-    locked: false,
-  },
-  {
-    id: "p3",
-    title: "β-Amyloid accumulation in the human brain after one night of sleep deprivation",
-    year: 2018,
-    venue: "PNAS",
-    rationale: "Human imaging study showing acute sleep deprivation effects",
-    selected: true,
-    locked: false,
-  },
-  {
-    id: "p4",
-    title: "Slow wave sleep disruption increases cerebrospinal fluid amyloid-β levels",
-    year: 2017,
-    venue: "Brain",
-    rationale: "Mechanistic link between specific sleep stages and Aβ clearance",
-    selected: true,
-    locked: false,
-  },
-  {
-    id: "p5",
-    title: "Sleep quality and preclinical Alzheimer disease",
-    year: 2020,
-    venue: "JAMA Neurology",
-    rationale: "Longitudinal study of sleep-AD biomarker relationships",
-    selected: true,
-    locked: false,
-  },
-  {
-    id: "p6",
-    title: "Association of sleep and β-amyloid pathology among older cognitively unimpaired adults",
-    year: 2021,
-    venue: "JAMA Network Open",
-    rationale: "Large cohort study on sleep-amyloid associations",
-    selected: false,
-    locked: false,
-  },
-  {
-    id: "p7",
-    title: "Circadian regulation of glymphatic function",
-    year: 2020,
-    venue: "Cell Reports",
-    rationale: "Circadian timing effects on clearance mechanisms",
-    selected: false,
     locked: false,
   },
 ];
 
 export const PaperCurationStep = ({
   query,
+  candidatePapers,
   onSubmit,
   onBack,
 }: PaperCurationStepProps) => {
-  const [papers, setPapers] = useState<CandidatePaper[]>(initialCandidates);
+  // Use candidatePapers from API if available, otherwise use fallback
+  const [papers, setPapers] = useState<CandidatePaper[]>(
+    candidatePapers && candidatePapers.length > 0 ? candidatePapers : fallbackCandidates
+  );
   const [manualTitle, setManualTitle] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Update papers when candidatePapers prop changes
+  useEffect(() => {
+    if (candidatePapers && candidatePapers.length > 0) {
+      setPapers(candidatePapers);
+    }
+  }, [candidatePapers]);
 
   const selectedCount = papers.filter(p => p.selected).length;
   const lockedCount = papers.filter(p => p.locked).length;
 
   const toggleSelect = (id: string) => {
-    setPapers(prev => prev.map(p => 
+    setPapers(prev => prev.map(p =>
       p.id === id ? { ...p, selected: !p.selected } : p
     ));
   };
 
   const toggleLock = (id: string) => {
-    setPapers(prev => prev.map(p => 
+    setPapers(prev => prev.map(p =>
       p.id === id ? { ...p, locked: !p.locked, selected: p.locked ? p.selected : true } : p
     ));
   };
@@ -120,7 +78,7 @@ export const PaperCurationStep = ({
 
   const addManualPaper = () => {
     if (!manualTitle.trim()) return;
-    
+
     const newPaper: CandidatePaper = {
       id: `manual-${Date.now()}`,
       title: manualTitle.trim(),
@@ -130,7 +88,7 @@ export const PaperCurationStep = ({
       selected: true,
       locked: false,
     };
-    
+
     setPapers(prev => [newPaper, ...prev]);
     setManualTitle("");
     setShowAddForm(false);
@@ -221,7 +179,7 @@ export const PaperCurationStep = ({
       <div className="mb-4 flex items-start gap-2 px-4 py-3 border border-border rounded-lg bg-foreground/5">
         <Info className="w-4 h-4 text-foreground-muted flex-shrink-0 mt-0.5" />
         <p className="text-xs text-foreground-muted">
-          The selected papers will be <strong>frozen</strong> before analysis proceeds. 
+          The selected papers will be <strong>frozen</strong> before analysis proceeds.
           Lock papers to ensure they're always included regardless of relevance scoring.
         </p>
       </div>
@@ -253,8 +211,8 @@ export const PaperCurationStep = ({
                 onClick={() => toggleSelect(paper.id)}
                 className={cn(
                   "w-6 h-6 rounded border flex items-center justify-center transition-colors",
-                  paper.selected 
-                    ? "bg-foreground text-background border-foreground" 
+                  paper.selected
+                    ? "bg-foreground text-background border-foreground"
                     : "border-border hover:border-foreground/30"
                 )}
               >
@@ -281,8 +239,8 @@ export const PaperCurationStep = ({
                 onClick={() => toggleLock(paper.id)}
                 className={cn(
                   "w-6 h-6 rounded flex items-center justify-center transition-colors",
-                  paper.locked 
-                    ? "text-foreground" 
+                  paper.locked
+                    ? "text-foreground"
                     : "text-foreground-muted hover:text-foreground"
                 )}
                 title={paper.locked ? "Unlock paper" : "Lock paper (always include)"}
@@ -310,7 +268,7 @@ export const PaperCurationStep = ({
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <Button 
+        <Button
           onClick={handleSubmit}
           disabled={selectedCount === 0}
         >

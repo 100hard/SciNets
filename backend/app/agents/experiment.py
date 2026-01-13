@@ -1,5 +1,5 @@
 
-from app.state import DiscoveryState, Experiment, ExperimentPlan
+from app.state import DiscoveryState, ExperimentState, Experiment, ExperimentPlan
 import random
 from app.executor import LocalExecutor
 from app.llm import get_llm
@@ -19,97 +19,24 @@ class ExperimentAction(BaseModel):
     code: str = Field(description="The executable Python code to run.")
     explanation: str = Field(description="A brief summary of what this code attempts to achieve.")
 
-async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict:
+async def experiment_node(state: ExperimentState, config: RunnableConfig) -> dict:
     """
     Experiment Agent (Cline-style):
     Iteratively thinks, writes code, executes, and fixes it until success.
+    Works on a Single Hypothesis defined in ExperimentState.
     """
-    selected_id = state.selected_hypothesis_id
     
     # DEBUG LOG
-    await adispatch_custom_event("log", {"message": f"[Debug] Experiment Node: Mock={state.mock}, RunExp={state.run_experiments}, Hypotheses={len(state.hypotheses)}"}, config=config)
+    await adispatch_custom_event("log", {"message": f"[Debug] Experiment Node: ID={state.hypothesis_id}, Intent={state.intent}"}, config=config)
 
-    if not state.hypotheses:
-        await adispatch_custom_event("log", {"message": "[Debug] No hypotheses found, exiting."}, config=config)
-        return {}
-        
-    if state.mock:
-        if not state.run_experiments:
-             await adispatch_custom_event("log", {"message": "[Experiment] MOCK MODE: Generating dummy plans."}, config=config)
-             dummy_plan = ExperimentPlan(
-                 id="mock-plan-1",
-                 hypothesis_id=selected_id or "mock-h1",
-                 type="synthetic",
-                 goal="Mock Goal",
-                 method="Mock Method",
-                 metrics=["accuracy"],
-                 cost_estimate="low"
-             )
-             return {"experiment_plans": [dummy_plan]}
-        else:
-            await adispatch_custom_event("log", {"message": "[Experiment] MOCK MODE: Executing dummy experiment."}, config=config)
-            dummy_exp = Experiment(
-                hypothesis_id=selected_id or (state.hypotheses[0].id if state.hypotheses else "mock-h1"),
-                status="completed",
-                code="print('Mock Experiment')",
-                metrics={"accuracy": 0.99, "mock_metric": 100},
-                plot_base64=None
-            )
-            return {"experiments": [dummy_exp]}
-        
-    hypothesis = next((h for h in state.hypotheses if h.id == selected_id), None)
+    hypothesis_text = state.hypothesis_text
     
-    # If no hypothesis, return empty
-    if not hypothesis:
-        return {"experiments": []} # Graceful exit
+    if not hypothesis_text:
+        await adispatch_custom_event("log", {"message": "[Error] No hypothesis text provided."}, config=config)
+        return {"experiment_result": Experiment(hypothesis_id=state.hypothesis_id, status="failed", result_summary="Missing hypothesis text")}
 
-    # 1. Proposal Mode (Default)
-    if not state.run_experiments:
-        await adispatch_custom_event("log", {"message": f"[Experiment] Proposal Mode: Generating potential experiments for: {hypothesis.text}"}, config=config)
-        
-        # Domain Check Removed: We assume all generated hypotheses via SciNets are valid targets for experimentation (simulation or data analysis).
-        await adispatch_custom_event("log", {"message": "[Experiment] Generating plans for hypothesis..."}, config=config)
-
-        # Define output structure
-        class ProposalList(BaseModel):
-            plans: List[ExperimentPlan]
-
-        sim_llm = get_llm().with_structured_output(ProposalList)
-        
-        sim_prompt = f"""You are a Principal Investigator designed experimental protocols.
-        The user wants valid, executable Python experiment ideas to test this hypothesis:
-        "{hypothesis.text}"
-        
-        Generate 3 distinct experimental plans:
-        1. "synthetic": A fast, synthetic simulation (CPU < 30s).
-        2. "benchmark": A test on a real, small dataset (e.g. sklearn, or synthesized real-world data).
-        3. "ablation": A parameter study or robustness check.
-        
-        For each, specify:
-        - Goal: What does it prove?
-        - Method: High-level Python approach (e.g. 'Use numpy to simulate DiffEq', 'Train Ridge on iris').
-        - Metrics: Specific keys to track (p_value, accuracy, mse).
-        - Type & Cost.
-        """
-        
-        try:
-            res = await sim_llm.ainvoke(sim_prompt)
-            # Assign IDs
-            plans = []
-            for p in res.plans:
-                 p.id = str(uuid.uuid4())
-                 p.hypothesis_id = hypothesis.id
-                 plans.append(p)
-                 
-            await adispatch_custom_event("log", {"message": f"[Experiment] Proposed {len(plans)} plans."}, config=config)
-            return {"experiment_plans": plans}
-            
-        except Exception as e:
-             await adispatch_custom_event("log", {"message": f"[Experiment] Plan generation failed: {e}"}, config=config)
-             return {}
-
-    # 2. Real Experiment Loop (Agentic)
-    await adispatch_custom_event("log", {"message": f"[Experiment] Starting Code Generation Loop for: {hypothesis.text}"}, config=config)
+    # 1. Real Experiment Loop (Agentic)
+    await adispatch_custom_event("log", {"message": f"[Experiment] Starting Code Generation Loop for: {hypothesis_text[:50]}..."}, config=config)
     
     executor = LocalExecutor()
     template_path = os.path.join(os.path.dirname(__file__), "../templates/ml_train_model.py")
@@ -173,53 +100,48 @@ async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict
         return False
 
 
-    # 2.1 Retrieve Selected Plan Constraints
-    plan_context = ""
-    if state.selected_experiment_plan_id and state.experiment_plans:
-        chosen_plan = next((p for p in state.experiment_plans if p.id == state.selected_experiment_plan_id), None)
-        if chosen_plan:
-             await adispatch_custom_event("log", {"message": f"[Experiment] Executing PLAN: {chosen_plan.type} - {chosen_plan.goal}"}, config=config)
-             plan_context = f"""
-             STRICT PLAN CONSTRAINTS (User Selected):
-             - TYPE: {chosen_plan.type}
-             - GOAL: {chosen_plan.goal}
-             - METHOD: {chosen_plan.method}
-             - METRICS: {chosen_plan.metrics}
-             - COST LIMIT: {chosen_plan.cost_estimate}
-             
-             You MUST follow this plan. Do not invent a different experiment.
-             """
+    # EPISTEMIC REFRAMING: Experiments are exploratory consistency checks, not validation
+    system_prompt = f"""You are an Expert Python Data Scientist. Your goal is to write a Python script 
+for an EXPLORATORY CONSISTENCY CHECK of the given hypothesis.
 
-    # FIX: Prompt Design - Tie Hypothesis Metadata
-    system_prompt = f"""You are an Expert Python Data Scientist. Your goal is to write a Python script to TEST the given hypothesis.
-    
-    HYPOTHESIS METADATA:
-    - Domain: {', '.join(hypothesis.domain_tags) if hypothesis.domain_tags else 'General'}
-    - Novelty Score: {hypothesis.novelty_score}
-    - Testability: {hypothesis.testability_score}
-    
-    {plan_context}
-    
-    RULES:
-    1. Output a SINGLE JSON object of type `ExperimentAction`.
-    2. The code MUST print a final JSON object to stdout containing metrics (e.g. {{{{"accuracy": 0.9, "loss": 0.1, "p_value": 0.05}}}}).
-    3. PLOTS: If you generate a plot, save it as 'plot.png' and include "plot": "plot.png" in the final metrics.
-    4. NO HIDDEN ERRORS: If execution fails, print a JSON with "error" key.
-    5. COMPUTE LIMITS: 
-       - Max runtime: 60 seconds.
-       - Max dataset size: 1000 samples (synthetic) or small sklearn datasets.
-       - Max epochs: 50.
-       - NO INTERNET ACCESS. Use synthetic data or sklearn.
-       
-    6. Include 'runtime_estimate' and 'data_size_estimate' in your 'thought' field.
+EPISTEMIC FRAMING:
+This is NOT validation or proof. You are checking behavioral consistency, parameter sensitivity, 
+and potential failure modes. Focus on EXPLORATION, not confirmation.
 
-    REFERENCE TEMPLATE:
-    {{template_code}}
-    """
+HYPOTHESIS:
+"{hypothesis_text}"
+
+INTENT: {state.intent}
+DATA SOURCE: {state.data_source}
+
+RULES:
+1. Output a SINGLE JSON object of type `ExperimentAction`.
+2. The code MUST print a final JSON object to stdout containing BEHAVIORAL METRICS:
+   - "stability_score": How stable is behavior under noise? (0-1)
+   - "sensitivity": How much do outputs change with parameter variation? (high/medium/low)
+   - "failure_modes": List of observed failure conditions
+   - "behavioral_pattern": Description of observed behavior
+   - "consistency_check": Does behavior align with hypothesized mechanism? (yes/partial/no)
+   
+   DO NOT output: accuracy, p_value, significance, validation metrics.
+   
+3. PLOTS: If you generate a plot, save it as 'plot.png' and include "plot": "plot.png" in metrics.
+4. NO HIDDEN ERRORS: If execution fails, print a JSON with "error" key.
+5. COMPUTE LIMITS: 
+   - Max runtime: 60 seconds.
+   - Max dataset size: 1000 samples (synthetic) or small sklearn datasets.
+   - Max epochs: 50.
+   - NO INTERNET ACCESS. Use synthetic data or sklearn.
+   
+6. Include 'runtime_estimate' and 'data_size_estimate' in your 'thought' field.
+
+REFERENCE TEMPLATE:
+{{template_code}}
+"""
 
     messages = [
         SystemMessage(content=system_prompt),
-        HumanMessage(content=f"Develop a confirmation experiment for: {hypothesis.text}")
+        HumanMessage(content=f"Develop an exploratory consistency check for: {hypothesis_text}")
     ]
     
     llm = get_llm(temperature=0.7) 
@@ -254,8 +176,24 @@ async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict
             # EXECUTE
             await adispatch_custom_event("log", {"message": f"[Experiment] Executing Code (Attempt {turn+1})..."}, config=config)
             
-            # Execute
-            exit_code, stdout, stderr, metrics = await executor.run_script(action.code, timeout=60)
+            # REPRODUCIBILITY ENFORCEMENT: Prepend seed header to all code
+            SEED_HEADER = """# === REPRODUCIBILITY HEADER (Auto-injected) ===
+import random
+import numpy as np
+random.seed(42)
+np.random.seed(42)
+try:
+    import torch
+    torch.manual_seed(42)
+except ImportError:
+    pass
+# === END HEADER ===
+
+"""
+            reproducible_code = SEED_HEADER + action.code
+            
+            # Execute with reproducible code
+            exit_code, stdout, stderr, metrics = await executor.run_script(reproducible_code, timeout=60)
             
             # Check for plot file
             if metrics.get("plot"):
@@ -288,8 +226,6 @@ async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict
                 failure_summary = f"Attempt {turn+1} Failed. Error: {error_msg}\nStderr: {stderr_snippet}\nFix the code incrementally."
                 
                 # Append only succinct messages
-                # We overwrite the last AI message if we want to save context, but appending is safer for 'chat' models
-                # Keep prompt small: remove old conversation if too long?
                 if len(messages) > 6:
                      messages = [messages[0]] + messages[-4:] # Keep system + last 2 turns
                      
@@ -303,7 +239,7 @@ async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict
     # 4. Process Results (Failed or Solved)
     new_experiment = Experiment(
         id=str(uuid.uuid4()),
-        hypothesis_id=selected_id,
+        hypothesis_id=state.hypothesis_id,
         status="completed" if solved else "failed",
         code_snippet=current_code,
         metrics=final_metrics,
@@ -312,7 +248,4 @@ async def experiment_node(state: DiscoveryState, config: RunnableConfig) -> dict
         result_summary=f"Experiment {'successful' if solved else 'failed'}. {final_metrics.get('experiment_explanation', '')}"
     )
     
-    experiments = state.experiments or []
-    experiments.append(new_experiment)
-    
-    return {"experiments": [e for e in experiments]}
+    return {"experiment_result": new_experiment}
