@@ -72,6 +72,7 @@ function convertHypothesis(apiHypothesis: APIHypothesis, index: number): UIHypot
     synthesis: apiHypothesis.experiment_idea ||
       `Novelty: ${(apiHypothesis.novelty_score * 100).toFixed(0)}% | Feasibility: ${(apiHypothesis.feasibility_score * 100).toFixed(0)}% | Testability: ${(apiHypothesis.testability_score * 100).toFixed(0)}%`,
     rationale_gap: apiHypothesis.rationale_gap,
+    mechanism_class: apiHypothesis.mechanism_class,
   };
 }
 

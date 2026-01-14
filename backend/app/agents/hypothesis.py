@@ -30,6 +30,7 @@ class GeneratedHypothesis(BaseModel):
     testability_score: float = Field(ge=0.0, le=1.0)
     causal_chain: GeneratedCausalChain = Field(description="Structured causal mechanism")
     search_query: Optional[str] = Field(default=None, description="Boolean search query for validation")
+    mechanism_class: str = Field(description="Short label for the explanatory class (e.g. 'Immune-mediated', 'Metabolic')")
     rationale_gap: HypothesisRationale = Field(description="Structured explanation of the literature gap")
 
 
@@ -498,9 +499,11 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
     3. Use the graph paths evidence provided, but rewrite them into fluid English.
        - CRITICAL: Ensure spaces between words (e.g., "damages interact", NOT "damagesinteract").
     4. TONE: Use "candidate mechanism" and "potential pathway" language. Avoid absolute certainty (e.g. "This proves...").
+       - SOFTEN: Use words like "may", "could", "suggests", "proposes". Avoid "is", "causes" (unless proven), "will".
     
     REQUIRED OUTPUT STRUCTURE per hypothesis:
-    - text: A single clear hypothesis statement.
+    - text: A single clear hypothesis statement (softened language).
+    - mechanism_class: A short 2-3 word label for the type of mechanism (e.g. "Glial-clearance", "Synaptic pruning").
     - causal_chain: A STRUCTURED object with:
         - nodes: List of concepts in order, e.g. ["Sleep deprivation", "Cortisol", "Memory impairment"]
         - relations: List of relations between consecutive nodes, e.g. ["increases", "causes"]
@@ -580,6 +583,7 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
                     testability_score=gen_h.testability_score,
                     search_query=gen_h.search_query,
                     rationale_gap=gen_h.rationale_gap,
+                    mechanism_class=gen_h.mechanism_class,
                     causal_chain=causal_chain,
                     evidence=[]
                 )

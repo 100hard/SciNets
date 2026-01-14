@@ -43,6 +43,7 @@ export interface Hypothesis {
   groundingExplanation: string;
   synthesis: string;
   rationale_gap?: HypothesisRationale;
+  mechanism_class?: string;
 }
 
 interface HypothesisCardProps {
@@ -181,6 +182,11 @@ export const HypothesisCard = ({
               )}>
                 {config.label}
               </span>
+              {hypothesis.mechanism_class && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/20 font-medium">
+                  {hypothesis.mechanism_class}
+                </span>
+              )}
               {hasExperiment && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full border bg-purple-500/10 text-purple-400 border-purple-500/20 font-medium">
                   Explored
@@ -199,6 +205,12 @@ export const HypothesisCard = ({
                 <AlertCircle className="w-3 h-3 text-red-400" />
                 {hypothesis.contradictingCount} contradicting
               </span>
+              {neutralEvidence.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <Minus className="w-3 h-3 text-foreground-muted" />
+                  {neutralEvidence.length} neutral
+                </span>
+              )}
             </div>
           </div>
           {isExpanded ? (
@@ -222,14 +234,34 @@ export const HypothesisCard = ({
                 {/* NEW: Why this hypothesis exists */}
                 {hypothesis.rationale_gap && (
                   <div>
-                    <h4 className="text-xs font-medium text-purple-400 mb-3 flex items-center gap-2">
+                    <h4 className="text-xs font-medium text-purple-400 mb-2 flex items-center gap-2">
                       <Link2 className="w-3.5 h-3.5" />
                       Why this hypothesis exists
                     </h4>
+                    <p className="text-[11px] text-foreground-muted mb-4 pl-5">
+                      This hypothesis emerges from a structural gap in the scientific literature, where related mechanisms exist but are not directly connected.
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {/* A. Disconnected Clusters */}
                       <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">Disconnected Clusters</span>
+                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">
+                          DISCONNECTED RESEARCH CLUSTERS IDENTIFIED
+                        </span>
+                        <p className="text-[10px] text-purple-300/70 mb-3 italic">
+                          These literatures are individually well-studied but weakly connected.
+                        </p>
+
+                        {/* Visual Cue */}
+                        <div className="flex items-center justify-center gap-2 mb-3 py-2 border-b border-purple-500/10 border-dashed">
+                          <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
+                            {hypothesis.rationale_gap.disconnected_clusters[0] || "Cluster A"}
+                          </span>
+                          <span className="text-[10px] text-purple-400/40 tracking-widest font-mono">✕✕✕</span>
+                          <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
+                            {hypothesis.rationale_gap.disconnected_clusters[1] || "Cluster B"}
+                          </span>
+                        </div>
+
                         <div className="flex flex-wrap gap-1.5">
                           {hypothesis.rationale_gap.disconnected_clusters.map((c, i) => (
                             <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10">
@@ -241,7 +273,10 @@ export const HypothesisCard = ({
 
                       {/* B. Missing Conceptual Link */}
                       <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">Missing Link</span>
+                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">MISSING LINK</span>
+                        <p className="text-[10px] text-purple-300/70 mb-2 italic">
+                          The following mechanistic connection is absent from existing studies:
+                        </p>
                         <p className="text-xs text-foreground/90 leading-snug">
                           {hypothesis.rationale_gap.missing_link}
                         </p>
@@ -249,7 +284,10 @@ export const HypothesisCard = ({
 
                       {/* C. Implicit Assumption */}
                       <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">Field Assumption</span>
+                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">FIELD ASSUMPTION</span>
+                        <p className="text-[10px] text-purple-300/70 mb-2 italic">
+                          A dominant assumption in the field prevents this connection from being explored:
+                        </p>
                         <p className="text-xs text-foreground/80 leading-snug">
                           {hypothesis.rationale_gap.field_assumption}
                         </p>
@@ -257,7 +295,10 @@ export const HypothesisCard = ({
 
                       {/* D. Structural Reason */}
                       <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">Why Overlooked</span>
+                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">WHY OVERLOOKED</span>
+                        <p className="text-[10px] text-purple-300/70 mb-2 italic">
+                          As a result, cross-domain experiments are rare.
+                        </p>
                         <p className="text-xs text-foreground/80 leading-snug">
                           {hypothesis.rationale_gap.structural_reason}
                         </p>

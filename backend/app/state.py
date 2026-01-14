@@ -54,6 +54,10 @@ class Hypothesis(BaseModel):
     # New Rationale Section (Why this exists)
     rationale_gap: Optional[HypothesisRationale] = None
 
+    # Orthogonality Label (e.g. "Immune-mediated")
+    mechanism_class: Optional[str] = None
+
+
 
 class ExperimentPlan(BaseModel):
     id: str
