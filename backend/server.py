@@ -76,14 +76,12 @@ class RunRequest(BaseModel):
 class ExperimentRequest(BaseModel):
     thread_id: str
     hypothesis_id: str
-    thread_id: str
-    hypothesis_id: str
     hypothesis_text: str # Required for experiment context
     plan_id: Optional[str] = None
     intent: str = "stress_test"
     data_source: str = "synthetic"
 
-@app.post("/experiment_stream")
+@app.post("/run_experiment")
 async def run_experiment_stream(request: ExperimentRequest):
     """
     Trigger execution of a specific experiment plan.
@@ -432,6 +430,10 @@ async def run_discovery_stream(request: RunRequest):
         except Exception as e:
             request_log.error("stream_loop_error", error=str(e), thread_id=thread_id)
             yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
+        except BaseException as e:
+            request_log.error("stream_loop_critical_failure", error=str(e), type=type(e).__name__, thread_id=thread_id)
+            print(f"DEBUG: Critical failure for {thread_id}: {type(e).__name__} - {e}")
+            raise e
         
         finally:
             # RELEASE LOCK

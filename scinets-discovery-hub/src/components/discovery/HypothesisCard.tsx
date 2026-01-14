@@ -25,6 +25,13 @@ interface Evidence {
   excerpt?: string;
 }
 
+interface HypothesisRationale {
+  disconnected_clusters: string[];
+  missing_link: string;
+  field_assumption: string;
+  structural_reason: string;
+}
+
 export interface Hypothesis {
   id: string;
   statement: string;
@@ -35,6 +42,7 @@ export interface Hypothesis {
   evidence: Evidence[];
   groundingExplanation: string;
   synthesis: string;
+  rationale_gap?: HypothesisRationale;
 }
 
 interface HypothesisCardProps {
@@ -210,6 +218,55 @@ export const HypothesisCard = ({
               className="overflow-hidden"
             >
               <div className="px-4 pb-4 space-y-6 border-t border-border pt-4">
+
+                {/* NEW: Why this hypothesis exists */}
+                {hypothesis.rationale_gap && (
+                  <div>
+                    <h4 className="text-xs font-medium text-purple-400 mb-3 flex items-center gap-2">
+                      <Link2 className="w-3.5 h-3.5" />
+                      Why this hypothesis exists
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* A. Disconnected Clusters */}
+                      <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
+                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">Disconnected Clusters</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {hypothesis.rationale_gap.disconnected_clusters.map((c, i) => (
+                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10">
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* B. Missing Conceptual Link */}
+                      <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
+                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">Missing Link</span>
+                        <p className="text-xs text-foreground/90 leading-snug">
+                          {hypothesis.rationale_gap.missing_link}
+                        </p>
+                      </div>
+
+                      {/* C. Implicit Assumption */}
+                      <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
+                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">Field Assumption</span>
+                        <p className="text-xs text-foreground/80 leading-snug">
+                          {hypothesis.rationale_gap.field_assumption}
+                        </p>
+                      </div>
+
+                      {/* D. Structural Reason */}
+                      <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
+                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">Why Overlooked</span>
+                        <p className="text-xs text-foreground/80 leading-snug">
+                          {hypothesis.rationale_gap.structural_reason}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+
                 {/* A. Mechanistic Chain */}
                 <div>
                   <h4 className="text-xs font-medium text-foreground mb-3 flex items-center gap-2">

@@ -310,8 +310,10 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
             print(f"[Literature] Batch failed: {e}")
             return None
 
-    # Run batches in parallel
-    batch_results = await asyncio.gather(*[process_batch(b) for b in batches])
+    # Run batches in parallel safely
+    print(f"[Literature] Starting asyncio.gather for {len(batches)} batches...")
+    batch_results = await asyncio.gather(*[process_batch(b) for b in batches], return_exceptions=True)
+    print(f"[Literature] asyncio.gather complete. Processing results...")
 
     for i, res in enumerate(batch_results):
         if res:
@@ -378,7 +380,7 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
             "papers": processed_papers,
             "summary": final_summary, 
             "full_context": full_text_context,
-            "web_research": web_results_text # FIX: Separated from full_context
+            "web_research": web_results_text
         },
         "concept_graph": concept_graph
     }

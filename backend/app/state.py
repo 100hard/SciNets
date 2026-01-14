@@ -19,6 +19,13 @@ class CausalChain(BaseModel):
     source: str = Field(default="graph", description="Origin: 'graph', 'exploration', 'structural_hole'")
     confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Confidence in this chain")
 
+class HypothesisRationale(BaseModel):
+    disconnected_clusters: List[str] = Field(description="2-3 named research clusters that are currently disconnected")
+    missing_link: str = Field(description="One sentence describing the specific absent relationship")
+    field_assumption: str = Field(description="One sentence stating the implicit field assumption preventing the link")
+    structural_reason: str = Field(description="One sentence explaining why this was overlooked (e.g., different communities)")
+
+
 class Hypothesis(BaseModel):
     id: str
     text: str
@@ -43,6 +50,10 @@ class Hypothesis(BaseModel):
     
     # Evidence status (New Stability Feature)
     evidence_status: Literal["complete", "partial", "failed_external"] = "complete"
+
+    # New Rationale Section (Why this exists)
+    rationale_gap: Optional[HypothesisRationale] = None
+
 
 class ExperimentPlan(BaseModel):
     id: str

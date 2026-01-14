@@ -1,4 +1,4 @@
-from app.state import DiscoveryState, Hypothesis, CausalChain
+from app.state import DiscoveryState, Hypothesis, CausalChain, HypothesisRationale
 from app.llm import get_llm
 from app.domains import get_domain_packs
 from app.logging_config import get_logger
@@ -30,6 +30,7 @@ class GeneratedHypothesis(BaseModel):
     testability_score: float = Field(ge=0.0, le=1.0)
     causal_chain: GeneratedCausalChain = Field(description="Structured causal mechanism")
     search_query: Optional[str] = Field(default=None, description="Boolean search query for validation")
+    rationale_gap: HypothesisRationale = Field(description="Structured explanation of the literature gap")
 
 
 class HypothesisList(BaseModel):
@@ -504,6 +505,11 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         - nodes: List of concepts in order, e.g. ["Sleep deprivation", "Cortisol", "Memory impairment"]
         - relations: List of relations between consecutive nodes, e.g. ["increases", "causes"]
         - confidence: 0.0-1.0 confidence in this chain
+    - rationale_gap: A STRUCTURED explanation of the literature gap with 4 specific fields:
+       - disconnected_clusters: List[str] (2-3 named clusters, e.g. ["Microglial activation", "Gut metabolite B"])
+       - missing_link: str (One sentence describing the SPECIFIC relationship missing in current papers)
+       - field_assumption: str (One sentence on what the field implicitly assumes that blocked this)
+       - structural_reason: str (One sentence on why this was overlooked, e.g. "Immunology and Psychiatry rarely cross-cite")
     - Scores: novelty_score, feasibility_score, testability_score (all 0-1).
     - search_query: A precise keyword-based boolean query to validate this hypothesis.
     - domain_tags: Domain tags (e.g. ['bio', 'ml']).
@@ -573,6 +579,7 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
                     feasibility_score=gen_h.feasibility_score,
                     testability_score=gen_h.testability_score,
                     search_query=gen_h.search_query,
+                    rationale_gap=gen_h.rationale_gap,
                     causal_chain=causal_chain,
                     evidence=[]
                 )
