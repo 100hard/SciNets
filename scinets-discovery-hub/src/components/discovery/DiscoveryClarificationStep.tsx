@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 export interface ClarificationAnswers {
   timeline: string;
   goal: string;
-  // REMOVED: runExperiments - experiments are now post-discovery user-triggered only
   depth: string;
+  guidance?: string;
 }
 
 interface DiscoveryClarificationStepProps {
@@ -41,10 +41,26 @@ export const DiscoveryClarificationStep = ({
 }: DiscoveryClarificationStepProps) => {
   const [answers, setAnswers] = useState<ClarificationAnswers>({
     timeline: "recent",
-    goal: "discover",
-    // REMOVED: runExperiments
-    depth: "standard",
+    guidance: ""
   });
+
+  const timelineOptions = [
+    {
+      value: "recent",
+      label: "Recent (last 5 years)",
+      desc: "Focus on emerging mechanisms"
+    },
+    {
+      value: "decade",
+      label: "Last decade",
+      desc: "Balance mature theories with recent data"
+    },
+    {
+      value: "all",
+      label: "All time",
+      desc: "Comprehensive historical coverage"
+    },
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,139 +71,92 @@ export const DiscoveryClarificationStep = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto"
+      className="max-w-xl mx-auto"
     >
       {/* Agent Message */}
-      <div className="flex gap-3 mb-8">
-        <div className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center flex-shrink-0">
-          <Bot className="w-4 h-4 text-foreground" />
+      <div className="flex gap-4 mb-8">
+        <div className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center flex-shrink-0">
+          <Bot className="w-5 h-5 text-foreground" />
         </div>
-        <div className="flex-1">
-          <p className="text-sm text-foreground mb-1">
-            I'll help you explore: <span className="text-foreground-muted">"{query}"</span>
+        <div className="flex-1 space-y-1">
+          <p className="text-lg font-medium text-foreground">
+            I'm ready to research: <span className="text-foreground italic">"{query}"</span>
           </p>
-          <p className="text-xs text-foreground-muted">
-            A few quick questions to optimize my search...
+          <p className="text-sm text-foreground-muted">
+            Configure the search parameters below.
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Timeline */}
+      <form onSubmit={handleSubmit} className="space-y-8">
+
+        {/* 1. Timeline Scope (Kept as simple filter) */}
         <div>
-          <label className="flex items-center gap-2 text-xs text-foreground-muted mb-3">
+          <label className="flex items-center gap-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
             <Calendar className="w-3.5 h-3.5" />
-            What timeline should I focus on?
+            Timeline Scope
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-3">
             {timelineOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => setAnswers({ ...answers, timeline: option.value })}
                 className={cn(
-                  "text-left px-3 py-2.5 rounded-lg border transition-all",
+                  "text-left px-3 py-3 rounded-lg border transition-all",
                   answers.timeline === option.value
-                    ? "border-foreground/30 bg-foreground/5"
+                    ? "border-foreground/30 bg-foreground/5 shadow-sm"
                     : "border-border hover:border-foreground/20"
                 )}
               >
-                <p className="text-xs font-medium text-foreground">{option.label}</p>
-                <p className="text-[10px] text-foreground-muted mt-0.5">{option.desc}</p>
+                <p className="text-sm font-medium text-foreground">{option.label}</p>
+                <p className="text-[10px] text-foreground-muted mt-1 leading-snug">
+                  {option.desc}
+                </p>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Goal */}
+        {/* 2. Research Guidance (New) */}
         <div>
-          <label className="flex items-center gap-2 text-xs text-foreground-muted mb-3">
-            <Target className="w-3.5 h-3.5" />
-            What's your primary goal?
-          </label>
-          <div className="space-y-2">
-            {goalOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setAnswers({ ...answers, goal: option.value })}
-                className={cn(
-                  "w-full text-left px-3 py-3 rounded-lg border transition-all",
-                  "flex items-center gap-3",
-                  answers.goal === option.value
-                    ? "border-foreground/30 bg-foreground/5"
-                    : "border-border hover:border-foreground/20"
-                )}
-              >
-                <div className={cn(
-                  "w-8 h-8 rounded flex items-center justify-center",
-                  answers.goal === option.value ? "bg-foreground/10" : "bg-background"
-                )}>
-                  <option.icon className="w-4 h-4 text-foreground-muted" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-foreground">{option.label}</p>
-                  <p className="text-[10px] text-foreground-muted">{option.desc}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Depth */}
-        <div>
-          <label className="flex items-center gap-2 text-xs text-foreground-muted mb-3">
+          <label className="flex items-center gap-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
             <FileSearch className="w-3.5 h-3.5" />
-            How deep should I go?
+            Optional: Research Guidance
           </label>
-          <div className="grid grid-cols-3 gap-2">
-            {depthOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setAnswers({ ...answers, depth: option.value })}
-                className={cn(
-                  "text-left px-3 py-2.5 rounded-lg border transition-all",
-                  answers.depth === option.value
-                    ? "border-foreground/30 bg-foreground/5"
-                    : "border-border hover:border-foreground/20"
-                )}
-              >
-                <p className="text-xs font-medium text-foreground">{option.label}</p>
-                <p className="text-[10px] text-foreground-muted mt-0.5">{option.desc}</p>
-              </button>
-            ))}
+          <div className="relative">
+            <textarea
+              value={answers.guidance}
+              onChange={(e) => setAnswers({ ...answers, guidance: e.target.value })}
+              placeholder="Share any constraints, focus areas, or context you want SciNets to consider before starting..."
+              className={cn(
+                "w-full h-32 px-4 py-3 rounded-lg bg-background border border-border",
+                "text-sm text-foreground placeholder:text-foreground-muted/50",
+                "focus:ring-1 focus:ring-foreground/20 focus:border-foreground/30 outline-none transition-all",
+                "resize-none"
+              )}
+            />
+            <p className="absolute bottom-3 right-4 text-[10px] text-foreground-muted pointer-events-none">
+              Leave blank for default exploration
+            </p>
           </div>
         </div>
-
-        {/* NOTE: Experiment toggle REMOVED - experiments are now post-discovery user-triggered only */}
 
         {/* Actions */}
-        <div className="flex gap-3 pt-2">
+        <div className="pt-4 border-t border-border/50 flex gap-3">
           <button
             type="button"
             onClick={onBack}
-            className={cn(
-              "px-4 py-2.5 rounded-lg text-xs",
-              "border border-border",
-              "text-foreground-muted hover:text-foreground",
-              "hover:border-foreground/20 transition-colors"
-            )}
+            className="px-5 py-3 rounded-lg text-sm border border-border text-foreground-muted hover:text-foreground hover:border-foreground/20 transition-colors"
           >
             Back
           </button>
           <button
             type="submit"
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2",
-              "px-4 py-2.5 rounded-lg",
-              "bg-foreground text-background",
-              "text-xs font-medium",
-              "hover:bg-foreground/90 transition-colors"
-            )}
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-all shadow-lg hover:shadow-xl active:scale-[0.99]"
           >
             Begin Exploration
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-4 h-4 ml-1" />
           </button>
         </div>
       </form>

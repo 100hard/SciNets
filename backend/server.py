@@ -67,6 +67,9 @@ class RunRequest(BaseModel):
     goal: str = "discover"
     lens: str = "none"
     speculation: str = "medium"
+    timeline: str = "recent"
+    max_papers: int = 10
+    guidance: Optional[str] = None
     run_experiments: bool = False
     documents: List[str] = []
     thread_id: str | None = None # For resuming sessions
@@ -301,6 +304,9 @@ async def run_discovery_stream(request: RunRequest):
                 goal=request.goal,
                 lens=request.lens,
                 speculation=request.speculation,
+                timeline=request.timeline,
+                max_papers=request.max_papers,
+                guidance=request.guidance,
                 run_experiments=request.run_experiments,
                 documents=request.documents,
                 mock=request.mock
@@ -336,8 +342,12 @@ async def run_discovery_stream(request: RunRequest):
                 # 1. MAJOR NODE UPDATES (High Level)
                 if kind == "on_chain_start" and name in ["literature", "hypothesis", "evidence", "experiment", "critique", "plan"]:
                     agent_map = {
-                        "plan": "planner", "literature": "scientist", "hypothesis": "scientist",
-                        "evidence": "critic", "experiment": "scientist", "critique": "critic"
+                        "plan": "planner", 
+                        "literature": "literature", 
+                        "hypothesis": "hypothesis",
+                        "evidence": "critic", 
+                        "experiment": "experiment", 
+                        "critique": "critic"
                     }
                     action_map = {
                         "plan": "Structuring research plan...",

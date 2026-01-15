@@ -1,4 +1,4 @@
-from app.state import DiscoveryState, Hypothesis, CausalChain, HypothesisRationale
+from app.state import DiscoveryState, Hypothesis, CausalChain, HypothesisRationale, Constraint, HypothesisList
 from app.llm import get_llm
 from app.domains import get_domain_packs
 from app.logging_config import get_logger
@@ -493,13 +493,25 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
     # Improved Prompt with Novelty/Feasibility Scoring and STRUCTURED causal chains
     system_msg = f"""You are a Principal Investigator. Generate 3 NOVEL, TESTABLE scientific hypotheses based on the provided exploration.
     
+    USER GUIDANCE (CRITICAL): {state.guidance if state.guidance else "No specific guidance provided. Focus on novel discovery."}
+
     GUIDELINES:
     1. Each hypothesis must be NON-OBVIOUS. (Avoid "X is related to Y" - say "X drives Y via Z").
     2. Must be TESTABLE with current technology (simulation or lab).
-    3. Use the graph paths evidence provided, but rewrite them into fluid English.
-       - CRITICAL: Ensure spaces between words (e.g., "damages interact", NOT "damagesinteract").
+    3. SOURCE DATA PRIORITY:
+       - Primary: The Concept Graph (structure, missing links).
+       - Secondary: Full Text Context (specific findings).
+       - Tertiary: Executive Abstract (Use ONLY for high-level orientation. DO NOT infer specific mechanisms from the summary prose).
+    4. STRUCTURE: Frame the rationale ADAPTIVELY based on the nature of the finding.
+       - TENSION (Strongest): If two beliefs conflict (e.g., persistence vs transience), use "Epistemic Tension".
+       - GAP (Standard): If literatures are just disconnected, use "Structural Gap".
+       - OPPORTUNITY (Emerging): If the field is sparse/new, use "Exploratory Opportunity".
+    4. TONE: Use "candidate mechanism" and "potential pathway" language. Avoid absolute certainty (e.g. "This proves...").
     4. TONE: Use "candidate mechanism" and "potential pathway" language. Avoid absolute certainty (e.g. "This proves...").
        - SOFTEN: Use words like "may", "could", "suggests", "proposes". Avoid "is", "causes" (unless proven), "will".
+    5. CONSTRAINT EXTRACTION (Pressure System):
+       - Identify 1-2 "HARD CONSTRAINTS" from the literature that any valid hypothesis must satisfy.
+       - Example: "Must not violate conservation of energy", "Must explain the 2ms delay observed in Smith et al."
     
     REQUIRED OUTPUT STRUCTURE per hypothesis:
     - text: A single clear hypothesis statement (softened language).
@@ -508,11 +520,29 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
         - nodes: List of concepts in order, e.g. ["Sleep deprivation", "Cortisol", "Memory impairment"]
         - relations: List of relations between consecutive nodes, e.g. ["increases", "causes"]
         - confidence: 0.0-1.0 confidence in this chain
-    - rationale_gap: A STRUCTURED explanation of the literature gap with 4 specific fields:
-       - disconnected_clusters: List[str] (2-3 named clusters, e.g. ["Microglial activation", "Gut metabolite B"])
-       - missing_link: str (One sentence describing the SPECIFIC relationship missing in current papers)
-       - field_assumption: str (One sentence on what the field implicitly assumes that blocked this)
-       - structural_reason: str (One sentence on why this was overlooked, e.g. "Immunology and Psychiatry rarely cross-cite")
+    - rationale_gap: A STRUCTURED explanation of the tension (Adaptive):
+       - rationale_type: "tension", "gap", or "opportunity" (CHOOSE ONE)
+       
+       [IF TENSION]:
+       - epistemic_tension: Short statement of the contradiction (e.g. "Sleep is transient, yet damage is permanent").
+       - belief_a: Established belief #1 (The Thesis).
+       - belief_b: Established belief #2 (The Antithesis).
+       - consistency_constraint: What any valid explanation MUST satisfy.
+       
+       [IF GAP or OPPORTUNITY]:
+       - disconnected_clusters: List[str] (2-3 named clusters).
+       - missing_link: str (One sentence on the specific missing relationship).
+       - field_assumption: str (Why this is assumed irrelevant).
+       - structural_reason: str (Why it was overlooked).
+       
+       [ALWAYS REQUIRED]:
+       - Fill the fields relevant to the chosen type.
+       - If type is GAP/OPPORTUNITY, leave tension fields empty.
+       - If type is TENSION, you MAY fill gap fields as supplementary context.
+    - constraints: List[Constraint] 
+       - text: "Constraint description"
+       - type: "hard" 
+       - importance: 5
     - Scores: novelty_score, feasibility_score, testability_score (all 0-1).
     - search_query: A precise keyword-based boolean query to validate this hypothesis.
     - domain_tags: Domain tags (e.g. ['bio', 'ml']).
@@ -582,6 +612,7 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
                     feasibility_score=gen_h.feasibility_score,
                     testability_score=gen_h.testability_score,
                     search_query=gen_h.search_query,
+                    constraints=gen_h.constraints, # Map constraints
                     rationale_gap=gen_h.rationale_gap,
                     mechanism_class=gen_h.mechanism_class,
                     causal_chain=causal_chain,

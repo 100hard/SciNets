@@ -57,7 +57,8 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     # 0. Query Refinement (Crucial for OpenAlex/Search to work with long prompts)
     refinement_prompt = ChatPromptTemplate.from_messages([
         ("system", "You are a research librarian. Convert the user's complex natural language query into a precise, keyword-based boolean search string suitable for OpenAlex. Use AND, OR. Keep it under 100 characters. Avoid complex nesting or wildcard characters at the end of the string."),
-        ("human", f"User Query: {query}\n\nSearch String:")
+        ("system", "You are a research librarian. Convert the user's complex natural language query into a precise, keyword-based boolean search string suitable for OpenAlex. Use AND, OR. Keep it under 100 characters. Avoid complex nesting or wildcard characters at the end of the string."),
+        ("human", f"User Query: {query}\nUser Guidance: {state.guidance}\nTimeline Context: {state.timeline} (Guide search if recent)\n\nSearch String:")
     ])
     
     llm = get_cheap_llm()
@@ -79,8 +80,23 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     async def openalex_search_tool(q: str):
         """Searches OpenAlex for scientific papers."""
         limit = state.max_papers if state.max_papers else 5
-        print(f"[Literature] Fetching up to {limit} papers (Probe Mode)...")
-        return await search_papers(q, limit=limit)
+        # Logic: Timeline mapping
+        start_year = None
+        if state.timeline == "recent":
+            start_year = 2020 # 5 years
+        elif state.timeline == "decade":
+            start_year = 2015 # 10 years
+        # 'all' implies no filter
+            
+        print(f"[Literature] Fetching up to {limit} papers (Probe Mode) for timeline: {state.timeline}...")
+        results = await search_papers(q, limit=limit)
+        
+        # Post-filter by year if API doesn't support it directly in this specific tool wrapper
+        # (Assuming search_papers wrapper might not take year param yet, or we filter results)
+        if start_year:
+            results = [p for p in results if p.get('publication_year') and p.get('publication_year') >= start_year]
+            
+        return results
 
     # Invoke tool to trigger stream events
     msg = f"[Literature] Searching OpenAlex for: {search_query}"
@@ -247,7 +263,7 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     print("[Literature] Synthesizing executive abstract...")
     try:
         abstract_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are the lead author of a meta-analysis. Write a coherent 2-paragraph Executive Abstract summarizing the key themes, consensus, and novel findings from the provided research context. Do NOT list papers. linking the concepts smoothly."),
+            ("system", "You are the lead author of a meta-analysis. Write a coherent 2-paragraph Executive Abstract summarizing the key themes, consensus, and novel findings from the provided research context. \n\nCRITICAL CONSTRAINTS:\n1. This abstract is for HIGH-LEVEL ORIENTATION ONLY.\n2. Do NOT list papers.\n3. Frame findings as 'emerging themes' or 'consensus', not absolute proof. Downstream agents will verify the details."),
             ("human", f"Research Context:\n{full_text_context}\n\nExecutive Abstract (2 paragraphs):")
         ])
         abstract_res = await (abstract_prompt | get_cheap_llm()).ainvoke({})

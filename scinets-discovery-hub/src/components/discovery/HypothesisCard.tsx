@@ -25,11 +25,23 @@ interface Evidence {
   excerpt?: string;
 }
 
+interface Constraint {
+  text: string;
+  type: 'hard' | 'soft';
+  importance: number;
+}
+
 interface HypothesisRationale {
   disconnected_clusters: string[];
   missing_link: string;
   field_assumption: string;
   structural_reason: string;
+  // Adaptive Fields
+  epistemic_tension?: string;
+  belief_a?: string;
+  belief_b?: string;
+  consistency_constraint?: string;
+  rationale_type?: 'tension' | 'gap' | 'opportunity';
 }
 
 export interface Hypothesis {
@@ -44,6 +56,7 @@ export interface Hypothesis {
   synthesis: string;
   rationale_gap?: HypothesisRationale;
   mechanism_class?: string;
+  constraints?: Constraint[];
 }
 
 interface HypothesisCardProps {
@@ -231,82 +244,135 @@ export const HypothesisCard = ({
             >
               <div className="px-4 pb-4 space-y-6 border-t border-border pt-4">
 
-                {/* NEW: Why this hypothesis exists */}
+                {/* NEW: Why this hypothesis exists (Adaptive Layout) */}
                 {hypothesis.rationale_gap && (
                   <div>
-                    <h4 className="text-xs font-medium text-purple-400 mb-2 flex items-center gap-2">
-                      <Link2 className="w-3.5 h-3.5" />
-                      Why this hypothesis exists
-                    </h4>
-                    <p className="text-[11px] text-foreground-muted mb-4 pl-5">
-                      This hypothesis emerges from a structural gap in the scientific literature, where related mechanisms exist but are not directly connected.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {/* A. Disconnected Clusters */}
-                      <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">
-                          DISCONNECTED RESEARCH CLUSTERS IDENTIFIED
-                        </span>
-                        <p className="text-[10px] text-purple-300/70 mb-3 italic">
-                          These literatures are individually well-studied but weakly connected.
+                    {/* Header with Adaptive Icon/Color */}
+                    <div className="mb-4">
+                      <h4 className={cn(
+                        "text-xs font-medium mb-1 flex items-center gap-2",
+                        hypothesis.rationale_gap.rationale_type === 'tension' ? "text-amber-400" :
+                          hypothesis.rationale_gap.rationale_type === 'opportunity' ? "text-emerald-400" :
+                            "text-purple-400"
+                      )}>
+                        <Link2 className="w-3.5 h-3.5" />
+                        {hypothesis.rationale_gap.rationale_type === 'tension' ? "Epistemic Tension Resolved" :
+                          hypothesis.rationale_gap.rationale_type === 'opportunity' ? "Exploratory Opportunity" :
+                            "Structural Gap Identified"}
+                      </h4>
+
+                      {/* Adaptive Description */}
+                      {hypothesis.rationale_gap.epistemic_tension && hypothesis.rationale_gap.rationale_type === 'tension' ? (
+                        <p className="text-sm font-medium text-foreground/90 pl-5 italic border-l-2 border-amber-500/30">
+                          "{hypothesis.rationale_gap.epistemic_tension}"
                         </p>
+                      ) : hypothesis.rationale_gap.rationale_type === 'opportunity' ? (
+                        <p className="text-[11px] text-foreground-muted pl-5">
+                          This hypothesis leverages emerging evidence in a sparse domain.
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-foreground-muted pl-5">
+                          This hypothesis bridges two disconnected research clusters.
+                        </p>
+                      )}
+                    </div>
 
-                        {/* Visual Cue */}
-                        <div className="flex items-center justify-center gap-2 mb-3 py-2 border-b border-purple-500/10 border-dashed">
-                          <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
-                            {hypothesis.rationale_gap.disconnected_clusters[0] || "Cluster A"}
-                          </span>
-                          <span className="text-[10px] text-purple-400/40 tracking-widest font-mono">✕✕✕</span>
-                          <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
-                            {hypothesis.rationale_gap.disconnected_clusters[1] || "Cluster B"}
-                          </span>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1.5">
-                          {hypothesis.rationale_gap.disconnected_clusters.map((c, i) => (
-                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10">
-                              {c}
+                    {/* LAYOUT 1: TENSION (Two Truths + Constraint) */}
+                    {hypothesis.rationale_gap.rationale_type === 'tension' && (
+                      <>
+                        {(hypothesis.rationale_gap.belief_a || hypothesis.rationale_gap.belief_b) && (
+                          <div className="mb-6 pl-5">
+                            <span className="text-[10px] uppercase tracking-wider text-foreground-muted font-bold mb-2 block">
+                              The Field's Conflict
                             </span>
-                          ))}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="p-3 bg-foreground/5 rounded border border-foreground/10">
+                                <span className="text-[10px] text-foreground-muted block mb-1">Establish Belief A</span>
+                                <p className="text-xs text-foreground/80">{hypothesis.rationale_gap.belief_a || "..."}</p>
+                              </div>
+                              <div className="p-3 bg-foreground/5 rounded border border-foreground/10">
+                                <span className="text-[10px] text-foreground-muted block mb-1">Establish Belief B</span>
+                                <p className="text-xs text-foreground/80">{hypothesis.rationale_gap.belief_b || "..."}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Constraint */}
+                        {hypothesis.rationale_gap.consistency_constraint && (
+                          <div className="pl-5 mb-4">
+                            <div className="p-3 rounded border border-amber-500/20 bg-amber-500/5">
+                              <span className="text-[10px] uppercase tracking-wider text-amber-400/80 font-bold mb-1 block flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                REQUIRED RESOLUTION
+                              </span>
+                              <p className="text-xs text-foreground/90 leading-snug">
+                                {hypothesis.rationale_gap.consistency_constraint}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* LAYOUT 2 & 3: GAP / OPPORTUNITY (The Grid) */}
+                    <div className="pl-5 mb-6">
+                      <span className="text-[10px] uppercase tracking-wider text-foreground-muted font-bold mb-2 block">
+                        {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "Emerging Evidence Context" : "Why Existing Models Fail"}
+                      </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {/* Disconnected Clusters (Visual) */}
+                        <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
+                          <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">
+                            {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "Relevant Domains" : "Disconnected Clusters"}
+                          </span>
+                          <div className="flex items-center justify-center gap-2 mb-3 py-2 border-b border-purple-500/10 border-dashed">
+                            <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
+                              {hypothesis.rationale_gap.disconnected_clusters[0] || "Domain A"}
+                            </span>
+                            <span className="text-[10px] text-purple-400/40 tracking-widest font-mono">
+                              {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "→" : "✕✕✕"}
+                            </span>
+                            <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
+                              {hypothesis.rationale_gap.disconnected_clusters[1] || "Domain B"}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* B. Missing Conceptual Link */}
-                      <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">MISSING LINK</span>
-                        <p className="text-[10px] text-purple-300/70 mb-2 italic">
-                          The following mechanistic connection is absent from existing studies:
-                        </p>
-                        <p className="text-xs text-foreground/90 leading-snug">
-                          {hypothesis.rationale_gap.missing_link}
-                        </p>
-                      </div>
-
-                      {/* C. Implicit Assumption */}
-                      <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">FIELD ASSUMPTION</span>
-                        <p className="text-[10px] text-purple-300/70 mb-2 italic">
-                          A dominant assumption in the field prevents this connection from being explored:
-                        </p>
-                        <p className="text-xs text-foreground/80 leading-snug">
-                          {hypothesis.rationale_gap.field_assumption}
-                        </p>
-                      </div>
-
-                      {/* D. Structural Reason */}
-                      <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                        <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">WHY OVERLOOKED</span>
-                        <p className="text-[10px] text-purple-300/70 mb-2 italic">
-                          As a result, cross-domain experiments are rare.
-                        </p>
-                        <p className="text-xs text-foreground/80 leading-snug">
-                          {hypothesis.rationale_gap.structural_reason}
-                        </p>
+                        {/* Missing Link */}
+                        <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
+                          <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">
+                            {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "The Opportunity" : "Missing Link"}
+                          </span>
+                          <p className="text-xs text-foreground/90 leading-snug">
+                            {hypothesis.rationale_gap.missing_link}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
 
+
+
+
+                {/* NEW: Hypothesis Pressure (Constraints) */}
+                {hypothesis.constraints && hypothesis.constraints.length > 0 && (
+                  <div className="pl-5 mb-6">
+                    <span className="text-[10px] uppercase tracking-wider text-red-500/70 font-bold mb-2 block flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                      Hypothesis Pressure (Hard Constraints)
+                    </span>
+                    <div className="space-y-2">
+                      {hypothesis.constraints.map((constraint, i) => (
+                        <div key={i} className="flex items-start gap-2 p-2 rounded bg-red-500/5 border border-red-500/10">
+                          <span className="text-xs font-mono text-red-400 font-bold mt-0.5">{i + 1}.</span>
+                          <p className="text-xs text-foreground/90">{constraint.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* A. Mechanistic Chain */}
                 <div>
@@ -488,13 +554,14 @@ export const HypothesisCard = ({
                   />
                 )}
               </div>
-            </motion.div>
+
+            </motion.div >
           )}
-        </AnimatePresence>
-      </motion.div>
+        </AnimatePresence >
+      </motion.div >
 
       {/* Experiment Config Modal */}
-      <ExperimentConfigModal
+      < ExperimentConfigModal
         isOpen={showExperimentModal}
         onClose={() => setShowExperimentModal(false)}
         hypothesisId={hypothesis.id}

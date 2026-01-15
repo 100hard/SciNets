@@ -47,9 +47,12 @@ const statusConfig = {
 
 const agentLabels = {
   planner: "Planning Agent",
-  scientist: "Research Agent",
-  critic: "Validation Agent",
-  orchestrator: "Reasoning Agent",
+  literature: "Literature Agent",
+  hypothesis: "Hypothesis Agent",
+  critic: "Critique Agent",
+  experiment: "Experiment Agent",
+  orchestrator: "Orchestrator",
+  scientist: "Research Agent", // Legacy fallback
 };
 
 interface ExplorationStatus {

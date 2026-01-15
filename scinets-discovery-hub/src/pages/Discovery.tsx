@@ -267,12 +267,11 @@ const Discovery = () => {
     abortControllerRef.current = await startDiscoveryStream(
       {
         query,
-        goal: clarificationAnswers.goal as 'discover' | 'survey' | 'write',
-        // REMOVED: run_experiments - experiments are user-triggered post-discovery
-        // CandidatePaper uses 'id' (OpenAlex URL) as the identifier. Title is fallback.
         documents: selectedPapers.map(p => p.id || p.title),
-        // Note: depth/timeline are frontend-only for now
-        // Backend could accept max_papers if we extend RunRequest
+        max_papers: 10, // Default to standard
+        timeline: clarificationAnswers.timeline,
+        guidance: clarificationAnswers.guidance,
+        goal: 'discover', // Default to discovery mode
       },
       callbacks
     );

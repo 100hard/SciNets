@@ -19,11 +19,25 @@ class CausalChain(BaseModel):
     source: str = Field(default="graph", description="Origin: 'graph', 'exploration', 'structural_hole'")
     confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Confidence in this chain")
 
+class Constraint(BaseModel):
+    """Explicit constraint that any valid hypothesis must satisfy."""
+    text: str = Field(description="The constraint description (e.g. 'Must conserve energy')")
+    type: Literal["hard", "soft"] = Field(default="hard", description="Hard = invalid if violated; Soft = preferable")
+    importance: int = Field(default=5, ge=1, le=10, description="Importance score (1-10)")
+
 class HypothesisRationale(BaseModel):
     disconnected_clusters: List[str] = Field(description="2-3 named research clusters that are currently disconnected")
     missing_link: str = Field(description="One sentence describing the specific absent relationship")
     field_assumption: str = Field(description="One sentence stating the implicit field assumption preventing the link")
     structural_reason: str = Field(description="One sentence explaining why this was overlooked (e.g., different communities)")
+    # Adaptive Rationale Type
+    rationale_type: Literal["tension", "gap", "opportunity"] = Field(default="gap", description="Classification of the reasoning mode")
+    
+    # New Epistemic Tension Fields
+    epistemic_tension: str = Field(description="Short statement of the core contradiction (e.g., 'X implies Y, yet Z is observed')")
+    belief_a: str = Field(description="Established belief #1 (The Thesis)")
+    belief_b: str = Field(description="Established belief #2 (The Antithesis)")
+    consistency_constraint: str = Field(description="What any valid explanation MUST satisfy to resolve the tension")
 
 
 class Hypothesis(BaseModel):
@@ -39,6 +53,9 @@ class Hypothesis(BaseModel):
     causal_chain: Optional[CausalChain] = None # Structured causal mechanism
     evidence_summary: Optional[str] = None # Textual summary of evidence
     evidence: List[EvidenceItem] = []
+    
+    # New: Extracted Constraints (Hypothesis Pressure)
+    constraints: List[Constraint] = []
     
     # Failure-mode classification (Tier 2)
     # stable: well-grounded in graph, confident chain
@@ -122,6 +139,8 @@ class DiscoveryState(BaseModel):
     goal: str = "discover"           # discover, survey, write
     lens: str = "none"               # Disciplinary lens (e.g., "game theory")
     speculation: str = "medium"      # low, medium, high
+    timeline: str = "recent"         # recent, decade, all
+    guidance: Optional[str] = None   # User research guidance (free text)
     # REMOVED: run_experiments - experiments are now user-triggered only
     mock: bool = False               # Enable mock mode for testing
     human_feedback: Optional[str] = None # User feedback for interrupt/resume
