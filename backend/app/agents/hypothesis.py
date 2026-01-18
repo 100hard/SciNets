@@ -1,4 +1,4 @@
-from app.state import DiscoveryState, Hypothesis, CausalChain, HypothesisRationale, Constraint, HypothesisList
+from app.state import DiscoveryState, Hypothesis, CausalChain, HypothesisRationale, Constraint
 from app.llm import get_llm
 from app.domains import get_domain_packs
 from app.logging_config import get_logger
@@ -32,6 +32,7 @@ class GeneratedHypothesis(BaseModel):
     search_query: Optional[str] = Field(default=None, description="Boolean search query for validation")
     mechanism_class: str = Field(description="Short label for the explanatory class (e.g. 'Immune-mediated', 'Metabolic')")
     rationale_gap: HypothesisRationale = Field(description="Structured explanation of the literature gap")
+    constraints: List[Constraint] = Field(default=[], description="Constraints derived from literature")
 
 
 class HypothesisList(BaseModel):

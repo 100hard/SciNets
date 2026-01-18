@@ -76,10 +76,13 @@ Experiment Result:
     ]
     
     llm = get_llm(temperature=0.1)
-    structured_llm = llm.with_structured_output(LocalizedCritiqueOutput)
+    llm = get_llm(temperature=0.1)
+    # FIX: Use schema dict to ensure output is a dict
+    structured_llm = llm.with_structured_output(LocalizedCritiqueOutput.model_json_schema())
     
     try:
-        critique = await structured_llm.ainvoke(messages)
+        critique_dict = await structured_llm.ainvoke(messages)
+        critique = LocalizedCritiqueOutput(**critique_dict)
         return {
             "localized_critique": {
                 "summary": critique.behavioral_interpretation,

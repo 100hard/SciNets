@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import type { GraphNode, GraphEdge, AgentActivity } from "@/pages/Discovery";
 import type { ClarificationAnswers } from "./DiscoveryClarificationStep";
 import type { CandidatePaper } from "./PaperCurationStep";
-import type { Hypothesis, ConceptGraph } from "@/lib/types";
+import type { Hypothesis, ConceptGraph, DecisionSummary } from "@/lib/types";
 import { DiscoveryResults } from "./DiscoveryResults";
 
 interface DiscoveryExecutionStepProps {
@@ -29,6 +29,7 @@ interface DiscoveryExecutionStepProps {
   error?: string | null;
   literatureCount?: number;
   threadId?: string | null;
+  decision_summary?: DecisionSummary;
 }
 
 // Process-focused status config - no discovery verbs
@@ -82,6 +83,7 @@ export const DiscoveryExecutionStep = ({
   error = null,
   literatureCount = 0,
   threadId = null,
+  decision_summary,
 }: DiscoveryExecutionStepProps) => {
   const activityRef = useRef<HTMLDivElement>(null);
   const logsRef = useRef<HTMLDivElement>(null);
@@ -148,6 +150,7 @@ export const DiscoveryExecutionStep = ({
         conceptGraph={conceptGraph}
         literatureCount={literatureCount}
         threadId={threadId}
+        decision_summary={decision_summary}
       />
     );
   }

@@ -145,7 +145,8 @@ REFERENCE TEMPLATE:
     ]
     
     llm = get_llm(temperature=0.7) 
-    structured_llm = llm.with_structured_output(ExperimentAction)
+    # FIX: Use schema dict to ensure output is a dict, not Pydantic object, to avoid LogStreamCallbackHandler serialization error
+    structured_llm = llm.with_structured_output(ExperimentAction.model_json_schema())
     
     max_turns = 5
     solved = False
@@ -159,7 +160,9 @@ REFERENCE TEMPLATE:
         
         # A. Think & Code
         try:
-            action: ExperimentAction = await structured_llm.ainvoke(messages)
+            action_dict = await structured_llm.ainvoke(messages)
+            # Re-validate with Pydantic locally (callback safe from this)
+            action = ExperimentAction(**action_dict)
             current_code = action.code
             
             await adispatch_custom_event("log", {"message": f"  > Thought: {action.thought[:100]}..."}, config=config)

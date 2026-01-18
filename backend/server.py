@@ -102,15 +102,13 @@ async def run_experiment_stream(request: ExperimentRequest):
                          hypothesis=request.hypothesis_id, 
                          plan=request.plan_id)
 
-        # Update State to trigger execution mode
-        # The experiment graph relies on the state being populated with the right ID
-        graph.update_state(config, {
+        initial_state = {
             "hypothesis_id": request.hypothesis_id,
             "hypothesis_text": request.hypothesis_text,
             "intent": request.intent,
             "data_source": request.data_source,
             "experiment_result": None # Reset result
-        })
+        }
         
     except Exception as e:
         import traceback
@@ -126,18 +124,21 @@ async def run_experiment_stream(request: ExperimentRequest):
             accumulated_state = {}
             start_times = {}
             
-            # Stream events (resume from current state)
-            async for event in graph.astream_events(None, config=config, version="v1"):
+            # Stream events (start fresh from input state)
+            # FIX: We must pass 'initial_state' as input to trigger execution, 
+            # as 'update_state' + 'None' input on a fresh MemorySaver graph does not trigger the entry point.
+            async for event in graph.astream_events(initial_state, config=config, version="v1"):
                 kind = event["event"]
                 name = event.get("name", "")
                 data = event.get("data", {})
                 
                 # REUSE LOGGING LOGIC FROM DISCOVERY
                 # 1. MAJOR NODE UPDATES
-                if kind == "on_chain_start" and name in ["literature", "hypothesis", "evidence", "experiment", "critique", "plan"]:
+                if kind == "on_chain_start" and name in ["literature", "hypothesis", "evidence", "experiment", "critique", "plan", "localized_critique"]:
                     agent_map = {
                         "plan": "planner", "literature": "scientist", "hypothesis": "scientist",
-                        "evidence": "critic", "experiment": "scientist", "critique": "critic"
+                        "evidence": "critic", "experiment": "scientist", "critique": "critic",
+                        "localized_critique": "critic"
                     }
                     action_map = {
                         "plan": "Structuring research plan...",
@@ -145,12 +146,15 @@ async def run_experiment_stream(request: ExperimentRequest):
                         "hypothesis": "Generating scientific hypotheses...",
                         "evidence": "Evaluating evidence & contradictions...",
                         "experiment": "Executing experiment plan...",
-                        "critique": "Reviewing experiment results..."
+                        "critique": "Reviewing experiment results...",
+                        "localized_critique": "Reviewing experiment results..."
                     }
                     if name in agent_map:
+                        msg = action_map.get(name, f"Running {name}...")
+                        print(f" -> [Agent: {agent_map[name]}] {msg}")  # Console echo
                         activity = {
                             "agent": agent_map[name],
-                            "action": action_map.get(name, f"Running {name}..."),
+                            "action": msg,
                             "status": "thinking" if name == "critique" else "building"
                         }
                         yield f"data: {json.dumps({'type': 'activity', 'data': activity})}\n\n"
@@ -161,6 +165,7 @@ async def run_experiment_stream(request: ExperimentRequest):
                     run_id = event.get("run_id")
                     if run_id: start_times[run_id] = time.time()
                     msg = f"[TOOL START] {name}"
+                    print(f"    > {msg}") # Console echo
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                     await asyncio.sleep(0)
                 
@@ -175,12 +180,14 @@ async def run_experiment_stream(request: ExperimentRequest):
                     output = str(data.get("output"))
                     preview = output[:150] + "..." if len(output) >= 150 else output
                     msg = f"[Result] {preview}{duration_str}"
+                    print(f"    < {msg}") # Console echo
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                     await asyncio.sleep(0)
                 
                 elif kind == "on_custom_event" and name == "log":
                     start_time = event.get("metadata", {}).get("created_at") # Optional
                     msg = data.get("message", "")
+                    print(f" [LOG] {msg}") # Console echo
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                     await asyncio.sleep(0)
 
@@ -201,6 +208,7 @@ async def run_experiment_stream(request: ExperimentRequest):
                         yield f"data: {json.dumps({'type': 'result', 'data': accumulated_state}, default=custom_serializer)}\n\n"
 
         except Exception as e:
+            print(f"ERROR: {str(e)}") # Console echo
             request_log.error("stream_loop_error", error=str(e))
             yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
         

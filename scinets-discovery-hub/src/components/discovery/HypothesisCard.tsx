@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown, ChevronUp, CheckCircle, AlertCircle,
-  Minus, ArrowRight, Link2, FlaskConical
+  Minus, ArrowRight, Link2, FlaskConical, Target
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -57,6 +57,13 @@ export interface Hypothesis {
   rationale_gap?: HypothesisRationale;
   mechanism_class?: string;
   constraints?: Constraint[];
+  strength_profile?: {
+    mechanistic_coherence: 'High' | 'Medium' | 'Low';
+    empirical_support: 'High' | 'Medium' | 'Low';
+    experimental_tractability: 'High' | 'Medium' | 'Low';
+    translational_relevance: 'High' | 'Medium' | 'Low';
+  };
+  confidence_roadmap?: string[];
 }
 
 interface HypothesisCardProps {
@@ -148,6 +155,9 @@ export const HypothesisCard = ({
 
             if (parsed.type === 'activity') {
               setExperimentLogs(prev => [...prev, parsed.data.action]);
+            } else if (parsed.type === 'log') {
+              // Handle detailed logs
+              setExperimentLogs(prev => [...prev, parsed.data]);
             } else if (parsed.type === 'experiment_result') {
               const result = parsed.data;
               if (result.experiment_result?.metrics) {
@@ -316,45 +326,68 @@ export const HypothesisCard = ({
                     )}
 
                     {/* LAYOUT 2 & 3: GAP / OPPORTUNITY (The Grid) */}
-                    <div className="pl-5 mb-6">
-                      <span className="text-[10px] uppercase tracking-wider text-foreground-muted font-bold mb-2 block">
-                        {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "Emerging Evidence Context" : "Why Existing Models Fail"}
-                      </span>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {/* Disconnected Clusters (Visual) */}
-                        <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                          <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">
-                            {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "Relevant Domains" : "Disconnected Clusters"}
-                          </span>
-                          <div className="flex items-center justify-center gap-2 mb-3 py-2 border-b border-purple-500/10 border-dashed">
-                            <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
-                              {hypothesis.rationale_gap.disconnected_clusters[0] || "Domain A"}
+                    {(hypothesis.rationale_gap.rationale_type === 'gap' || hypothesis.rationale_gap.rationale_type === 'opportunity' || !hypothesis.rationale_gap.rationale_type) && (
+                      <div className="pl-5 mb-6">
+                        <span className="text-[10px] uppercase tracking-wider text-foreground-muted font-bold mb-2 block">
+                          {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "Emerging Evidence Context" : "Why Existing Models Fail"}
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* Disconnected Clusters (Visual) */}
+                          <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
+                            <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">
+                              {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "Relevant Domains" : "Disconnected Clusters"}
                             </span>
-                            <span className="text-[10px] text-purple-400/40 tracking-widest font-mono">
-                              {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "→" : "✕✕✕"}
+                            <div className="flex items-center justify-center gap-2 mb-3 py-2 border-b border-purple-500/10 border-dashed">
+                              <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
+                                {hypothesis.rationale_gap.disconnected_clusters[0] || "Component A"}
+                              </span>
+                              <span className="text-[10px] text-purple-400/40 tracking-widest font-mono">
+                                {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "→" : "✕✕✕"}
+                              </span>
+                              <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
+                                {hypothesis.rationale_gap.disconnected_clusters[1] || "Component B"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Missing Link */}
+                          <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
+                            <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">
+                              {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "The Opportunity" : "Missing Link"}
                             </span>
-                            <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
-                              {hypothesis.rationale_gap.disconnected_clusters[1] || "Domain B"}
-                            </span>
+                            <p className="text-xs text-foreground/90 leading-snug">
+                              {hypothesis.rationale_gap.missing_link}
+                            </p>
                           </div>
                         </div>
-
-                        {/* Missing Link */}
-                        <div className="p-3 rounded border border-purple-500/20 bg-purple-500/5">
-                          <span className="text-[10px] uppercase tracking-wider text-purple-400/80 font-bold mb-1 block">
-                            {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "The Opportunity" : "Missing Link"}
-                          </span>
-                          <p className="text-xs text-foreground/90 leading-snug">
-                            {hypothesis.rationale_gap.missing_link}
-                          </p>
-                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
 
 
 
+
+                {/* NEW: 4-Axis Strength Profile */}
+                {hypothesis.strength_profile && (
+                  <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {Object.entries(hypothesis.strength_profile).map(([key, value]) => (
+                      <div key={key} className="p-2 bg-card border border-border/50 rounded flex flex-col items-center text-center">
+                        <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider mb-1">
+                          {key.replace('_', ' ')}
+                        </span>
+                        <span className={cn(
+                          "text-xs font-medium px-2 py-0.5 rounded-full border",
+                          value === 'High' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                            value === 'Medium' ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                              "bg-red-500/10 text-red-400 border-red-500/20"
+                        )}>
+                          {value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* NEW: Hypothesis Pressure (Constraints) */}
                 {hypothesis.constraints && hypothesis.constraints.length > 0 && (
@@ -495,6 +528,23 @@ export const HypothesisCard = ({
                     {hypothesis.groundingExplanation}
                   </p>
                 </div>
+
+                {/* D. Actionability Roadmap (NEW) */}
+                {hypothesis.confidence_roadmap && hypothesis.confidence_roadmap.length > 0 && (
+                  <div className="p-3 bg-purple-500/5 border border-purple-500/10 rounded">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400 mb-2 flex items-center gap-2">
+                      <Target className="w-3.5 h-3.5" /> What would increase confidence?
+                    </h4>
+                    <ul className="space-y-1.5">
+                      {hypothesis.confidence_roadmap.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                          <span className="w-1 h-1 rounded-full bg-purple-400 mt-1.5 shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* D. Natural Language Explanation */}
                 <div>

@@ -73,7 +73,33 @@ class Hypothesis(BaseModel):
 
     # Orthogonality Label (e.g. "Immune-mediated")
     mechanism_class: Optional[str] = None
+    
+    # New: 4-Axis Strength Profile (Decision Layer)
+    strength_profile: Optional[dict] = None # Will hold HypothesisStrengthProfile as dict
+    
+    # New: Actionability Roadmap (What would increase confidence)
+    confidence_roadmap: List[str] = []
 
+
+class HypothesisStrengthProfile(BaseModel):
+    mechanistic_coherence: Literal["High", "Medium", "Low"] = Field(description="Internal logic soundness")
+    empirical_support: Literal["High", "Medium", "Low"] = Field(description="Evidence backing")
+    experimental_tractability: Literal["High", "Medium", "Low"] = Field(description="Ease of testing")
+    translational_relevance: Literal["High", "Medium", "Low"] = Field(description="Clinical/Practical utility")
+
+
+class DecisionSummary(BaseModel):
+    primary_hypothesis_id: str
+    primary_hypothesis_reason: str
+    evidence_level: Literal["Strong", "Moderate", "Weak", "Inconclusive"]
+    key_risks: List[str]
+    recommended_next_steps: List[str]
+    system_confidence: Literal["High", "Moderate", "Low"]
+    
+    # Prioritization Lists (IDs)
+    near_term_focus: List[str]
+    long_term_focus: List[str]
+    high_risk_high_reward: List[str]
 
 
 class ExperimentPlan(BaseModel):
@@ -163,6 +189,10 @@ class DiscoveryState(BaseModel):
     selected_hypothesis_id: Optional[str] = None
     # REMOVED: experiment_plans, selected_experiment_plan_id, experiments
     critique: Optional[dict] = None
+    
+    # New: Decision & Prioritization
+    decision_summary: Optional[DecisionSummary] = None
+    
     done: bool = False
 
     # Discovery Benchmark Metrics

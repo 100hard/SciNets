@@ -5,9 +5,11 @@ import { cn } from "@/lib/utils";
 import type { GraphNode, GraphEdge } from "@/pages/Discovery";
 import type { ClarificationAnswers } from "./DiscoveryClarificationStep";
 import type { CandidatePaper } from "./PaperCurationStep";
-import type { Hypothesis as APIHypothesis, ConceptGraph } from "@/lib/types";
+import type { Hypothesis as APIHypothesis, ConceptGraph, DecisionSummary as IDecisionSummary } from "@/lib/types";
 import { HypothesisCard, Hypothesis as UIHypothesis } from "./HypothesisCard";
 import { SystemReflection, ReflectionData } from "./SystemReflection";
+import { DecisionSummary } from "./DecisionSummary";
+import { HypothesisPrioritization } from "./HypothesisPrioritization";
 
 interface DiscoveryResultsProps {
   query: string;
@@ -21,6 +23,13 @@ interface DiscoveryResultsProps {
   conceptGraph?: ConceptGraph | null;
   literatureCount?: number;
   threadId?: string | null;
+  decision_summary?: IDecisionSummary;
+}
+
+interface ExperimentConfig {
+  hypothesisId: string;
+  technique: string;
+  parameters: Record<string, any>;
 }
 
 // Convert backend hypothesis to UI format
@@ -73,6 +82,8 @@ function convertHypothesis(apiHypothesis: APIHypothesis, index: number): UIHypot
       `Novelty: ${(apiHypothesis.novelty_score * 100).toFixed(0)}% | Feasibility: ${(apiHypothesis.feasibility_score * 100).toFixed(0)}% | Testability: ${(apiHypothesis.testability_score * 100).toFixed(0)}%`,
     rationale_gap: apiHypothesis.rationale_gap,
     mechanism_class: apiHypothesis.mechanism_class,
+    strength_profile: apiHypothesis.strength_profile,
+    confidence_roadmap: apiHypothesis.confidence_roadmap,
   };
 }
 
@@ -99,23 +110,6 @@ const mockHypotheses: UIHypothesis[] = [
   },
 ];
 
-const mockReflection: ReflectionData = {
-  overallConfidence: "moderate",
-  stronglySupported: [
-    "Glymphatic clearance is reduced during wakefulness and enhanced during sleep",
-    "Sleep deprivation leads to measurable increases in brain amyloid-β levels",
-  ],
-  unresolvedBridges: [
-    "The causal direction between sleep disruption and tau pathology remains unclear",
-  ],
-  suggestedNextSteps: [
-    "Investigate longitudinal studies tracking sleep quality and AD biomarker progression",
-  ],
-  caveats: [
-    "Analysis based on available papers; broader corpus may yield different conclusions",
-  ],
-};
-
 export const DiscoveryResults = ({
   query,
   answers,
@@ -127,6 +121,7 @@ export const DiscoveryResults = ({
   conceptGraph = null,
   literatureCount = 0,
   threadId = null,
+  decision_summary,
 }: DiscoveryResultsProps) => {
   // Convert API hypotheses to UI format, fallback to mock if empty
   const displayHypotheses: UIHypothesis[] = apiHypotheses.length > 0
@@ -152,125 +147,81 @@ export const DiscoveryResults = ({
   // Use real backend count if available (fixes "0 Papers Analyzed" bug)
   const displayPaperCount = literatureCount > 0 ? literatureCount : curatedPapers.length;
 
-  // Generate reflection based on real hypotheses if available
-  const reflection: ReflectionData = apiHypotheses.length > 0 ? {
-    overallConfidence: apiHypotheses.some(h =>
-      h.evidence.filter(e => e.stance === 'support').length >
-      h.evidence.filter(e => e.stance === 'contradict').length
-    ) ? "moderate" : "low",
-    stronglySupported: apiHypotheses
-      .filter(h => h.evidence.filter(e => e.stance === 'support').length > 0)
-      .slice(0, 3)
-      .map(h => h.text.slice(0, 100) + (h.text.length > 100 ? '...' : '')),
-    unresolvedBridges: apiHypotheses
-      .filter(h => h.evidence.filter(e => e.stance === 'contradict').length > 0)
-      .slice(0, 2)
-      .map(h => `Conflicting evidence for: ${h.text.slice(0, 60)}...`),
-    suggestedNextSteps: [
-      "Explore related papers for broader context",
-      "Run experiments to validate key hypotheses",
-      ...apiHypotheses.slice(0, 2).map(h => h.experiment_idea || `Test hypothesis: ${h.id}`).filter(Boolean),
-    ],
-    caveats: [
-      `Analysis based on ${displayPaperCount} papers`,
-      apiHypotheses.length === 0 ? "No hypotheses generated yet" : `Generated ${apiHypotheses.length} hypotheses`,
-    ],
-  } : mockReflection;
+  const handleRunExperiment = (config: ExperimentConfig) => {
+    // Pass content to HypothesisCard if needed, but currently HypothesisCard handles its own experiment logic
+    console.log("Run experiment", config);
+  };
+
 
   return (
-    <div className="h-full overflow-auto space-y-6 pb-8">
-      {/* Summary Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="border border-border rounded-lg bg-background/30 p-6"
-      >
-        <h2 className="text-lg font-medium text-foreground mb-2">Discovery Complete</h2>
-        <p className="text-sm text-foreground-muted mb-4">{query}</p>
-
-        <div className="grid grid-cols-4 gap-4">
-          <div className="text-center">
-            <p className="text-2xl font-medium text-foreground">{displayPaperCount}</p>
-            <p className="text-xs text-foreground-muted">Papers Analyzed</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+      {/* 1. Global Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+            <Network className="w-3 h-3" />
+            Discovery Complete
           </div>
-          <div className="text-center">
-            <p className="text-2xl font-medium text-foreground">{entityCount}</p>
-            <p className="text-xs text-foreground-muted">Entities Found</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-medium text-foreground">{displayHypotheses.length}</p>
-            <p className="text-xs text-foreground-muted">Hypotheses</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-medium text-foreground">{edgeCount}</p>
-            <p className="text-xs text-foreground-muted">Connections</p>
+          <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground">
+            <span title="Papers Analyzed">📚 {displayPaperCount} Papers</span>
+            <span title="Hypotheses Generated">💡 {apiHypotheses.length} Hypotheses</span>
+            <span title="Connections Explored">🕸️ {edgeCount} Connections</span>
           </div>
         </div>
+        <motion.h1
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70"
+        >
+          {query}
+        </motion.h1>
+      </div>
 
-        {/* Score badges for top hypothesis if available */}
-        {apiHypotheses.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <p className="text-xs text-foreground-muted mb-2">Top Hypothesis Scores</p>
-            <div className="flex gap-3">
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-foreground/5">
-                <Star className="w-3 h-3 text-amber-400" />
-                <span className="text-xs text-foreground">
-                  Novelty: {(apiHypotheses[0].novelty_score * 100).toFixed(0)}%
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-foreground/5">
-                <Beaker className="w-3 h-3 text-blue-400" />
-                <span className="text-xs text-foreground">
-                  Feasibility: {(apiHypotheses[0].feasibility_score * 100).toFixed(0)}%
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-foreground/5">
-                <Target className="w-3 h-3 text-green-400" />
-                <span className="text-xs text-foreground">
-                  Testability: {(apiHypotheses[0].testability_score * 100).toFixed(0)}%
-                </span>
-              </div>
+      {/* 2. Detailed Hypothesis List (Analysis Details) - MOVED TO TOP */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            Analysis Details
+          </h2>
+          <span className="text-xs text-muted-foreground">Click cards to expand</span>
+        </div>
+
+        <div className="space-y-6">
+          {displayHypotheses.map((hypothesis, index) => (
+            <div id={`hypothesis-${hypothesis.id}`} key={hypothesis.id} className="scroll-mt-24">
+              <HypothesisCard
+                hypothesis={hypothesis}
+                index={index}
+                isExpanded={expandedHypotheses.includes(hypothesis.id)}
+                onToggle={() => toggleHypothesis(hypothesis.id)}
+                threadId={threadId}
+              />
             </div>
-          </div>
-        )}
-      </motion.div>
-
-      {/* Hypotheses - Primary focus */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="space-y-3"
-      >
-        <div className="flex items-center gap-2 px-1">
-          <FileText className="w-4 h-4 text-foreground-muted" />
-          <h3 className="text-sm font-medium text-foreground">Hypotheses</h3>
-          <span className="text-xs text-foreground-muted ml-auto">
-            {apiHypotheses.length > 0 ? "From discovery" : "Example hypotheses"} - Click to expand
-          </span>
+          ))}
         </div>
+      </div>
 
-        {displayHypotheses.map((hypothesis, index) => (
-          <HypothesisCard
-            key={hypothesis.id}
-            hypothesis={hypothesis}
-            index={index}
-            isExpanded={expandedHypotheses.includes(hypothesis.id)}
-            onToggle={() => toggleHypothesis(hypothesis.id)}
-            threadId={threadId}
-          />
-        ))}
-      </motion.div>
+      {/* 3. Prioritization List - MOVED TO MIDDLE */}
+      {decision_summary && (
+        <HypothesisPrioritization
+          summary={decision_summary}
+          hypotheses={displayHypotheses}
+          onSelectHypothesis={(id) => {
+            const el = document.getElementById(`hypothesis-${id}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (!expandedHypotheses.includes(id)) toggleHypothesis(id);
+          }}
+        />
+      )}
 
-      {/* System Reflection */}
-      <SystemReflection reflection={reflection} />
+      {/* 4. Decision Summary - MOVED TO BOTTOM */}
+      {decision_summary && (
+        <DecisionSummary summary={decision_summary} />
+      )}
 
-      {/* Knowledge Graph - Placeholder only */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
+      {/* 5. Graph Access */}
+      <div className="pt-8 border-t border-border">
         <button
           className={cn(
             "w-full flex items-center justify-between px-4 py-4 rounded-lg",
@@ -282,17 +233,18 @@ export const DiscoveryResults = ({
           }}
         >
           <div className="flex items-center gap-3">
-            <Network className="w-5 h-5 text-foreground-muted group-hover:text-foreground transition-colors" />
+            <Network className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
             <div className="text-left">
               <span className="text-sm font-medium text-foreground">View reasoning in knowledge graph</span>
-              <p className="text-xs text-foreground-muted">
+              <p className="text-xs text-muted-foreground">
                 Explore {entityCount} nodes and {edgeCount} connections
               </p>
             </div>
           </div>
-          <ExternalLink className="w-4 h-4 text-foreground-muted group-hover:text-foreground transition-colors" />
+          <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
         </button>
-      </motion.div>
+      </div>
+
     </div>
   );
 };

@@ -6,7 +6,7 @@ import { DiscoveryClarificationStep, ClarificationAnswers } from "@/components/d
 import { PaperCurationStep, CandidatePaper } from "@/components/discovery/PaperCurationStep";
 import { DiscoveryExecutionStep } from "@/components/discovery/DiscoveryExecutionStep";
 import { startDiscoveryStream, SSECallback } from "@/lib/api";
-import type { Hypothesis, DiscoveryResult, ActivityEvent, ConceptGraph } from "@/lib/types";
+import type { Hypothesis, DiscoveryResult, ActivityEvent, ConceptGraph, DecisionSummary } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 import { SearchOverlay } from "@/components/discovery/SearchOverlay";
 
@@ -54,6 +54,7 @@ const Discovery = () => {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [hypotheses, setHypotheses] = useState<Hypothesis[]>([]);
   const [conceptGraph, setConceptGraph] = useState<ConceptGraph | null>(null);
+  const [decisionSummary, setDecisionSummary] = useState<DecisionSummary | undefined>(undefined);
   const [literatureCount, setLiteratureCount] = useState<number>(0);
   const [logs, setLogs] = useState<string[]>([]);
 
@@ -205,6 +206,11 @@ const Discovery = () => {
           setLiteratureCount((result.literature as any).papers.length);
         }
 
+        // Update decision summary if present
+        if (result.decision_summary) {
+          setDecisionSummary(result.decision_summary);
+        }
+
         // Update concept graph if present
         if (result.concept_graph) {
           setConceptGraph(result.concept_graph);
@@ -322,6 +328,7 @@ const Discovery = () => {
               logs={logs}
               error={error}
               threadId={threadId}
+              decision_summary={decisionSummary}
             />
           </div>
         )}

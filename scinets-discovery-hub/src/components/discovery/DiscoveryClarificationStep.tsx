@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, ArrowRight, Calendar, Target, FileSearch } from "lucide-react";
+import { Bot, ArrowRight, Target, FileSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ClarificationAnswers {
@@ -15,12 +15,6 @@ interface DiscoveryClarificationStepProps {
   onSubmit: (answers: ClarificationAnswers) => void;
   onBack: () => void;
 }
-
-const timelineOptions = [
-  { value: "recent", label: "Recent (last 5 years)", desc: "Focus on cutting-edge research" },
-  { value: "decade", label: "Last decade", desc: "Broader historical context" },
-  { value: "all", label: "All time", desc: "Comprehensive coverage" },
-];
 
 const goalOptions = [
   { value: "discover", label: "Discover novel ideas", desc: "Find gaps and unexplored connections", icon: Target },
@@ -41,26 +35,12 @@ export const DiscoveryClarificationStep = ({
 }: DiscoveryClarificationStepProps) => {
   const [answers, setAnswers] = useState<ClarificationAnswers>({
     timeline: "recent",
+    goal: "discover",
+    depth: "standard",
     guidance: ""
   });
 
-  const timelineOptions = [
-    {
-      value: "recent",
-      label: "Recent (last 5 years)",
-      desc: "Focus on emerging mechanisms"
-    },
-    {
-      value: "decade",
-      label: "Last decade",
-      desc: "Balance mature theories with recent data"
-    },
-    {
-      value: "all",
-      label: "All time",
-      desc: "Comprehensive historical coverage"
-    },
-  ];
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,52 +53,26 @@ export const DiscoveryClarificationStep = ({
       animate={{ opacity: 1, y: 0 }}
       className="max-w-xl mx-auto"
     >
-      {/* Agent Message */}
-      <div className="flex gap-4 mb-8">
-        <div className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center flex-shrink-0">
-          <Bot className="w-5 h-5 text-foreground" />
+      {/* Header removed as per request */}
+
+      <div className="mb-6 rounded-lg border border-border bg-foreground/5 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
+          <Target className="w-3.5 h-3.5" />
+          Scientific Discovery Process
         </div>
-        <div className="flex-1 space-y-1">
-          <p className="text-lg font-medium text-foreground">
-            I'm ready to research: <span className="text-foreground italic">"{query}"</span>
-          </p>
-          <p className="text-sm text-foreground-muted">
-            Configure the search parameters below.
-          </p>
+        <p className="text-sm text-foreground/80 leading-relaxed">
+          SciNets employs a <strong>multi-agent cognitive architecture</strong> to simulate scientific discovery. It aggregates literature to construct a <strong>probabilistic causal graph</strong>, utilizes graph algorithms to identify structural holes, and synthesizes <strong>empirically-constrained hypotheses</strong> via multi-hop reasoning.
+        </p>
+
+
+        <div className="pt-3 mt-3 border-t border-dashed border-border/50 flex items-start gap-2 text-[11px] text-foreground-muted/80 italic">
+          <span>Note: Deep multi-hop reasoning is computationally intensive. Completing a full discovery cycle typically takes 5-10 minutes.</span>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
 
-        {/* 1. Timeline Scope (Kept as simple filter) */}
-        <div>
-          <label className="flex items-center gap-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
-            <Calendar className="w-3.5 h-3.5" />
-            Timeline Scope
-          </label>
-          <div className="grid grid-cols-3 gap-3">
-            {timelineOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setAnswers({ ...answers, timeline: option.value })}
-                className={cn(
-                  "text-left px-3 py-3 rounded-lg border transition-all",
-                  answers.timeline === option.value
-                    ? "border-foreground/30 bg-foreground/5 shadow-sm"
-                    : "border-border hover:border-foreground/20"
-                )}
-              >
-                <p className="text-sm font-medium text-foreground">{option.label}</p>
-                <p className="text-[10px] text-foreground-muted mt-1 leading-snug">
-                  {option.desc}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 2. Research Guidance (New) */}
+        {/* 1. Research Guidance (Restored) */}
         <div>
           <label className="flex items-center gap-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
             <FileSearch className="w-3.5 h-3.5" />
