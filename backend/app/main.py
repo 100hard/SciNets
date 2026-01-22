@@ -42,7 +42,13 @@ app = FastAPI(title="SciNets V2 API")
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -234,38 +240,53 @@ async def search_papers(request: SearchPapersRequest):
         # Search OpenAlex
         papers = await openalex_search(search_query, limit=request.max_papers)
         
-        logger.info(f"[SearchPapers] Found {len(papers)} papers")
-        
+        logger.info(f"[SearchPapers] Found {len(papers)} papers for query '{search_query}'")
+
+        # FALLBACK: If 0 results, try simplified keywords
+        if len(papers) == 0:
+            logger.info("[SearchPapers] 0 results. Use simplified keyword search fallback.")
+            # Simple stopword removal
+            stopwords = ["find", "mechanism", "connecting", "to", "the", "a", "an", "and", "or", "of", "in", "for", "with"]
+            keywords = [w for w in search_query.lower().split() if w not in stopwords]
+            simple_query = " ".join(keywords)
+            
+            logger.info(f"[SearchPapers] Fallback Query: '{simple_query}'")
+            papers = await openalex_search(simple_query, limit=request.max_papers)
+            logger.info(f"[SearchPapers] Fallback Found {len(papers)} papers")
+
         # Convert to CandidatePaper format
         candidates = []
         for paper in papers:
             # The 'abstract' field from openalex.py is actually the inverted index
-            # Reconstruct abstract from inverted index
-            inverted_index = paper.get("abstract")  # This IS the inverted index
+            inverted_index = paper.get("abstract")
             abstract = ""
             if inverted_index and isinstance(inverted_index, dict):
-                word_positions = []
-                for word, positions in inverted_index.items():
-                    for pos in positions:
-                        word_positions.append((pos, word))
-                word_positions.sort()
-                abstract = " ".join(w for _, w in word_positions)
+                try:
+                    word_positions = []
+                    for word, positions in inverted_index.items():
+                        for pos in positions:
+                            word_positions.append((pos, word))
+                    word_positions.sort()
+                    abstract = " ".join(w for _, w in word_positions)
+                except Exception as e:
+                    logger.warning(f"Error reconstructing abstract: {e}")
+
+            venue = paper.get("host_venue") or "Unknown venue"
             
-            # host_venue from openalex.py is already extracted as a string
-            venue = paper.get("host_venue", "Unknown venue")
-            if not venue:
-                venue = "Unknown venue"
-            
-            candidates.append(CandidatePaper(
-                id=paper.get("id", f"paper-{len(candidates)}"),
-                title=paper.get("title") or "Untitled",
-                year=paper.get("publication_year") or 2024,
-                venue=venue,
-                abstract=abstract[:500] if abstract else "No abstract available",
-                rationale="Relevant to search query"
-            ))
+            # Return dict directly to avoid Pydantic validation issues if any
+            candidates.append({
+                "id": paper.get("id"), # keep original ID
+                "title": paper.get("title") or "Untitled",
+                "year": paper.get("publication_year") or 2024,
+                "venue": venue,
+                "abstract": abstract[:500] if abstract else "No abstract available",
+                "rationale": abstract[:200] + "..." if abstract else "Relevant to search query",
+                "selected": True,
+                "locked": False
+            })
         
-        return {"papers": [c.dict() for c in candidates], "refined_query": search_query}
+        logger.info(f"[SearchPapers] Returning {len(candidates)} candidates to frontend")
+        return {"papers": candidates, "refined_query": search_query}
         
     except Exception as e:
         import traceback

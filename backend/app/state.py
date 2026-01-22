@@ -177,6 +177,7 @@ class DiscoveryState(BaseModel):
     evaluation_strategy: str = "full" # full, rag, random, shortest, no_diversity
     experiment_id: Optional[str] = None # For tracking logs (evaluation runs)
     max_papers: int = 10 # Default paper limit (reduced from 15 to 10)
+    num_hypotheses: int = 3 # Configurable hypothesis count (default 3)
     
     # Tier 2: Citation expansion (optional, weighted not dominant)
     enable_citation_expansion: bool = False  # Set to True to expand via citations

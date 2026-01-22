@@ -2,7 +2,7 @@ from app.state import DiscoveryState
 from app.tools.openalex import search_papers, reconstruct_abstract, get_paper_citations
 from app.llm import get_cheap_llm, get_llm
 from langchain_core.prompts import ChatPromptTemplate
-from duckduckgo_search import DDGS
+# DDGS import removed
 from pydantic import BaseModel, Field
 from typing import List
 
@@ -135,113 +135,57 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     elif state.speculation == "high" and state.enable_citation_expansion:
         await adispatch_custom_event("log", {"message": "[Literature] Citation expansion SKIPPED (speculation=high, preserving structural holes)"}, config=config)
     
-    # 2. Web Search (for latest info/datasets)
-    @tool
-    async def web_search_tool(query: str, goal: str):
-        """Performs web search for latest info and contradictions. Returns JSON string."""
-        import asyncio
-        import json
-        from functools import partial
-        
-        def _search():
-            final_results = []
-            
-            # BENCHMARK MOCK OVERRIDE REMOVED - USING REAL SEARCH
-            # We use a retry mechanism to handle potential DDGS flakes
-            # Add other mocks as needed or generic fallback
-            
-            for attempt in range(3):
-                try:
-                    import time
-                    if attempt > 0: time.sleep(2)
-                    
-                    # Try to use DDGS
-                    with DDGS() as ddgs:
-                        # Standard search
-                        results = list(ddgs.text(f"{query} latest research", max_results=4))
-                        if not results:
-                             results = list(ddgs.text(query, max_results=4))
-
-                        for r in results:
-                            final_results.append({
-                                "title": r.get("title"),
-                                "url": r.get("href"),
-                                "snippet": r.get("body"),
-                                "source": "web"
-                            })
-                        
-                        # CONTRADICTION MINER
-                        if goal == "discover":
-                            contradiction_query = f"{query} controversy debate limitations"
-                            c_results = list(ddgs.text(contradiction_query, max_results=3))
-                            for r in c_results:
-                                final_results.append({
-                                    "title": "[Contradiction] " + r.get("title", ""),
-                                    "url": r.get("href"),
-                                    "snippet": r.get("body"),
-                                    "source": "web_contradiction"
-                                })
-                    # If we got here, success
-                    break
-                except Exception as e:
-                    print(f"[Literature] Web search attempt {attempt+1} failed: {e}")
-                    if attempt == 2:
-                        return json.dumps({"error": str(e), "results": []})
-            
-            return json.dumps({"results": final_results})
-
-        # Run blocking search in a thread
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, _search)
-
-    print(f"[Literature] Running Web Search for: {search_query}...")
-    
-    # TEMPORARY FIX: Disable DuckDuckGo search on Windows due to Errno 22
-    # The DDGS context manager doesn't work well with asyncio on Windows
-    import sys
-    if sys.platform == 'win32':
-        print("[Literature] Web search disabled on Windows (asyncio compatibility issue)")
-        web_json_str = '{"results": []}'
-    else:
-        # Use ainvoke for async tool
-        web_json_str = await web_search_tool.ainvoke({"query": search_query, "goal": state.goal}, config=config)
-    try:
-        web_data = json.loads(web_json_str)
-        web_items = web_data.get("results", [])
-    except:
-        web_items = []
-        
-    # Format for context
+    # 2. Web Search Disabled
+    # Based on user feedback and Windows asyncio stability, generic web search is disabled.
+    # We rely on OpenAlex (Scientific) and User Inputs.
+    print(f"[Literature] Web Search is DISABLED. Relying on OpenAlex and User Inputs.")
     web_results_text = ""
-    for item in web_items:
-        web_results_text += f"Title: {item.get('title')}\nLink: {item.get('url')}\nSnippet: {item.get('snippet')}\n\n"
-    
+    web_items = []
+        
     # 3. Process results & Summarize
     processed_papers = {}
     summary_lines = []
     full_text_context = ""
     
-    # Fallback to Web Results if OpenAlex failed
-    if not papers or len(papers) == 0:
-        print("[Literature] OpenAlex returned 0 papers. Falling back to Web Search results.")
-        import uuid
-        for item in web_items:
-            # Create pseudo-paper
-            pid = f"WEB-{str(uuid.uuid4())[:8]}"
-            papers.append({
-                "id": pid,
-                "title": item.get("title", "Unknown Web Source"),
-                "publication_year": 2024,
-                "abstract": item.get("snippet", ""),
-                "host_venue": "Web Search",
-                "landing_page_url": item.get("url"),
-                "abstract_inverted_index": None # Flag for reconstruct
-            })
+    # Fallback Handling if OpenAlex failed (usually unlikely with fallback logic in tools)
+    if not papers:
+        papers = []
+        if not state.documents:
+            print("[Literature] WARNING: No papers found from OpenAlex or User Input.")
+
+    # 2.5 Process User-Provided Documents (Abstracts)
+    if state.documents:
+        # Filter out OpenAlex IDs (URLs) which are passed for the search context but aren't manual abstracts
+        manual_abstracts = [d for d in state.documents if not d.strip().startswith("http")]
+        
+        if manual_abstracts:
+            print(f"[Literature] Processing {len(manual_abstracts)} user-provided abstracts...")
+            import uuid
+            for i, doc_text in enumerate(manual_abstracts):
+                # heuristic title from first sentence
+                title_candidate = doc_text.split('.')[0][:100] + "..."
+                pid = f"USER-{str(uuid.uuid4())[:8]}"
+                
+                papers.append({
+                    "id": pid,
+                    "title": f"[User Input] {title_candidate}",
+                    "publication_year": 2024,
+                    "abstract": doc_text,
+                    "host_venue": "User Provided",
+                    "landing_page_url": None,
+                    "abstract_inverted_index": None
+                })
 
     
     for paper in papers:
         pid = paper["id"]
-        abstract_text = reconstruct_abstract(paper.get("abstract"))
+        raw_abstract = paper.get("abstract")
+        
+        # FIX: Handle already-string abstracts (Web/User) vs Inverted Index (OpenAlex)
+        if isinstance(raw_abstract, str):
+            abstract_text = raw_abstract
+        else:
+            abstract_text = reconstruct_abstract(raw_abstract)
         
         processed_papers[pid] = {
             "title": paper["title"],
@@ -315,7 +259,12 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     async def process_batch(batch_papers):
         batch_abstracts = []
         for p in batch_papers:
-            abs_text = reconstruct_abstract(p.get("abstract"))
+            raw = p.get("abstract")
+            if isinstance(raw, str):
+                abs_text = raw
+            else:
+                abs_text = reconstruct_abstract(raw)
+                
             if abs_text:
                 batch_abstracts.append(f"Paper ID: {p['id']}\nTitle: {p['title']}\nAbstract: {abs_text}\n")
         
@@ -332,6 +281,10 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     print(f"[Literature] asyncio.gather complete. Processing results...")
 
     for i, res in enumerate(batch_results):
+        if isinstance(res, Exception):
+            print(f"[Literature] Batch {i+1} failed with exception: {res}")
+            continue
+            
         if res:
             merged_nodes.update(res.nodes)
             merged_edges.extend(res.edges)

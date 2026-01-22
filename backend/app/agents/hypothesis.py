@@ -492,7 +492,7 @@ async def hypothesis_node(state: DiscoveryState, config: RunnableConfig) -> dict
     from langchain_core.messages import SystemMessage, HumanMessage
     
     # Improved Prompt with Novelty/Feasibility Scoring and STRUCTURED causal chains
-    system_msg = f"""You are a Principal Investigator. Generate 3 NOVEL, TESTABLE scientific hypotheses based on the provided exploration.
+    system_msg = f"""You are a Principal Investigator. Generate {state.num_hypotheses} NOVEL, TESTABLE scientific hypotheses based on the provided exploration.
     
     USER GUIDANCE (CRITICAL): {state.guidance if state.guidance else "No specific guidance provided. Focus on novel discovery."}
 

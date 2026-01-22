@@ -17,6 +17,13 @@ import time
 # Structured Logging Setup
 from app.logging_config import setup_logging, get_logger
 import structlog
+from app.database import SessionLocal
+from app.models import User, Session as DbSession, MagicLink
+from app.auth_utils import create_magic_link_token, verify_magic_link_token, send_magic_link_email, hash_token
+from app.config import config as app_config
+from fastapi import Response, Request, Depends, Cookie, status
+from sqlalchemy.orm import Session
+import datetime
 
 # Ensure backend dir is in path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -41,7 +48,13 @@ log.info("scinets_startup", version="2.0", log_level=log_level, json_mode=json_l
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,6 +71,90 @@ def custom_serializer(obj):
     if isinstance(obj, list):
         return [custom_serializer(i) for i in obj]
     return str(obj)
+
+# DB Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+class EmailRequest(BaseModel):
+    email: str
+
+class VerifyRequest(BaseModel):
+    token: str
+
+# Auth Endpoints
+@app.post("/api/auth/request-link")
+async def request_magic_link(req: EmailRequest, db: Session = Depends(get_db)):
+    """Generates a magic link, stores hash, and sends via SMTP."""
+    email = req.email.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(email=email)
+        db.add(user)
+        db.commit()
+    
+    token = create_magic_link_token(email)
+    hashed = hash_token(token)
+    expires = datetime.datetime.utcnow() + datetime.timedelta(minutes=app_config.MAGIC_LINK_EXPIRE_MINUTES)
+    
+    db.query(MagicLink).filter(MagicLink.email == email).delete()
+    magic_link_record = MagicLink(token_hash=hashed, email=email, expires_at=expires)
+    db.add(magic_link_record)
+    db.commit()
+    
+    base_url = "http://localhost:8080" # Should be configurable
+    link = f"{base_url}/verify?token={token}"
+    send_magic_link_email(email, link)
+    return {"message": "Magic link sent"}
+
+@app.post("/api/auth/verify-link")
+async def verify_magic_link(req: VerifyRequest, response: Response, db: Session = Depends(get_db)):
+    email = verify_magic_link_token(req.token)
+    if not email: raise HTTPException(status_code=400, detail="Invalid token")
+    
+    hashed = hash_token(req.token)
+    record = db.query(MagicLink).filter(MagicLink.token_hash == hashed).first()
+    if not record or record.expires_at < datetime.datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+        
+    db.delete(record)
+    db.commit()
+    
+    user = db.query(User).filter(User.email == email).first()
+    if not user: raise HTTPException(status_code=400, detail="User not found")
+    
+    # Create Session
+    session_id = str(uuid.uuid4())
+    expires = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+    db_session = DbSession(id=session_id, user_id=user.id, expires_at=expires)
+    db.add(db_session)
+    db.commit()
+    
+    response.set_cookie(key="session_id", value=session_id, httponly=True, max_age=7*24*60*60, samesite="lax")
+    return {"message": "Logged in", "user": {"id": user.id, "email": user.email}}
+
+@app.get("/api/auth/me")
+async def get_current_user(session_id: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if not session_id: raise HTTPException(status_code=401, detail="Not authenticated")
+    session = db.query(DbSession).filter(DbSession.id == session_id).first()
+    if not session: raise HTTPException(status_code=401, detail="Invalid session")
+    if session.expires_at < datetime.datetime.utcnow(): raise HTTPException(status_code=401, detail="Session expired")
+    
+    user = db.query(User).filter(User.id == session.user_id).first()
+    if not user: raise HTTPException(status_code=401, detail="User not found")
+    return {"id": user.id, "email": user.email}
+
+@app.post("/api/auth/logout")
+async def logout(response: Response, session_id: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if session_id:
+        db.query(DbSession).filter(DbSession.id == session_id).delete()
+        db.commit()
+    response.delete_cookie("session_id")
+    return {"message": "Logged out"}
 
 # Concurrency Control
 active_threads: set[str] = set()
@@ -234,18 +331,42 @@ async def search_papers_endpoint(request: SearchRequest):
     try:
         from app.tools.openalex import search_papers
         
-        # Simple refinement: quote the query if it's too simple? 
-        # Actually OpenAlex works best with simple keywords or boolean
+        # Search OpenAlex
         results = await search_papers(request.query, limit=request.max_papers)
+        log.info("paper_search_results", count=len(results), query=request.query)
         
-        # Transform for frontend if needed (frontend expects id, title, year, venue, abstract/rationale)
-        # Our tool returns: id, title, publication_year, abstract(inverted), host_venue...
-        
+        # FALLBACK LOGIC (copied from main.py)
+        if len(results) == 0:
+            log.info("paper_search_fallback", original_query=request.query)
+            stopwords = ["find", "mechanism", "connecting", "to", "the", "a", "an", "and", "or", "of", "in", "for", "with"]
+            keywords = [w for w in request.query.lower().split() if w not in stopwords]
+            simple_query = " ".join(keywords)
+            
+            results = await search_papers(simple_query, limit=request.max_papers)
+            log.info("paper_search_fallback_results", count=len(results), simple_query=simple_query)
+
         papers = []
-        from app.tools.openalex import reconstruct_abstract
+        # No need to import reconstruct_abstract from openalex if we implement logic here or use it directly
+        # But for robustness let's do the manual check like main.py
         
         for p in results:
-            abstract_text = reconstruct_abstract(p.get("abstract")) if p.get("abstract") else "No abstract available."
+            # Reconstruct abstract
+            inverted_index = p.get("abstract")
+            abstract_text = ""
+            if inverted_index and isinstance(inverted_index, dict):
+                 try:
+                    word_positions = []
+                    for word, positions in inverted_index.items():
+                        for pos in positions:
+                            word_positions.append((pos, word))
+                    word_positions.sort()
+                    abstract_text = " ".join(w for _, w in word_positions)
+                 except: 
+                    abstract_text = "Error reconstructing abstract"
+            
+            if not abstract_text:
+                abstract_text = "No abstract available."
+
             papers.append({
                 "id": p["id"],
                 "title": p["title"],
@@ -259,7 +380,8 @@ async def search_papers_endpoint(request: SearchRequest):
         return {"papers": papers}
     except Exception as e:
         log.error("paper_search_failed", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return empty list instead of 500
+        return {"papers": []}
 
 @app.post("/run_stream")
 async def run_discovery_stream(request: RunRequest):

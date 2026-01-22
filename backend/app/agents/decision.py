@@ -17,7 +17,7 @@ class DecisionOutput(BaseModel):
     
     # 2. Decision Summary
     primary_hypothesis_index: int = Field(description="Index of the most actionable hypothesis (0-based)")
-    primary_hypothesis_reason: str = Field(description="Why this is the primary choice (e.g. 'Best balance of novelty and support')")
+    primary_hypothesis_reason: str = Field(description="Why this is the primary choice (e.g. 'Hypothesis 1 is balanced...'). Refer to 'Hypothesis X', NOT 'HX' or 'H0'.")
     evidence_level: Literal["Strong", "Moderate", "Weak", "Inconclusive"]
     key_risks: List[str] = Field(description="List of critical risks (upstream assumptions, lack of causality)")
     recommended_next_steps: List[str] = Field(description="Specific, actionable next steps (e.g., 'Prospective metabolomics')")
@@ -48,7 +48,7 @@ async def decision_node(state: DiscoveryState, config: RunnableConfig) -> dict:
         
         hypotheses_text += f"""
 ---
-[H{i}] {h.text}
+[Hypothesis {i+1}] {h.text}
 ID: {h.id}
 Status: {h.stability_class}
 Evidence: {support_count} Support, {contradict_count} Contradict
@@ -75,6 +75,12 @@ GUIDELINES:
 - Do NOT inflate confidence. If evidence is weak, say so.
 - Translational relevance means: "Can this solve a real problem?"
 - Tractability means: "Can we test this with current tools?"
+
+STYLE GUIDELINES (CRITICAL):
+- Write naturally and professionally. Avoid robotic lists or dense academic jargon if simpler words suffice.
+- **Reference hypotheses as "Hypothesis 1", "Hypothesis 2", etc., or descriptively (e.g., "The Glymphatic Hypothesis"). NEVER use "H0" or "H1".**
+- The "Reason" field should be a standalone executive paragraph. Start directly (e.g., "Hypothesis 1 is the most viable because...").
+- Avoid nested parentheses where possible. Use commas or separate sentences.
 
 OUTPUT FORMAT:
 Return a structured JSON object satisfying the DecisionOutput schema.
