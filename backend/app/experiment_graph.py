@@ -103,7 +103,7 @@ def create_experiment_graph():
     """
     On-demand experiment graph (user-triggered only).
     
-    Pipeline: EXPERIMENT → LOCALIZED_CRITIQUE → END
+    Pipeline: EXPERIMENT -> LOCALIZED_CRITIQUE -> END
     
     This runs for a single hypothesis at a time.
     """

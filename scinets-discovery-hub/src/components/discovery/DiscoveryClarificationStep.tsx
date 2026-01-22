@@ -57,7 +57,6 @@ export const DiscoveryClarificationStep = ({
 
       <div className="mb-6 rounded-lg border border-border bg-foreground/5 p-4 space-y-3">
         <div className="flex items-center gap-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider">
-          <Target className="w-3.5 h-3.5" />
           Scientific Discovery Process
         </div>
         <p className="text-sm text-foreground/80 leading-relaxed">
@@ -75,7 +74,6 @@ export const DiscoveryClarificationStep = ({
         {/* 1. Research Guidance (Restored) */}
         <div>
           <label className="flex items-center gap-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
-            <FileSearch className="w-3.5 h-3.5" />
             Optional: Research Guidance
           </label>
           <div className="relative">

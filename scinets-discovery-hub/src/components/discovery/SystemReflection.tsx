@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { 
-  AlertTriangle, CheckCircle2, HelpCircle, 
+import {
+  AlertTriangle, CheckCircle2, HelpCircle,
   Compass, MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,14 +47,14 @@ export const SystemReflection = ({ reflection }: SystemReflectionProps) => {
           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-xs text-foreground-muted mb-2">
-              This analysis is based on automated literature review and hypothesis generation. 
+              This analysis is based on automated literature review and hypothesis generation.
               Results should be validated by domain experts before use in research decisions.
             </p>
             {reflection.caveats.length > 0 && (
               <ul className="text-xs text-foreground-muted space-y-1">
                 {reflection.caveats.map((caveat, i) => (
                   <li key={i} className="flex items-start gap-1.5">
-                    <span className="text-foreground-muted">•</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-foreground-muted mx-2" />
                     {caveat}
                   </li>
                 ))}

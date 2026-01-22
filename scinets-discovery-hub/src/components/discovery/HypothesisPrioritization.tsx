@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowUpRight, Clock, Target, Rocket } from "lucide-react";
+import { ArrowUpRight, Clock, Target, Rocket, HelpCircle } from "lucide-react";
 import { DecisionSummary } from "@/lib/types";
 import { Hypothesis as UIHypothesis } from "./HypothesisCard";
 import { cn } from "@/lib/utils";
@@ -11,75 +11,98 @@ interface HypothesisPrioritizationProps {
 }
 
 export function HypothesisPrioritization({ summary, hypotheses, onSelectHypothesis }: HypothesisPrioritizationProps) {
+    // Take top 3-4 hypotheses for comparison to fit screen
+    const comparisonHypotheses = hypotheses.slice(0, 4);
 
-    const getHypothesisById = (id: string) => hypotheses.find(h => h.id === id);
+    const dims = [
+        { key: 'mechanistic_coherence', label: 'Coherence' },
+        { key: 'empirical_support', label: 'Empirical Support' },
+        { key: 'experimental_tractability', label: 'Testability' },
+        { key: 'translational_relevance', label: 'Translation' },
+    ] as const;
 
-    const PrioritySection = ({ title, ids, icon: Icon, color }: { title: string, ids: string[], icon: any, color: string }) => {
-        if (!ids || ids.length === 0) return null;
-
-        return (
-            <div className="flex-1 min-w-[300px]">
-                <h3 className={cn("text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2", color)}>
-                    <Icon className="w-4 h-4" /> {title}
-                </h3>
-                <div className="space-y-3">
-                    {ids.map(id => {
-                        const h = getHypothesisById(id);
-                        if (!h) return null;
-                        return (
-                            <motion.div
-                                key={id}
-                                whileHover={{ scale: 1.02 }}
-                                onClick={() => onSelectHypothesis(id)}
-                                className="p-3 bg-card border border-border/50 rounded cursor-pointer hover:border-primary/30 transition-all group"
-                            >
-                                <div className="flex justify-between items-start gap-2">
-                                    <span className="font-mono text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-                                        H{hypotheses.findIndex(hyp => hyp.id === id) + 1}
-                                    </span>
-                                    {h.strength_profile && (
-                                        <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground border border-border">
-                                            Exp: {h.strength_profile.experimental_tractability}
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="text-sm font-medium mt-1 line-clamp-2 leading-snug">
-                                    {h.statement}
-                                </p>
-                                <div className="mt-2 flex items-center text-[10px] text-muted-foreground gap-1 group-hover:text-primary transition-colors">
-                                    View Analysis <ArrowUpRight className="w-3 h-3" />
-                                </div>
-                            </motion.div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
+    const getValueColor = (val: string | undefined) => {
+        if (!val) return "bg-muted text-muted-foreground";
+        switch (val) {
+            case "High": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+            case "Medium": return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+            case "Low": return "bg-red-500/20 text-red-400 border-red-500/30";
+            default: return "bg-muted text-muted-foreground";
+        }
     };
 
     return (
         <div className="mb-12">
-            <h2 className="text-lg font-semibold mb-4 px-1">Hypothesis Prioritization</h2>
-            <div className="flex flex-wrap gap-6 bg-secondary/20 p-6 rounded-lg border border-border/50">
-                <PrioritySection
-                    title="Best for Near-Term Testing"
-                    ids={summary.near_term_focus}
-                    icon={Clock}
-                    color="text-emerald-400"
-                />
-                <PrioritySection
-                    title="Best for Long-Term Theory"
-                    ids={summary.long_term_focus}
-                    icon={Target}
-                    color="text-blue-400"
-                />
-                <PrioritySection
-                    title="High Risk / High Reward"
-                    ids={summary.high_risk_high_reward}
-                    icon={Rocket}
-                    color="text-purple-400"
-                />
+            <h2 className="text-lg font-semibold mb-4 px-1">Hypothesis Comparative Matrix</h2>
+            <div className="overflow-x-auto rounded-lg border border-border/50 bg-card/30 backdrop-blur-sm">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-border/50 bg-secondary/20">
+                            <th className="p-4 text-left font-medium text-muted-foreground w-[150px]">
+                                Criteria
+                            </th>
+                            {comparisonHypotheses.map((h, i) => (
+                                <th key={h.id} className="p-4 text-left min-w-[200px] border-l border-border/50">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <span className="font-mono text-xs text-muted-foreground">H{i + 1}</span>
+                                        <button
+                                            onClick={() => onSelectHypothesis(h.id)}
+                                            className="text-primary hover:underline flex items-center gap-1 text-[10px]"
+                                        >
+                                            View <ArrowUpRight className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                    <div
+                                        className="mt-2 text-xs font-normal text-foreground line-clamp-2 leading-relaxed h-[3em]"
+                                        title={h.statement}
+                                    >
+                                        {h.statement}
+                                    </div>
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                        {dims.map((dim) => (
+                            <tr key={dim.key} className="hover:bg-foreground/5 transition-colors">
+                                <td className="p-4 font-medium text-foreground/80 flex items-center gap-2">
+                                    {dim.label}
+                                </td>
+                                {comparisonHypotheses.map(h => (
+                                    <td key={`${h.id}-${dim.key}`} className="p-4 border-l border-border/50">
+                                        <span className={cn(
+                                            "px-2 py-1 rounded text-xs font-medium border inline-block text-center min-w-[60px]",
+                                            getValueColor(h.strength_profile?.[dim.key])
+                                        )}>
+                                            {h.strength_profile?.[dim.key] || "N/A"}
+                                        </span>
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                        {/* Status Row */}
+                        <tr className="bg-secondary/5 font-medium">
+                            <td className="p-4 text-foreground/80">Status</td>
+                            {comparisonHypotheses.map(h => (
+                                <td key={`status-${h.id}`} className="p-4 border-l border-border/50">
+                                    <div className="flex items-center gap-1.5">
+                                        <div className={cn("w-2 h-2 rounded-full",
+                                            h.status === 'supported' ? 'bg-emerald-400' :
+                                                h.status === 'mixed' ? 'bg-amber-400' : 'bg-slate-400'
+                                        )} />
+                                        <span className="text-xs text-foreground capitalize">{h.status}</span>
+                                    </div>
+                                </td>
+                            ))}
+                        </tr>
+                    </tbody>
+                </table>
             </div>
+            {hypotheses.length > 4 && (
+                <p className="text-xs text-center text-muted-foreground mt-2 italic">
+                    Showing top 4 of {hypotheses.length} hypotheses
+                </p>
+            )}
         </div>
     );
 }

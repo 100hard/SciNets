@@ -9,22 +9,9 @@ export const FooterSection = () => {
             <span className="text-sm text-foreground">SciNets</span>
           </div>
 
-          {/* Links */}
-          <nav className="flex items-center gap-6">
-            {["Docs", "API", "Contact"].map((link) => (
-              <a
-                key={link}
-                href="#"
-                className="text-sm text-foreground-muted hover:text-foreground transition-colors"
-              >
-                {link}
-              </a>
-            ))}
-          </nav>
-
           {/* Copyright */}
           <p className="text-xs text-foreground-muted">
-            © 2024 SciNets
+            © 2026 SciNets
           </p>
         </div>
       </div>

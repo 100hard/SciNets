@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Network, ExternalLink, Star, Beaker, Target } from "lucide-react";
+import { FileText, Network, ExternalLink, Star, Beaker, Target, BookOpen, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GraphNode, GraphEdge } from "@/pages/Discovery";
 import type { ClarificationAnswers } from "./DiscoveryClarificationStep";
@@ -9,7 +9,7 @@ import type { Hypothesis as APIHypothesis, ConceptGraph, DecisionSummary as IDec
 import { HypothesisCard, Hypothesis as UIHypothesis } from "./HypothesisCard";
 import { SystemReflection, ReflectionData } from "./SystemReflection";
 import { DecisionSummary } from "./DecisionSummary";
-import { HypothesisPrioritization } from "./HypothesisPrioritization";
+
 
 interface DiscoveryResultsProps {
   query: string;
@@ -159,13 +159,12 @@ export const DiscoveryResults = ({
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-            <Network className="w-3 h-3" />
             Discovery Complete
           </div>
           <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground">
-            <span title="Papers Analyzed">📚 {displayPaperCount} Papers</span>
-            <span title="Hypotheses Generated">💡 {apiHypotheses.length} Hypotheses</span>
-            <span title="Connections Explored">🕸️ {edgeCount} Connections</span>
+            <span title="Papers Analyzed" className="flex items-center gap-1.5">{displayPaperCount} Papers</span>
+            <span title="Hypotheses Generated" className="flex items-center gap-1.5">{apiHypotheses.length} Hypotheses</span>
+            <span title="Connections Explored" className="flex items-center gap-1.5">{edgeCount} Connections</span>
           </div>
         </div>
         <motion.h1
@@ -202,18 +201,7 @@ export const DiscoveryResults = ({
         </div>
       </div>
 
-      {/* 3. Prioritization List - MOVED TO MIDDLE */}
-      {decision_summary && (
-        <HypothesisPrioritization
-          summary={decision_summary}
-          hypotheses={displayHypotheses}
-          onSelectHypothesis={(id) => {
-            const el = document.getElementById(`hypothesis-${id}`);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            if (!expandedHypotheses.includes(id)) toggleHypothesis(id);
-          }}
-        />
-      )}
+
 
       {/* 4. Decision Summary - MOVED TO BOTTOM */}
       {decision_summary && (

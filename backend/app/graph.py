@@ -14,7 +14,7 @@ def create_graph():
     """
     Main discovery graph.
     
-    Pipeline: PLAN → LITERATURE → HYPOTHESIS → EVIDENCE → CRITIQUE → DECISION → END
+    Pipeline: PLAN -> LITERATURE -> HYPOTHESIS -> EVIDENCE -> CRITIQUE -> DECISION -> END
     
     NOTE: Experiments are NOT part of the default discovery pipeline.
     They are user-triggered only via POST /run_experiment endpoint.

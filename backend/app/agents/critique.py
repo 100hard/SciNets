@@ -137,7 +137,7 @@ Hypothesis: {hypothesis.text}
 Literature Evidence Context:
 {evidence_context}
 
-Causal Chain: {' → '.join(hypothesis.causal_chain.nodes) if hypothesis.causal_chain else 'Not specified'}
+Causal Chain: {' -> '.join(hypothesis.causal_chain.nodes) if hypothesis.causal_chain else 'Not specified'}
 """)
     ]
         

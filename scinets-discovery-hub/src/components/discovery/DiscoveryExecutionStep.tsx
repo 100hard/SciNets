@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, BookOpen, Lightbulb, Search,
   CheckCircle, Loader2, AlertCircle, Clock,
-  Activity, Layers, Route, Sparkles
+  Activity, Layers, Route, Sparkles, FlaskConical, ChevronRight, Terminal, Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GraphNode, GraphEdge, AgentActivity } from "@/pages/Discovery";
@@ -40,9 +40,10 @@ const statusConfig = {
   failed: { icon: AlertCircle, label: "Failed", color: "text-destructive" },
   abstained: { icon: AlertCircle, label: "Abstained", color: "text-foreground-muted" },
   // Legacy mapping for existing status types
-  reading: { icon: BookOpen, label: "Running", color: "text-agent-scientist", animate: true },
-  thinking: { icon: Brain, label: "Running", color: "text-agent-planner", animate: true },
-  building: { icon: Lightbulb, label: "Running", color: "text-agent-orchestrator", animate: true },
+  reading: { icon: Bot, label: "Running", color: "text-agent-scientist", animate: true },
+  thinking: { icon: Bot, label: "Running", color: "text-agent-planner", animate: true },
+  building: { icon: Bot, label: "Running", color: "text-agent-orchestrator", animate: true },
+  experimenting: { icon: Bot, label: "Running", color: "text-agent-experiment", animate: true },
   complete: { icon: CheckCircle, label: "Completed", color: "text-foreground" },
 };
 
@@ -242,7 +243,7 @@ export const DiscoveryExecutionStep = ({
           <motion.div
             className="h-full bg-foreground/30"
             initial={{ width: "0%" }}
-            animate={{ width: isComplete ? "100%" : `${Math.min(activities.length * 8, 95)}%` }}
+            animate={{ width: isComplete ? "100%" : `${Math.min(activities.length * 8, 95)}% ` }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           />
         </div>

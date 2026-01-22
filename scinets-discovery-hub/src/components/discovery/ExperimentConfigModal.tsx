@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Beaker, X, Loader2, Play, FlaskConical,
-    TrendingUp, AlertTriangle, Settings
+    TrendingUp, AlertTriangle, Settings, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -210,9 +210,12 @@ export const ExperimentConfigModal = ({
 
                         {/* Disclaimer */}
                         <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                            <p className="text-[10px] text-amber-400">
-                                ⚠️ This is an exploratory consistency check, not scientific validation.
-                                Results inform thinking but do not prove the hypothesis.
+                            <p className="text-[10px] text-amber-400 flex items-start gap-1.5">
+                                <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                <span>
+                                    This is an exploratory consistency check, not scientific validation.
+                                    Results inform thinking but do not prove the hypothesis.
+                                </span>
                             </p>
                         </div>
                     </div>
@@ -276,7 +279,7 @@ export const ExperimentInlineDisplay = ({
                     <div className="space-y-1 max-h-24 overflow-auto font-mono text-[10px] text-foreground-muted">
                         {logs.map((log, i) => (
                             <div key={i} className="flex items-start gap-2">
-                                <span className="text-purple-400">▸</span>
+                                <ChevronRight className="w-3 h-3 text-purple-400" />
                                 <span>{log}</span>
                             </div>
                         ))}

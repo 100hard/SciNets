@@ -1,0 +1,10 @@
+{
+    "query": "Example Demo",
+    "hypotheses": [
+        {
+            "id": "demo-1",
+            "text": "This is a demo hypothesis.",
+            "stability_class": "stable"
+        }
+    ]
+}

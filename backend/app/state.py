@@ -50,7 +50,7 @@ class Hypothesis(BaseModel):
     search_query: Optional[str] = None # Keywords for evidence search
     required_data: List[str] = []
     experiment_idea: str | None = None
-    causal_chain: Optional[CausalChain] = None # Structured causal mechanism
+    causal_chain: Optional[CausalChain] = None # Structured causal mechanism (Linear Projection)
     evidence_summary: Optional[str] = None # Textual summary of evidence
     evidence: List[EvidenceItem] = []
     

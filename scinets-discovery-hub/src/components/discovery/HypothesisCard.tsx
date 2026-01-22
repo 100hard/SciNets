@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown, ChevronUp, CheckCircle, AlertCircle,
-  Minus, ArrowRight, Link2, FlaskConical, Target
+  Minus, ArrowRight, Link2, FlaskConical, Target, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -342,7 +342,7 @@ export const HypothesisCard = ({
                                 {hypothesis.rationale_gap.disconnected_clusters[0] || "Component A"}
                               </span>
                               <span className="text-[10px] text-purple-400/40 tracking-widest font-mono">
-                                {hypothesis.rationale_gap.rationale_type === 'opportunity' ? "→" : "✕✕✕"}
+                                {hypothesis.rationale_gap.rationale_type === 'opportunity' ? <ArrowRight className="w-4 h-4" /> : <X className="w-4 h-4 text-muted-foreground" />}
                               </span>
                               <span className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-300 border border-purple-500/10 truncate max-w-[45%]">
                                 {hypothesis.rationale_gap.disconnected_clusters[1] || "Component B"}

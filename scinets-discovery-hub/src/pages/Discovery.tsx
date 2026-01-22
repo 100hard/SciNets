@@ -29,7 +29,7 @@ export interface GraphEdge {
 
 export interface AgentActivity {
   id: string;
-  agent: "planner" | "scientist" | "critic" | "orchestrator";
+  agent: "planner" | "scientist" | "critic" | "orchestrator" | "literature" | "hypothesis" | "experiment" | "decision";
   action: string;
   status: "reading" | "thinking" | "building" | "complete";
   timestamp: Date;
@@ -107,7 +107,8 @@ const Discovery = () => {
       const response = await fetch(`${API_URL}/search_papers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query, max_papers: 10 })
+        body: JSON.stringify({ query: query, max_papers: 10 }),
+        credentials: "include"
       });
 
       if (!response.ok) {
@@ -270,17 +271,23 @@ const Discovery = () => {
     };
 
     // Start the SSE stream
-    abortControllerRef.current = await startDiscoveryStream(
-      {
-        query,
-        documents: selectedPapers.map(p => p.id || p.title),
-        max_papers: 10, // Default to standard
-        timeline: clarificationAnswers.timeline,
-        guidance: clarificationAnswers.guidance,
-        goal: 'discover', // Default to discovery mode
-      },
-      callbacks
-    );
+    try {
+      abortControllerRef.current = await startDiscoveryStream(
+        {
+          query,
+          documents: selectedPapers.map(p => p.id || p.title),
+          max_papers: 10, // Default to standard
+          timeline: clarificationAnswers.timeline,
+          guidance: clarificationAnswers.guidance,
+          goal: 'discover', // Default to discovery mode
+        },
+        callbacks
+      );
+    } catch (err) {
+      console.error("Discovery failed to start:", err);
+      setError("Failed to start discovery: " + (err as Error).message);
+      setIsDiscovering(false);
+    }
   };
 
   const handleNodeSelect = (nodeId: string) => {

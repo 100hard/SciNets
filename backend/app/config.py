@@ -1,5 +1,6 @@
 """Centralized configuration for SciNets agents and tools."""
 
+import os
 from pydantic_settings import BaseSettings
 
 
@@ -9,6 +10,34 @@ class AgentConfig(BaseSettings):
     All settings can be overridden via environment variables with SCINETS_ prefix.
     """
     
+    # =============================================================================
+    # Auth & Security
+    # =============================================================================
+    SECRET_KEY: str = "dev-secret-key-change-in-prod"
+    SESSION_EXPIRE_DAYS: int = 7
+    MAGIC_LINK_EXPIRE_MINUTES: int = 15
+
+    # =============================================================================
+    # Feature Flags
+    # =============================================================================
+    ENABLE_EXPERIMENT_EXECUTION: bool = False
+    ENABLE_DISCOVERY: bool = True
+
+    # =============================================================================
+    # Rate Limiting
+    # =============================================================================
+    MAX_DISCOVERIES_PER_WINDOW: int = 2
+    WINDOW_LENGTH_DAYS: int = 7
+    ADMIN_EMAILS: list[str] = [] # Set via env vars as json list or use default
+
+    # =============================================================================
+    # Email (SMTP)
+    # =============================================================================
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_EMAIL: str = "" # Set via SCINETS_SMTP_EMAIL
+    SMTP_PASSWORD: str = "" # Set via SCINETS_SMTP_PASSWORD
+
     # Timeouts
     EXPLORER_TIMEOUT_SECONDS: int = 60
     EXPERIMENT_TIMEOUT_SECONDS: int = 60
