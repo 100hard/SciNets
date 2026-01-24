@@ -207,6 +207,11 @@ export const DiscoveryExecutionStep = ({
       if (log.toLowerCase().includes("retrieving")) return "Retrieving academic sources...";
       if (log.toLowerCase().includes("analyzing")) return "Synthesizing information...";
 
+      // ALLOW: Specific high-value logs from Literature Agent
+      if (log.includes("Batch") || log.includes("normalized") || log.includes("densified") || log.includes("Graph Analysis")) {
+        return log.replace("[Literature]", "").trim();
+      }
+
       // If fairly clean, return it
       if (log.length > 5) return log;
     }

@@ -1,0 +1,2038 @@
+{
+  "user_query": "Why do Universal Basic Income pilots often fail?",
+  "goal": "discover",
+  "lens": "none",
+  "speculation": "medium",
+  "timeline": "recent",
+  "guidance": "",
+  "mock": false,
+  "documents": [
+    "https://openalex.org/W2010189956",
+    "https://openalex.org/W1598829572",
+    "https://openalex.org/W2219591537",
+    "https://openalex.org/W2125976408",
+    "https://openalex.org/W2765304416",
+    "https://openalex.org/W1924661502",
+    "https://openalex.org/W1480134138",
+    "https://openalex.org/W2535163083",
+    "https://openalex.org/W3129779558",
+    "https://openalex.org/W3006754301"
+  ],
+  "evaluation_mode": false,
+  "evaluation_strategy": "full",
+  "max_papers": 10,
+  "num_hypotheses": 6,
+  "enable_citation_expansion": false,
+  "domain_tags": [
+    "ml"
+  ],
+  "plan": {
+    "steps": [
+      "literature",
+      "hypothesis"
+    ],
+    "current_step": "literature"
+  },
+  "literature": {
+    "papers": {
+      "https://openalex.org/W3143432667": {
+        "title": "Russian Experts on Universal Basic Income: Estimates for 2020",
+        "year": 2021,
+        "venue": null,
+        "abstract": "The article presents the main results of a survey of Russian experts conducted in 2020 with the participation of the authors among representatives of the research community, leading universities, the business community, trade unions and state and municipal government bodies regarding the main theoretical and methodological aspects of the concept of universal basic income (UBI) in relation to Russian conditions, the feasibility of its introduction in Russia, as well as the main parameters of possible transitional forms of UBI for Russia. The palette of the obtained expert assessments, generalized and systematized in the following areas, is shown: 1) UBI criteria; 2) Russia's readiness for the introduction of UBI; 3) current challenges for Russia (priority goals of the introduction of UBI, forms of implementation, sources of funding, method of implementation, experiments on the introduction of UBI); 4) risks and positive effects of the introduction of UBI. It was revealed that a common position among experts regarding Russia's readiness to introduce UBI has not yet been formed: almost half of the interviewed experts spoke in favor of the feasibility of implementing transitional forms of UBI in our country, a slightly smaller group of experts believes that Russia is not ready to introduce UBI in principle. Experts associate the primary goals of the possible introduction of UBI in Russia, first of all, with the mitigation (overcoming) of the problems of poverty and socio-economic inequality, ensuring a minimum standard of living for vulnerable categories of the population, ensuring social justice (the right to life, equal opportunities). Support for the idea of implementing a pilot project (projects) for the introduction of UBI was revealed. The opinions of experts on the target categories of the population during the implementation of experiments on the introduction of UBI, the methods of their formation, and the duration of pilot projects were obtained.",
+        "url": null
+      },
+      "https://openalex.org/W3111604197": {
+        "title": "Designing trials of Universal Basic Income for health impact: identifying interdisciplinary questions to address",
+        "year": 2020,
+        "venue": null,
+        "abstract": "Abstract Background A large body of evidence indicates the importance of upstream determinants to health. Universal Basic Income (UBI) has been suggested as an upstream intervention capable of promoting health by affecting material, biopsychosocial and behavioural determinants. Calls are emerging across the political spectrum to introduce an emergency UBI to address socioeconomic insecurity. However, although existing studies indicate effects on health through cash transfers, UBI schemes have not previously been designed specifically to promote health. Methods In this article, we scope the existing literature to set out a set of interdisciplinary research challenges to address in designing a trial of the effectiveness of UBI as a population health measure. Results We present a theoretical model of impact that identifies three pathways to health impact, before identifying open questions related to regularity, size of payment, needs-based supplements, personality and behaviour, conditionality and duration. Conclusions These results set, for the first time, a set of research activities required in order to maximize health impact in UBI programmes.",
+        "url": null
+      },
+      "https://openalex.org/W4360612643": {
+        "title": "Designing a generic, adaptive protocol resource for the measurement of health impact in cash transfer pilot and feasibility studies and trials in high-income countries",
+        "year": 2023,
+        "venue": null,
+        "abstract": "Abstract Introduction In the context of the COVID-19 pandemic, upstream interventions that tackle social determinants of health inequalities have never been more important. Evaluations of upstream cash transfer trials have failed to capture comprehensively the impacts that such systems might have on population health through inadequate design of the interventions themselves and failure to implement consistent, thorough research measures that can be used in microsimulations to model long-term impact. In this article, we describe the process of developing a generic, adaptive protocol resource to address this issue and the challenges involved in that process. The resource is designed for use in high-income countries (HIC) but draws on examples from a UK context to illustrate means of development and deployment. The resource is capable of further adaptation for use in low- and middle-income countries (LMIC). It has particular application for trials of Universal Basic Income but can be adapted to those covering other kinds of cash transfer and welfare system changes. Methods We outline two types of prospective intervention based on pilots and trials currently under discussion. In developing the remainder of the resource, we establish six key principles, implement a modular approach based on types of measure and their prospective resource intensity, and source (validated where possible) measures and baseline data primarily from routine collection and large, longitudinal cohort studies. Through these measures, we seek to cover all areas of health impact identified in our theoretical model for use in pilot and feasibility studies. Results We find that, in general, self-reported measures alongside routinely collected linked respondent data may provide a feasible means of producing data capable of demonstrating comprehensive health impact. However, we also suggest that, where possible, physiological measures should be included to elucidate underlying biological effects that may not be accurately captured through self-reporting alone and can enable modelling of long-term health outcomes. In addition, accurate self-reported objective income data remains a challenge and requires further development and testing. A process of development and implementation of the resource in pilot and feasibility studies will support assessment of whether or not our proposed health outcome measures are acceptable, feasible and can be used with validity and reliability in the target population. Discussion We suggest that while Open Access evaluation instruments are available and usable to measure most constructs of interest, there remain some areas for which further development is necessary. This includes self-reported wellbeing measures that require paid licences but are used in a range of nationally important longitudinal studies instead of Open Access alternatives.",
+        "url": null
+      },
+      "https://openalex.org/W4296381518": {
+        "title": "The policy and political consequences of the B-Mincome pilot project",
+        "year": 2022,
+        "venue": null,
+        "abstract": "The idea of universal basic income is recieving increasing attention in the political, media and public agendas. This policy proposal constitutes a radical departure from the orthodox welfare rationale of giving to those in need, or attaching conditions to welfare support. Given the permutation that a UBI presents, many pilot projects and field experiments are being carried out globally to test the effects of this novel policy idea. Key questions arise from these developments: are the lessons learned from these experiments being fed back into the policy process? Are the pilot project results guiding and informing policymakers? Overall, can we observe any political effects of such scientific efforts? I address these questions through a qualitative case study analysis of the B-Mincome project. Through an in-depth analysis of this pilot, some of the key factors influencing the (limited) policy and political effects of the pilot project have been identified. The B-Mincome case study shows that the barriers to policy change were in place well before the pilot, and evidently, remained unaltered by it. The political landscape in Barcelona's City Council, its economic powers and institutional context were unchanged by the pilot, and in fact shaped the pilot design, moving it away from the UBI proposal. The B-Mincome experience illustrates the need to accommodate the pilot design to the politics and economics of the experiment, and shows the unintended consequences that such an adaptation of the pilot design may have in relation to its original objectives. In the case of Barcelona, this has meant a move away from a UBI-style pilot design, resulting in very limited effects on the debate or policy design of cash transfers, having a greater policy impact on active polices instead. However, by taking a broader look at Spanish and Catalan politics, our analysis has shown that unexpected factors may end up triggering a debate much more effectively than a pilot project.",
+        "url": null
+      },
+      "https://openalex.org/W4283658799": {
+        "title": "A Struggle for Framing and Interpretation: The Impact of the \u2018Basic Income Experiments\u2019 on Social Policy Reform in the Netherlands",
+        "year": 2022,
+        "venue": null,
+        "abstract": "In the period from 1st October 2017 to 31st December 2019, the Dutch government allowed several municipalities to carry out so-called \u2018basic income experiments\u2019, \u2018trust\u2019 experiments, or \u2018experiments low in regulation\u2019. These experiments focused on giving exemptions on obligations attached to social benefits, allowing people to keep extra earnings on top of their social assistance benefits, and providing more guidance in finding work. In this paper, I critically evaluate the extent to which these experiments have had an effect on social policy in the Netherlands in both the short and long run. For municipalities, the main goal of these experiments was to examine whether an approach focused on trust and intrinsic motivation would lead to increased labour market participation and higher wellbeing. The national government approved the experiments; but in its evaluation, it focused solely on the outflow to work in line with the existing workfare approach. In the short run, the effects of the experiments appeared disappointing for those with the ambition of fundamentally reforming the social security system. However, in the struggle for framing and interpretation, advocates of a different social policy approach obtained success in the long run. Although the Participation Act was not initially amended, the recent coalition agreement of the new Government does propose a change related to the outcomes of the experiment; and in recent party manifestos, there are more far-reaching proposals to change social policy in the direction of a universal basic income.",
+        "url": null
+      },
+      "https://openalex.org/W4285594343": {
+        "title": "Citizens\u2019 basic income in Scotland: On the road to somewhere",
+        "year": 2022,
+        "venue": null,
+        "abstract": "While the economic fragility exposed by Covid-19 has renewed the attention paid to social protection systems and in particular to basic income, the Scottish government had already funded four local authorities \u2013 North Ayrshire, City of Edinburgh, Fife and Glasgow \u2013 to undertake a feasibility study on the introduction of a Universal Basic Income pilot in Scotland. This article explores the specific Scottish context and rationale for this study, including the factors that led the Scottish government and the local authorities to pursue this approach, as well as the impact of the study on the wider social security debate and policy context in Scotland. Specifically, it takes a critical look at the Steering Committee's feasibility study, and its two commissioned research components, and explores the financial costings and institutional obstacles identified in taking forward a pilot Universal Basic Income in Scotland. These significant challenges are considered in light of both the limits of devolution and the ongoing debate on independence, as well as the wider implications for progress in social protection in Scotland.",
+        "url": null
+      },
+      "https://openalex.org/W3012472904": {
+        "title": "Measuring the health impact of Universal Basic Income as an upstream intervention: holistic trial design that captures stress reduction is essential",
+        "year": 2020,
+        "venue": null,
+        "abstract": "Background: In the context of the UK Government\u2019s \u2018prevention agenda\u2019, Laura Webber and colleagues have called for a \u2018health in all policies\u2019 approach. Universal Basic Income (UBI) is a system of cash transfers to citizens. Recent research suggests it could significantly benefit population health, including via reducing stress. However, a Finnish trial of a policy with similarities to UBI has influenced debate. This was reported as a failure due to a policy objective of reducing unemployment, despite demonstrating significant benefits to well-being. Aims and objectives: In this piece, we seek to advance the debate about the cost-benefit of UBI by identifying knowledge gaps and proposing a means of designing effective trials. Methods: We review UBI trial design and findings in comparison with social gradient in health literature and biopsychosocial theory to identify knowledge gaps. Findings: We highlight a need to refocus UBI trials on improved health, including via reduced stress, to provide policy makers the means of producing accurate cost-benefit analysis. Previous trials have either not reflected likely UBI policy or failed to measure impacts that enable accurate analysis. We contend that interdisciplinary work is required to establish trials that observe factors known to drive the social health gradient. Finally, we argue that statistical modelling is needed to extrapolate shorter-term findings to long-term population-level outcomes. Discussion and conclusions: Resource allocation by Government and/or major funders is required to produce evidence that enables accurate analysis of UBI. Such trials would provide a platform for interdisciplinary work resulting in joined-up evidence and policy.",
+        "url": null
+      }
+    },
+    "summary": "Emerging themes from this body of work point to a broad but cautious consensus: universal basic income is primarily framed as a tool to mitigate poverty and socio-economic inequality, guarantee minimum living standards for vulnerable groups, and advance social justice, yet expert judgment about a country's readiness for full-scale implementation remains divided. There is strong, recurring support for well-designed pilot or transitional schemes as the pragmatic next step, coupled with recognition that political context, institutional constraints and costings shape both pilot design and the likelihood of policy uptake. A novel and recurrent finding is that pilots can have limited immediate policy impact when their design is adapted to fit local political and economic realities\u2014diluting core UBI features\u2014and that long-term reframing of debates may be a more likely route to change than short-term trial outcomes. Across contexts, the palette of perceived risks and benefits, debates about targeting or universality, and questions about funding and implementation mechanisms remain central unresolved issues that pilots are expected to help clarify.\n\nThere is an emerging methodological consensus on how to evaluate UBI\u2019s potential population health benefits: trials should be interdisciplinary, explicitly designed to capture upstream effects (notably stress reduction), and structured to allow extrapolation from short-term findings to longer-term outcomes. Key design questions flagged repeatedly include payment regularity and size, needs-based supplements versus strict universality, duration and sequencing of interventions, conditionality, and heterogeneity in behavioural and personality responses. On measurement, a modular protocol combining self-reported outcomes, routinely linked administrative data and selected physiological measures is seen as feasible and important, though challenges remain around valid income reporting and access to some licensed wellbeing instruments. Overall, the papers converge on the need for politically informed, methodologically rigorous pilots with robust measurement and modelling capacity as prerequisites for producing credible evidence on UBI\u2019s social and health impacts and for informing realistic policy pathways.",
+    "full_context": "Title: Russian Experts on Universal Basic Income: Estimates for 2020\nAbstract: The article presents the main results of a survey of Russian experts conducted in 2020 with the participation of the authors among representatives of the research community, leading universities, the business community, trade unions and state and municipal government bodies regarding the main theoretical and methodological aspects of the concept of universal basic income (UBI) in relation to Russian conditions, the feasibility of its introduction in Russia, as well as the main parameters of possible transitional forms of UBI for Russia. The palette of the obtained expert assessments, generalized and systematized in the following areas, is shown: 1) UBI criteria; 2) Russia's readiness for the introduction of UBI; 3) current challenges for Russia (priority goals of the introduction of UBI, forms of implementation, sources of funding, method of implementation, experiments on the introduction of UBI); 4) risks and positive effects of the introduction of UBI. It was revealed that a common position among experts regarding Russia's readiness to introduce UBI has not yet been formed: almost half of the interviewed experts spoke in favor of the feasibility of implementing transitional forms of UBI in our country, a slightly smaller group of experts believes that Russia is not ready to introduce UBI in principle. Experts associate the primary goals of the possible introduction of UBI in Russia, first of all, with the mitigation (overcoming) of the problems of poverty and socio-economic inequality, ensuring a minimum standard of living for vulnerable categories of the population, ensuring social justice (the right to life, equal opportunities). Support for the idea of implementing a pilot project (projects) for the introduction of UBI was revealed. The opinions of experts on the target categories of the population during the implementation of experiments on the introduction of UBI, the methods of their formation, and the duration of pilot projects were obtained.\n\nTitle: Designing trials of Universal Basic Income for health impact: identifying interdisciplinary questions to address\nAbstract: Abstract Background A large body of evidence indicates the importance of upstream determinants to health. Universal Basic Income (UBI) has been suggested as an upstream intervention capable of promoting health by affecting material, biopsychosocial and behavioural determinants. Calls are emerging across the political spectrum to introduce an emergency UBI to address socioeconomic insecurity. However, although existing studies indicate effects on health through cash transfers, UBI schemes have not previously been designed specifically to promote health. Methods In this article, we scope the existing literature to set out a set of interdisciplinary research challenges to address in designing a trial of the effectiveness of UBI as a population health measure. Results We present a theoretical model of impact that identifies three pathways to health impact, before identifying open questions related to regularity, size of payment, needs-based supplements, personality and behaviour, conditionality and duration. Conclusions These results set, for the first time, a set of research activities required in order to maximize health impact in UBI programmes.\n\nTitle: Designing a generic, adaptive protocol resource for the measurement of health impact in cash transfer pilot and feasibility studies and trials in high-income countries\nAbstract: Abstract Introduction In the context of the COVID-19 pandemic, upstream interventions that tackle social determinants of health inequalities have never been more important. Evaluations of upstream cash transfer trials have failed to capture comprehensively the impacts that such systems might have on population health through inadequate design of the interventions themselves and failure to implement consistent, thorough research measures that can be used in microsimulations to model long-term impact. In this article, we describe the process of developing a generic, adaptive protocol resource to address this issue and the challenges involved in that process. The resource is designed for use in high-income countries (HIC) but draws on examples from a UK context to illustrate means of development and deployment. The resource is capable of further adaptation for use in low- and middle-income countries (LMIC). It has particular application for trials of Universal Basic Income but can be adapted to those covering other kinds of cash transfer and welfare system changes. Methods We outline two types of prospective intervention based on pilots and trials currently under discussion. In developing the remainder of the resource, we establish six key principles, implement a modular approach based on types of measure and their prospective resource intensity, and source (validated where possible) measures and baseline data primarily from routine collection and large, longitudinal cohort studies. Through these measures, we seek to cover all areas of health impact identified in our theoretical model for use in pilot and feasibility studies. Results We find that, in general, self-reported measures alongside routinely collected linked respondent data may provide a feasible means of producing data capable of demonstrating comprehensive health impact. However, we also suggest that, where possible, physiological measures should be included to elucidate underlying biological effects that may not be accurately captured through self-reporting alone and can enable modelling of long-term health outcomes. In addition, accurate self-reported objective income data remains a challenge and requires further development and testing. A process of development and implementation of the resource in pilot and feasibility studies will support assessment of whether or not our proposed health outcome measures are acceptable, feasible and can be used with validity and reliability in the target population. Discussion We suggest that while Open Access evaluation instruments are available and usable to measure most constructs of interest, there remain some areas for which further development is necessary. This includes self-reported wellbeing measures that require paid licences but are used in a range of nationally important longitudinal studies instead of Open Access alternatives.\n\nTitle: The policy and political consequences of the B-Mincome pilot project\nAbstract: The idea of universal basic income is recieving increasing attention in the political, media and public agendas. This policy proposal constitutes a radical departure from the orthodox welfare rationale of giving to those in need, or attaching conditions to welfare support. Given the permutation that a UBI presents, many pilot projects and field experiments are being carried out globally to test the effects of this novel policy idea. Key questions arise from these developments: are the lessons learned from these experiments being fed back into the policy process? Are the pilot project results guiding and informing policymakers? Overall, can we observe any political effects of such scientific efforts? I address these questions through a qualitative case study analysis of the B-Mincome project. Through an in-depth analysis of this pilot, some of the key factors influencing the (limited) policy and political effects of the pilot project have been identified. The B-Mincome case study shows that the barriers to policy change were in place well before the pilot, and evidently, remained unaltered by it. The political landscape in Barcelona's City Council, its economic powers and institutional context were unchanged by the pilot, and in fact shaped the pilot design, moving it away from the UBI proposal. The B-Mincome experience illustrates the need to accommodate the pilot design to the politics and economics of the experiment, and shows the unintended consequences that such an adaptation of the pilot design may have in relation to its original objectives. In the case of Barcelona, this has meant a move away from a UBI-style pilot design, resulting in very limited effects on the debate or policy design of cash transfers, having a greater policy impact on active polices instead. However, by taking a broader look at Spanish and Catalan politics, our analysis has shown that unexpected factors may end up triggering a debate much more effectively than a pilot project.\n\nTitle: A Struggle for Framing and Interpretation: The Impact of the \u2018Basic Income Experiments\u2019 on Social Policy Reform in the Netherlands\nAbstract: In the period from 1st October 2017 to 31st December 2019, the Dutch government allowed several municipalities to carry out so-called \u2018basic income experiments\u2019, \u2018trust\u2019 experiments, or \u2018experiments low in regulation\u2019. These experiments focused on giving exemptions on obligations attached to social benefits, allowing people to keep extra earnings on top of their social assistance benefits, and providing more guidance in finding work. In this paper, I critically evaluate the extent to which these experiments have had an effect on social policy in the Netherlands in both the short and long run. For municipalities, the main goal of these experiments was to examine whether an approach focused on trust and intrinsic motivation would lead to increased labour market participation and higher wellbeing. The national government approved the experiments; but in its evaluation, it focused solely on the outflow to work in line with the existing workfare approach. In the short run, the effects of the experiments appeared disappointing for those with the ambition of fundamentally reforming the social security system. However, in the struggle for framing and interpretation, advocates of a different social policy approach obtained success in the long run. Although the Participation Act was not initially amended, the recent coalition agreement of the new Government does propose a change related to the outcomes of the experiment; and in recent party manifestos, there are more far-reaching proposals to change social policy in the direction of a universal basic income.\n\nTitle: Citizens\u2019 basic income in Scotland: On the road to somewhere\nAbstract: While the economic fragility exposed by Covid-19 has renewed the attention paid to social protection systems and in particular to basic income, the Scottish government had already funded four local authorities \u2013 North Ayrshire, City of Edinburgh, Fife and Glasgow \u2013 to undertake a feasibility study on the introduction of a Universal Basic Income pilot in Scotland. This article explores the specific Scottish context and rationale for this study, including the factors that led the Scottish government and the local authorities to pursue this approach, as well as the impact of the study on the wider social security debate and policy context in Scotland. Specifically, it takes a critical look at the Steering Committee's feasibility study, and its two commissioned research components, and explores the financial costings and institutional obstacles identified in taking forward a pilot Universal Basic Income in Scotland. These significant challenges are considered in light of both the limits of devolution and the ongoing debate on independence, as well as the wider implications for progress in social protection in Scotland.\n\nTitle: Measuring the health impact of Universal Basic Income as an upstream intervention: holistic trial design that captures stress reduction is essential\nAbstract: Background: In the context of the UK Government\u2019s \u2018prevention agenda\u2019, Laura Webber and colleagues have called for a \u2018health in all policies\u2019 approach. Universal Basic Income (UBI) is a system of cash transfers to citizens. Recent research suggests it could significantly benefit population health, including via reducing stress. However, a Finnish trial of a policy with similarities to UBI has influenced debate. This was reported as a failure due to a policy objective of reducing unemployment, despite demonstrating significant benefits to well-being. Aims and objectives: In this piece, we seek to advance the debate about the cost-benefit of UBI by identifying knowledge gaps and proposing a means of designing effective trials. Methods: We review UBI trial design and findings in comparison with social gradient in health literature and biopsychosocial theory to identify knowledge gaps. Findings: We highlight a need to refocus UBI trials on improved health, including via reduced stress, to provide policy makers the means of producing accurate cost-benefit analysis. Previous trials have either not reflected likely UBI policy or failed to measure impacts that enable accurate analysis. We contend that interdisciplinary work is required to establish trials that observe factors known to drive the social health gradient. Finally, we argue that statistical modelling is needed to extrapolate shorter-term findings to long-term population-level outcomes. Discussion and conclusions: Resource allocation by Government and/or major funders is required to produce evidence that enables accurate analysis of UBI. Such trials would provide a platform for interdisciplinary work resulting in joined-up evidence and policy.\n\n\n\nGraph Analysis Insights:\nKey Concepts (Centrality): Universal Basic Income (UBI) (0.17), Health impact (0.09), basic income experiments (0.08), feasibility study (0.08), debate (0.07)\nBridge Concepts (Connecting topics): Universal Basic Income (UBI) (0.02), debate (0.01), feasibility study (0.01)\nKey Relationships:\n- debate --[concerns / is about]--> Universal Basic Income (UBI)\n- Universal Basic Income (UBI) --[promotes]--> Health impact\n- Universal Basic Income (UBI) --[have not previously been designed specifically to promote]--> Universal Basic Income (UBI)",
+    "web_research": ""
+  },
+  "concept_graph": {
+    "nodes": [
+      "Size of payment",
+      "Design variables",
+      "basic income experiments",
+      "Barcelona's City Council",
+      "trial design",
+      "B-Mincome project",
+      "trust experiments",
+      "national government",
+      "not reflected likely UBI policy",
+      "political effects",
+      "Conditionality",
+      "Duration",
+      "coalition agreement",
+      "biopsychosocial theory",
+      "Methods of implementation",
+      "Physiological measures",
+      "social benefits",
+      "Personality and behaviour",
+      "Fife",
+      "Mitigation of poverty",
+      "Health impact",
+      "Lack of common position among experts",
+      "Social justice",
+      "Finnish trial",
+      "Regularity",
+      "pilot design",
+      "unexpected factors",
+      "Routinely collected linked respondent data",
+      "Long-term health outcomes",
+      "Low- and middle-income countries",
+      "Risks and positive effects of UBI",
+      "Experiments on the introduction of UBI",
+      "Sources of funding",
+      "Upstream interventions",
+      "Upstream determinants to health",
+      "health in all policies approach",
+      "UBI-style pilot design",
+      "High-income countries",
+      "Target categories of the population",
+      "pilot projects",
+      "social security debate",
+      "wellbeing",
+      "advocates of a different social policy approach",
+      "prevention agenda",
+      "evaluation",
+      "City of Edinburgh",
+      "Modular approach",
+      "limits of devolution",
+      "outflow to work",
+      "cash transfers to citizens",
+      "Universal Basic Income pilot",
+      "social assistance benefits",
+      "trust and intrinsic motivation",
+      "institutional obstacles",
+      "Minimum standard of living",
+      "interdisciplinary work",
+      "Microsimulations",
+      "policy process",
+      "orthodox welfare rationale",
+      "population health",
+      "factors known to drive the social health gradient",
+      "stress reduction",
+      "previous trials",
+      "commissioned research components",
+      "Self-reported wellbeing measures that require paid licences",
+      "policy context",
+      "Validated measures from longitudinal cohort studies",
+      "social policy approach",
+      "adaptation of the pilot design",
+      "feasibility study",
+      "Needs-based supplements",
+      "cost-benefit analysis",
+      "experiments low in regulation",
+      "reported as a failure",
+      "unintended consequences",
+      "debate",
+      "social protection",
+      "Self-reported objective income data",
+      "universal basic income",
+      "Three pathways to health impact",
+      "UBI proposal",
+      "qualitative case study analysis",
+      "Socio-economic inequality",
+      "joined-up evidence and policy",
+      "benefits to well-being",
+      "long-term population-level outcomes",
+      "failed to measure impacts",
+      "long run",
+      "Six key principles",
+      "party manifestos",
+      "social security system",
+      "Self-reported measures",
+      "independence",
+      "Open Access evaluation instruments",
+      "Theoretical model of impact",
+      "limited policy and political effects",
+      "statistical modelling",
+      "workfare approach",
+      "Steering Committee's feasibility study",
+      "Universal Basic Income (UBI)",
+      "social gradient in health",
+      "labour market participation",
+      "North Ayrshire",
+      "Glasgow",
+      "field experiments",
+      "Transitional forms of UBI",
+      "economic powers",
+      "financial costings",
+      "Pilot project",
+      "policy objective of reducing unemployment",
+      "framing and interpretation",
+      "institutional context",
+      "resource allocation by Government",
+      "Emergency UBI",
+      "Health outcome measures",
+      "policymakers",
+      "major funders",
+      "Russia's readiness for the introduction of UBI",
+      "active polices",
+      "shorter-term findings",
+      "Participation Act",
+      "municipalities",
+      "Types of measure and prospective resource intensity",
+      "produce evidence that enables accurate analysis"
+    ],
+    "edges": [
+      {
+        "source": "Size of payment",
+        "target": "Health impact",
+        "relation": "identified as an open question for"
+      },
+      {
+        "source": "Design variables",
+        "target": "Health impact",
+        "relation": "aggregate open questions (regularity, size, supplements, conditionality, duration) affecting"
+      },
+      {
+        "source": "basic income experiments",
+        "target": "municipalities",
+        "relation": "carried out by"
+      },
+      {
+        "source": "basic income experiments",
+        "target": "experiments low in regulation",
+        "relation": "also called / synonymous with"
+      },
+      {
+        "source": "basic income experiments",
+        "target": "social benefits",
+        "relation": "gave exemptions on obligations attached to"
+      },
+      {
+        "source": "basic income experiments",
+        "target": "social assistance benefits",
+        "relation": "allowed people to keep extra earnings on top of"
+      },
+      {
+        "source": "basic income experiments",
+        "target": "trust and intrinsic motivation",
+        "relation": "focused on an approach based on"
+      },
+      {
+        "source": "basic income experiments",
+        "target": "social security system",
+        "relation": "short-run effects were disappointing for those seeking fundamental reform"
+      },
+      {
+        "source": "Barcelona's City Council",
+        "target": "pilot design",
+        "relation": "shaped"
+      },
+      {
+        "source": "Barcelona's City Council",
+        "target": "UBI proposal",
+        "relation": "moved pilot away from"
+      },
+      {
+        "source": "trial design",
+        "target": "cost-benefit analysis",
+        "relation": "must be refocused on health to enable accurate"
+      },
+      {
+        "source": "trial design",
+        "target": "joined-up evidence and policy",
+        "relation": "would provide a platform for interdisciplinary work resulting in"
+      },
+      {
+        "source": "trial design",
+        "target": "biopsychosocial theory",
+        "relation": "reviewed in comparison with"
+      },
+      {
+        "source": "trial design",
+        "target": "social gradient in health",
+        "relation": "reviewed in comparison with"
+      },
+      {
+        "source": "trial design",
+        "target": "population health",
+        "relation": "need to refocus on improved"
+      },
+      {
+        "source": "trial design",
+        "target": "benefits to well-being",
+        "relation": "need to refocus on (including reduced stress)"
+      },
+      {
+        "source": "trial design",
+        "target": "produce evidence that enables accurate analysis",
+        "relation": "should provide means to"
+      },
+      {
+        "source": "trial design",
+        "target": "interdisciplinary work",
+        "relation": "would provide a platform for"
+      },
+      {
+        "source": "B-Mincome project",
+        "target": "pilot projects",
+        "relation": "example of"
+      },
+      {
+        "source": "B-Mincome project",
+        "target": "political effects",
+        "relation": "had limited"
+      },
+      {
+        "source": "B-Mincome project",
+        "target": "policy process",
+        "relation": "had limited effect on"
+      },
+      {
+        "source": "B-Mincome project",
+        "target": "UBI-style pilot design",
+        "relation": "moved away from"
+      },
+      {
+        "source": "B-Mincome project",
+        "target": "active polices",
+        "relation": "had greater policy impact on"
+      },
+      {
+        "source": "B-Mincome project",
+        "target": "policymakers",
+        "relation": "had limited influence on"
+      },
+      {
+        "source": "B-Mincome project",
+        "target": "Pilot project",
+        "relation": "is a"
+      },
+      {
+        "source": "trust experiments",
+        "target": "workfare approach",
+        "relation": "in tension with"
+      },
+      {
+        "source": "national government",
+        "target": "outflow to work",
+        "relation": "focused on"
+      },
+      {
+        "source": "national government",
+        "target": "workfare approach",
+        "relation": "aligned with"
+      },
+      {
+        "source": "national government",
+        "target": "basic income experiments",
+        "relation": "allowed / approved"
+      },
+      {
+        "source": "national government",
+        "target": "evaluation",
+        "relation": "conducted"
+      },
+      {
+        "source": "Conditionality",
+        "target": "Health impact",
+        "relation": "identified as an open question for"
+      },
+      {
+        "source": "Duration",
+        "target": "Health impact",
+        "relation": "identified as an open question for"
+      },
+      {
+        "source": "coalition agreement",
+        "target": "Participation Act",
+        "relation": "proposes a change related to outcomes of the experiments"
+      },
+      {
+        "source": "Physiological measures",
+        "target": "Health outcome measures",
+        "relation": "recommended to elucidate underlying biological effects in"
+      },
+      {
+        "source": "Physiological measures",
+        "target": "Long-term health outcomes",
+        "relation": "enable_modelling_of"
+      },
+      {
+        "source": "Physiological measures",
+        "target": "Self-reported measures",
+        "relation": "capture_biological_effects_not_captured_by"
+      },
+      {
+        "source": "Personality and behaviour",
+        "target": "Health impact",
+        "relation": "identified as an open question for"
+      },
+      {
+        "source": "Fife",
+        "target": "feasibility study",
+        "relation": "undertook"
+      },
+      {
+        "source": "Lack of common position among experts",
+        "target": "Russia's readiness for the introduction of UBI",
+        "relation": "includes assessments that Russia is not ready in principle"
+      },
+      {
+        "source": "Finnish trial",
+        "target": "reported as a failure",
+        "relation": "was"
+      },
+      {
+        "source": "Finnish trial",
+        "target": "benefits to well-being",
+        "relation": "demonstrated significant"
+      },
+      {
+        "source": "Finnish trial",
+        "target": "debate",
+        "relation": "influenced"
+      },
+      {
+        "source": "Finnish trial",
+        "target": "policy objective of reducing unemployment",
+        "relation": "reported as a failure due to"
+      },
+      {
+        "source": "Regularity",
+        "target": "Health impact",
+        "relation": "identified as an open question for"
+      },
+      {
+        "source": "pilot design",
+        "target": "UBI proposal",
+        "relation": "moved away from"
+      },
+      {
+        "source": "unexpected factors",
+        "target": "debate",
+        "relation": "may trigger more effectively than pilot projects"
+      },
+      {
+        "source": "Routinely collected linked respondent data",
+        "target": "Health outcome measures",
+        "relation": "may provide feasible data for"
+      },
+      {
+        "source": "Routinely collected linked respondent data",
+        "target": "Health impact",
+        "relation": "provide_data_to_demonstrate"
+      },
+      {
+        "source": "Routinely collected linked respondent data",
+        "target": "Microsimulations",
+        "relation": "can_be_used_in"
+      },
+      {
+        "source": "Experiments on the introduction of UBI",
+        "target": "Methods of implementation",
+        "relation": "inform choices of"
+      },
+      {
+        "source": "Experiments on the introduction of UBI",
+        "target": "Target categories of the population",
+        "relation": "involve_specifying"
+      },
+      {
+        "source": "Experiments on the introduction of UBI",
+        "target": "Duration",
+        "relation": "include_parameter_duration"
+      },
+      {
+        "source": "Upstream interventions",
+        "target": "Upstream determinants to health",
+        "relation": "target upstream determinants such as"
+      },
+      {
+        "source": "Upstream determinants to health",
+        "target": "population health",
+        "relation": "influence"
+      },
+      {
+        "source": "UBI-style pilot design",
+        "target": "active polices",
+        "relation": "produced greater policy impact on"
+      },
+      {
+        "source": "UBI-style pilot design",
+        "target": "debate",
+        "relation": "had very limited effects on"
+      },
+      {
+        "source": "High-income countries",
+        "target": "Low- and middle-income countries",
+        "relation": "resource is adaptable from trials in high-income countries to"
+      },
+      {
+        "source": "pilot projects",
+        "target": "limited policy and political effects",
+        "relation": "resulted in"
+      },
+      {
+        "source": "pilot projects",
+        "target": "Universal Basic Income (UBI)",
+        "relation": "recommended_as_pilot_for_introduction_of"
+      },
+      {
+        "source": "pilot projects",
+        "target": "Experiments on the introduction of UBI",
+        "relation": "are_form_of"
+      },
+      {
+        "source": "pilot projects",
+        "target": "universal basic income",
+        "relation": "test the effects of"
+      },
+      {
+        "source": "pilot projects",
+        "target": "debate",
+        "relation": "less effective at triggering than unexpected factors"
+      },
+      {
+        "source": "advocates of a different social policy approach",
+        "target": "coalition agreement",
+        "relation": "influenced"
+      },
+      {
+        "source": "advocates of a different social policy approach",
+        "target": "party manifestos",
+        "relation": "influenced"
+      },
+      {
+        "source": "advocates of a different social policy approach",
+        "target": "framing and interpretation",
+        "relation": "obtained success in the struggle over"
+      },
+      {
+        "source": "advocates of a different social policy approach",
+        "target": "long run",
+        "relation": "obtained success in the long run"
+      },
+      {
+        "source": "prevention agenda",
+        "target": "health in all policies approach",
+        "relation": "is the context for calls for"
+      },
+      {
+        "source": "evaluation",
+        "target": "Upstream interventions",
+        "relation": "evaluates"
+      },
+      {
+        "source": "evaluation",
+        "target": "outflow to work",
+        "relation": "focused solely on"
+      },
+      {
+        "source": "City of Edinburgh",
+        "target": "feasibility study",
+        "relation": "undertook"
+      },
+      {
+        "source": "Modular approach",
+        "target": "Types of measure and prospective resource intensity",
+        "relation": "based on"
+      },
+      {
+        "source": "Modular approach",
+        "target": "High-income countries",
+        "relation": "designed_for_use_in"
+      },
+      {
+        "source": "Modular approach",
+        "target": "Low- and middle-income countries",
+        "relation": "adaptable_for_use_in"
+      },
+      {
+        "source": "limits of devolution",
+        "target": "Universal Basic Income pilot",
+        "relation": "challenge to"
+      },
+      {
+        "source": "outflow to work",
+        "target": "workfare approach",
+        "relation": "in line with / aligned with"
+      },
+      {
+        "source": "Universal Basic Income pilot",
+        "target": "social protection",
+        "relation": "has implications for"
+      },
+      {
+        "source": "trust and intrinsic motivation",
+        "target": "labour market participation",
+        "relation": "examined whether it would lead to increased"
+      },
+      {
+        "source": "trust and intrinsic motivation",
+        "target": "wellbeing",
+        "relation": "examined whether it would lead to higher"
+      },
+      {
+        "source": "trust and intrinsic motivation",
+        "target": "social policy approach",
+        "relation": "constitutes a type of / is an example of"
+      },
+      {
+        "source": "institutional obstacles",
+        "target": "pilot design",
+        "relation": "shaped"
+      },
+      {
+        "source": "institutional obstacles",
+        "target": "Universal Basic Income pilot",
+        "relation": "identified in taking forward"
+      },
+      {
+        "source": "institutional obstacles",
+        "target": "limits of devolution",
+        "relation": "considered in light of"
+      },
+      {
+        "source": "institutional obstacles",
+        "target": "debate",
+        "relation": "considered in light of"
+      },
+      {
+        "source": "interdisciplinary work",
+        "target": "factors known to drive the social health gradient",
+        "relation": "is required to establish trials that observe"
+      },
+      {
+        "source": "interdisciplinary work",
+        "target": "joined-up evidence and policy",
+        "relation": "would result in"
+      },
+      {
+        "source": "Microsimulations",
+        "target": "Long-term health outcomes",
+        "relation": "used_to_model"
+      },
+      {
+        "source": "policy process",
+        "target": "policymakers",
+        "relation": "informed by results for?"
+      },
+      {
+        "source": "previous trials",
+        "target": "not reflected likely UBI policy",
+        "relation": "have either"
+      },
+      {
+        "source": "previous trials",
+        "target": "failed to measure impacts",
+        "relation": "have either"
+      },
+      {
+        "source": "Self-reported wellbeing measures that require paid licences",
+        "target": "Open Access evaluation instruments",
+        "relation": "used_instead_of"
+      },
+      {
+        "source": "Self-reported wellbeing measures that require paid licences",
+        "target": "Self-reported measures",
+        "relation": "is_a_type_of"
+      },
+      {
+        "source": "Validated measures from longitudinal cohort studies",
+        "target": "Health outcome measures",
+        "relation": "used as sources for"
+      },
+      {
+        "source": "adaptation of the pilot design",
+        "target": "unintended consequences",
+        "relation": "may produce"
+      },
+      {
+        "source": "feasibility study",
+        "target": "financial costings",
+        "relation": "explores"
+      },
+      {
+        "source": "feasibility study",
+        "target": "institutional obstacles",
+        "relation": "explores"
+      },
+      {
+        "source": "feasibility study",
+        "target": "Universal Basic Income pilot",
+        "relation": "assesses introduction of"
+      },
+      {
+        "source": "feasibility study",
+        "target": "social security debate",
+        "relation": "impacts"
+      },
+      {
+        "source": "feasibility study",
+        "target": "policy context",
+        "relation": "impacts"
+      },
+      {
+        "source": "feasibility study",
+        "target": "social protection",
+        "relation": "has wider implications for progress in"
+      },
+      {
+        "source": "Needs-based supplements",
+        "target": "Health impact",
+        "relation": "identified as an open question for"
+      },
+      {
+        "source": "experiments low in regulation",
+        "target": "basic income experiments",
+        "relation": "alternative name for"
+      },
+      {
+        "source": "debate",
+        "target": "independence",
+        "relation": "is about"
+      },
+      {
+        "source": "debate",
+        "target": "cost-benefit analysis",
+        "relation": "concerns / is about"
+      },
+      {
+        "source": "debate",
+        "target": "Universal Basic Income (UBI)",
+        "relation": "concerns / is about"
+      },
+      {
+        "source": "Self-reported objective income data",
+        "target": "Microsimulations",
+        "relation": "remains a challenge and limits accuracy of data for"
+      },
+      {
+        "source": "Self-reported objective income data",
+        "target": "Self-reported measures",
+        "relation": "is_a_type_of"
+      },
+      {
+        "source": "universal basic income",
+        "target": "orthodox welfare rationale",
+        "relation": "is a radical departure from"
+      },
+      {
+        "source": "Three pathways to health impact",
+        "target": "Health impact",
+        "relation": "are pathways to"
+      },
+      {
+        "source": "UBI proposal",
+        "target": "universal basic income",
+        "relation": "refers to"
+      },
+      {
+        "source": "qualitative case study analysis",
+        "target": "B-Mincome project",
+        "relation": "used to analyze"
+      },
+      {
+        "source": "Six key principles",
+        "target": "Modular approach",
+        "relation": "underpin"
+      },
+      {
+        "source": "party manifestos",
+        "target": "universal basic income",
+        "relation": "contain proposals to change social policy in the direction of"
+      },
+      {
+        "source": "Self-reported measures",
+        "target": "Health outcome measures",
+        "relation": "may provide feasible means of producing"
+      },
+      {
+        "source": "Self-reported measures",
+        "target": "Routinely collected linked respondent data",
+        "relation": "used_alongside"
+      },
+      {
+        "source": "Self-reported measures",
+        "target": "Health impact",
+        "relation": "provide_data_to_demonstrate"
+      },
+      {
+        "source": "Self-reported measures",
+        "target": "Microsimulations",
+        "relation": "can_be_used_in"
+      },
+      {
+        "source": "independence",
+        "target": "Universal Basic Income pilot",
+        "relation": "challenge to"
+      },
+      {
+        "source": "Open Access evaluation instruments",
+        "target": "Self-reported wellbeing measures that require paid licences",
+        "relation": "coexist with a licensing tension contrasting freely available tools and proprietary measures"
+      },
+      {
+        "source": "Open Access evaluation instruments",
+        "target": "evaluation",
+        "relation": "usable_for"
+      },
+      {
+        "source": "Theoretical model of impact",
+        "target": "Three pathways to health impact",
+        "relation": "identifies"
+      },
+      {
+        "source": "Theoretical model of impact",
+        "target": "Regularity",
+        "relation": "identifies open questions related to"
+      },
+      {
+        "source": "Theoretical model of impact",
+        "target": "Size of payment",
+        "relation": "identifies open questions related to"
+      },
+      {
+        "source": "Theoretical model of impact",
+        "target": "Needs-based supplements",
+        "relation": "identifies open questions related to"
+      },
+      {
+        "source": "Theoretical model of impact",
+        "target": "Personality and behaviour",
+        "relation": "identifies open questions related to"
+      },
+      {
+        "source": "Theoretical model of impact",
+        "target": "Conditionality",
+        "relation": "identifies open questions related to"
+      },
+      {
+        "source": "Theoretical model of impact",
+        "target": "Duration",
+        "relation": "identifies open questions related to"
+      },
+      {
+        "source": "Theoretical model of impact",
+        "target": "Universal Basic Income (UBI)",
+        "relation": "models the health impact of"
+      },
+      {
+        "source": "statistical modelling",
+        "target": "shorter-term findings",
+        "relation": "is needed to extrapolate from"
+      },
+      {
+        "source": "statistical modelling",
+        "target": "long-term population-level outcomes",
+        "relation": "needed to extrapolate shorter-term findings to"
+      },
+      {
+        "source": "Steering Committee's feasibility study",
+        "target": "social security debate",
+        "relation": "impacted"
+      },
+      {
+        "source": "Steering Committee's feasibility study",
+        "target": "commissioned research components",
+        "relation": "has commissioned research components"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Mitigation of poverty",
+        "relation": "associated primary goal:"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Socio-economic inequality",
+        "relation": "aims_to_mitigate"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Minimum standard of living",
+        "relation": "aims_to_ensure"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Social justice",
+        "relation": "aims_to_ensure"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Risks and positive effects of UBI",
+        "relation": "associated considerations include"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Upstream interventions",
+        "relation": "conceptualized as an upstream intervention"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "cash transfers to citizens",
+        "relation": "is a system of"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "population health",
+        "relation": "is proposed to be trialed as a population health measure"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "stress reduction",
+        "relation": "could benefit population health including via"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Target categories of the population",
+        "relation": "aims_to_ensure_minimum_for_target_categories"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Sources of funding",
+        "relation": "raises_questions_about"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Upstream determinants to health",
+        "relation": "acts as an upstream intervention affecting"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Health impact",
+        "relation": "promotes"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Personality and behaviour",
+        "relation": "affects"
+      },
+      {
+        "source": "Universal Basic Income (UBI)",
+        "target": "Universal Basic Income (UBI)",
+        "relation": "have not previously been designed specifically to promote"
+      },
+      {
+        "source": "social gradient in health",
+        "target": "biopsychosocial theory",
+        "relation": "is examined in comparison with"
+      },
+      {
+        "source": "North Ayrshire",
+        "target": "feasibility study",
+        "relation": "undertook"
+      },
+      {
+        "source": "Glasgow",
+        "target": "feasibility study",
+        "relation": "undertook"
+      },
+      {
+        "source": "field experiments",
+        "target": "universal basic income",
+        "relation": "are being carried out to test the effects of"
+      },
+      {
+        "source": "Transitional forms of UBI",
+        "target": "Russia's readiness for the introduction of UBI",
+        "relation": "assessed as feasible by a substantial proportion of experts"
+      },
+      {
+        "source": "economic powers",
+        "target": "pilot design",
+        "relation": "shaped"
+      },
+      {
+        "source": "financial costings",
+        "target": "Universal Basic Income pilot",
+        "relation": "identified in taking forward"
+      },
+      {
+        "source": "financial costings",
+        "target": "limits of devolution",
+        "relation": "considered in light of"
+      },
+      {
+        "source": "financial costings",
+        "target": "debate",
+        "relation": "considered in light of"
+      },
+      {
+        "source": "Pilot project",
+        "target": "Target categories of the population",
+        "relation": "requires definition of during implementation of experiments"
+      },
+      {
+        "source": "Pilot project",
+        "target": "Duration",
+        "relation": "has_duration_parameter"
+      },
+      {
+        "source": "policy objective of reducing unemployment",
+        "target": "reported as a failure",
+        "relation": "was cited as reason for"
+      },
+      {
+        "source": "policy objective of reducing unemployment",
+        "target": "benefits to well-being",
+        "relation": "contrasts with"
+      },
+      {
+        "source": "framing and interpretation",
+        "target": "advocates of a different social policy approach",
+        "relation": "enabled success for"
+      },
+      {
+        "source": "institutional context",
+        "target": "pilot design",
+        "relation": "shaped"
+      },
+      {
+        "source": "resource allocation by Government",
+        "target": "produce evidence that enables accurate analysis",
+        "relation": "is required to"
+      },
+      {
+        "source": "Emergency UBI",
+        "target": "Universal Basic Income (UBI)",
+        "relation": "is a form of"
+      },
+      {
+        "source": "Health outcome measures",
+        "target": "evaluation",
+        "relation": "assessed_in_evaluation"
+      },
+      {
+        "source": "major funders",
+        "target": "produce evidence that enables accurate analysis",
+        "relation": "are required to"
+      },
+      {
+        "source": "Russia's readiness for the introduction of UBI",
+        "target": "Transitional forms of UBI",
+        "relation": "experts_assessed_feasibility_of_transitional_forms"
+      },
+      {
+        "source": "Russia's readiness for the introduction of UBI",
+        "target": "Universal Basic Income (UBI)",
+        "relation": "experts_assessed_not_ready_for_full_introduction"
+      },
+      {
+        "source": "Participation Act",
+        "target": "basic income experiments",
+        "relation": "was not initially amended in response to"
+      },
+      {
+        "source": "municipalities",
+        "target": "basic income experiments",
+        "relation": "carried out / implemented"
+      }
+    ]
+  },
+  "hypotheses": [
+    {
+      "id": "e9b5b106-8082-4fa7-83e5-1b792bfacbe4",
+      "text": "When basic\u2011income/UBI trials are designed and evaluated with primary emphasis on short\u2011term economic metrics (employment, earnings, labour supply, immediate consumption), those measurement choices (short follow\u2011up windows, self\u2011reported surveys only, narrow primary outcomes) systematically bias detection away from slower, non\u2011economic pathways (reduced chronic stress, improved sleep and metabolic profiles, increased decision\u2011making autonomy and political/social participation). This measurement bias (a) produces null or attenuated findings for wellbeing/health endpoints, (b) feeds cost\u2013benefit and political appraisals that justify smaller, targeted, or conditional pilots, and (c) prompts design compromises that further disrupt the psychosocial/biological causal chain (reduced regularity/size/duration/universality of payments). The net causal mechanism is a feedback loop in which measurement choices bias outcome detection \u2192 shape policy interpretation \u2192 generate design compromises \u2192 attenuate the very mediators (stress reduction, agency, time allocation, health service access) needed for health and empowerment gains, thereby producing systematically underestimated long\u2011run welfare effects of unconditional basic income.",
+      "domain_tags": [
+        "Methodology",
+        "Health",
+        "Public Policy",
+        "Evaluation Science"
+      ],
+      "novelty_score": 0.75,
+      "feasibility_score": 0.65,
+      "testability_score": 0.78,
+      "search_query": "\"basic income\" OR \"universal basic income\" OR UBI AND (trial OR pilot OR experiment) AND (measurement OR \"primary outcome\" OR \"outcome measures\") AND (health OR psychosocial OR biomarker OR cortisol OR \"mental health\" OR empowerment) AND (conditionality OR targeting OR design OR duration OR payment size)",
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Suggests broadening outcomes to capture full impact.",
+      "is_recommended": true,
+      "rank": 2,
+      "causal_chain": {
+        "nodes": [
+          "Trial design priorities (short\u2011term economic primary outcomes)",
+          "Measurement choices (short follow\u2011up, self\u2011report, narrow outcomes)",
+          "Observed evidence (null/limited economic & health findings)",
+          "Policy/cost\u2013benefit interpretation",
+          "Political pressure and approval constraints",
+          "Design compromises (conditionality, targeting, reduced size/duration)",
+          "Attenuation of psychosocial/biological mediators (stress, sleep, agency)",
+          "True long\u2011run health and empowerment impacts (underdetected)"
+        ],
+        "relations": [
+          "drives",
+          "produces",
+          "yields",
+          "influences",
+          "induces",
+          "causes",
+          "reduces activation of",
+          "is masked in"
+        ],
+        "source": "deep_synthesis",
+        "confidence": 0.72
+      },
+      "evidence_summary": "VERDICT: Lacks specific data \u2014 the literature largely focuses on economic/distributional questions and often reports positive health or educational effects (contradicting a blanket measurement-driven null hypothesis), while few studies explicitly examine measurement choices, follow\u2011up windows, or the proposed policy\u2013measurement feedback loop, so the hypothesis is not broadly supported nor directly tested.",
+      "evidence": [
+        {
+          "paper_id": "https://openalex.org/W3123452675",
+          "title": "Universal Basic Income in the Developing World",
+          "venue": null,
+          "year": 2019,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "Abstract asks whether universal basic income in developing countries would be effective and discusses three questions: (1) how recipients would use incremental income, (2) whether it would catalyze broader economic growth, and (3) whether universality is preferable to targeting.",
+            "Notes increased interest stems from positive results of some cash-transfer programs and dissatisfaction with targeted approaches.",
+            "Abstract does not address measurement choices, follow-up windows, specific health or psychosocial mediators (stress, sleep, metabolic changes, autonomy, social/political participation), nor the feedback loop between measurement, policy interpretation, and design compromises described in the hypothesis."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W2888797381",
+          "title": "Universal Basic Incomes versus Targeted Transfers: Anti-Poverty Programs in Developing Countries",
+          "venue": null,
+          "year": 2018,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "Paper frames UBI versus targeted transfers within optimal income\u2011taxation and redistribution in developing countries (Indonesia, Peru).",
+            "Focus is on administrative feasibility, limited income data, inclusion in formal tax system, and tradeoffs between universal and targeted schemes.",
+            "Provides empirical evidence on targeting tradeoffs using national transfer program data from Indonesia and Peru.",
+            "Concludes by linking findings to policy debate and practical administration challenges.",
+            "Does not address measurement choices, follow\u2011up windows, the use of short\u2011term economic metrics, or health/psychosocial mediators (stress, sleep, metabolic profiles, agency) central to the hypothesis."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W2788557597",
+          "title": "No Strings Attached: The Behavioral Effects of U.S. Unconditional Cash Transfer Programs",
+          "venue": null,
+          "year": 2018,
+          "stance": "contradict",
+          "strength": 3,
+          "key_points": [
+            "Many studies find no statistically significant effect of unconditional cash transfers on employment probability (supports hypothesis\u2019 point about null/attenuated economic effects).",
+            "Where effects on labor supply are found, they are small (10% income increase \u2192 ~1% decrease in labor supply).",
+            "The review reports evidence that unconditional cash transfers can improve health and educational outcomes, and reduce criminality and drug & alcohol use, particularly for disadvantaged youths \u2014 which runs counter to the hypothesis\u2019 claim that measurement choices systematically produce null or attenuated findings for wellbeing/health endpoints.",
+            "The abstract does not discuss measurement choices (follow\u2011up windows, survey methods, or outcome selection) or downstream policy feedback loops described in the hypothesis, so it does not provide evidence for those parts of the proposed mechanism."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W2920204388",
+          "title": "Universal Basic Income in the Developing World",
+          "venue": null,
+          "year": 2019,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "Notes increased interest in giving everyone money due to positive results from existing cash transfer programs",
+            "Focuses on three questions: recipients' likely use of income, potential to unlock economic growth, and consequences of universal versus targeted transfers",
+            "Emphasizes economic and distributional considerations rather than measurement design or evaluation details",
+            "Abstract contains no discussion of measurement choices (follow\u2011up windows, outcome selection), psychosocial/biological mediators (stress, sleep, metabolic profiles), or long\u2011term health/wellbeing outcomes"
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W3084558126",
+          "title": "Cash Transfers and Health",
+          "venue": null,
+          "year": 2021,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "States that cash transfers (including potential UBI) influence health and that evidence suggests positive health effects overall.",
+            "Notes substantial complexities and variation in outcomes across studies, but does not specify the sources of variation.",
+            "Recommends continued research and policy innovation (e.g., UBI, Child Development Accounts).",
+            "Does not address measurement choices (short follow-up windows, narrow economic primary outcomes, self-reported surveys) or the proposed feedback loop in which measurement bias shapes policy/design and attenuates longer-term psychosocial/biological mediators."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W3081902051",
+          "title": "Why has the COVID-19 pandemic increased support for Universal Basic Income?",
+          "venue": null,
+          "year": 2021,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "Three studies (UK/US, n=802, 400, 397) in 2020 found stronger public support for UBI during the COVID-19 pandemic than for normal times.",
+            "Increased support was largely explained by perceived benefits such as administrative simplicity, efficiency, and the policy's ability to reduce stress and anxiety in society.",
+            "Study 2 directly compared UBI versus a conditional targeted transfer and found greater preference for UBI in the pandemic context.",
+            "Findings persisted six months after pandemic onset but with attenuated effect sizes.",
+            "The abstract reports public attitudes and perceived psychosocial benefits, but contains no data on UBI trials, measurement choices, follow-up windows, objective health outcomes, or policy design feedback loops."
+          ],
+          "url": null
+        }
+      ],
+      "constraints": [
+        {
+          "text": "At least one objective health indicator (biomarker such as salivary or hair cortisol, CRP, HbA1c, or linked administrative health records) must be pre\u2011specified as a primary or key secondary outcome.",
+          "type": "hard",
+          "importance": 10
+        },
+        {
+          "text": "Minimum follow\u2011up of 24 months (preferably 36 months) for health and psychosocial outcomes to capture medium\u2011term biological and behavioural changes.",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "Randomized allocation or a plausibly exogenous comparison group (e.g., stepped rollout, regression discontinuity) must be used to ensure credible causal attribution.",
+          "type": "hard",
+          "importance": 10
+        },
+        {
+          "text": "Trial arms intended to test universality/unconditionality must not be layered with additional eligibility restrictions or benefit offsets that materially change receipt regularity/size.",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "Sample size must be powered to detect small\u2013medium effects (Cohen's d \u2248 0.2\u20130.3) on psychosocial scales and clinically meaningful changes in biomarkers where feasible.",
+          "type": "hard",
+          "importance": 8
+        },
+        {
+          "text": "Process evaluation data documenting policy negotiation points, reasons for design compromises, and political communications must be collected contemporaneously.",
+          "type": "soft",
+          "importance": 8
+        },
+        {
+          "text": "Where linkage to administrative health data is not feasible, validated repeat biomarker collection protocols and objective behavioural measures (wearable sleep/HRV) should be used.",
+          "type": "soft",
+          "importance": 7
+        },
+        {
+          "text": "Payment size for at least one arm should equal a pre\u2011specified share of median local income (e.g., \u226515%) to plausibly generate measurable psychosocial/financial security effects.",
+          "type": "soft",
+          "importance": 7
+        }
+      ],
+      "stability_class": "stable",
+      "stability_reason": "High confidence causal chain.",
+      "evidence_status": "complete",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Evaluation design / measurement methodology",
+          "Health/biomarker research (stress physiology, chronic disease epidemiology)",
+          "Policy/political process analyses of pilot design and approvals"
+        ],
+        "missing_link": "There is no documented, empirically tested causal chain linking measurement and outcome choice in UBI trials to subsequent policy compromises and to under\u2011detection of psychosocial and physiological impacts.",
+        "field_assumption": "Evaluators and policymakers implicitly assume short\u2011term economic metrics are adequate proxies for overall welfare and that rapid employment/income effects capture the program's societal value.",
+        "structural_reason": "Different disciplinary incentives, data access barriers, and funding/political timelines segregate trial designers, health scientists, and political economists, so measurement and policy\u2011process feedbacks are rarely studied together.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Economic\u2011first evaluations imply short\u2011run labour/income outcomes determine program success, yet psychosocial and health theories predict delayed, non\u2011economic pathways that could produce substantial welfare gains.",
+        "belief_a": "Short\u2011term economic outcomes (employment, earnings) are the appropriate primary metrics to judge basic\u2011income pilots.",
+        "belief_b": "Health, psychosocial, and empowerment gains are central to long\u2011term welfare but require different measurement choices (biomarkers, long follow\u2011up, agency scales) and may be missed by standard economic metrics.",
+        "consistency_constraint": "Any valid account must demonstrate that (i) measurement/design choices causally reduce the probability of detecting psychosocial/health effects (not merely correlate), and (ii) alternative measurement and un\u2011compromised designs reveal materially different (larger or qualitatively distinct) welfare impacts."
+      },
+      "mechanism_class": "Measurement\u2011mediated evaluation bias (methodological / social\u2011epidemiological)",
+      "strength_profile": {
+        "mechanistic_coherence": "Medium",
+        "empirical_support": "Low",
+        "experimental_tractability": "Medium",
+        "translational_relevance": "Medium"
+      },
+      "confidence_roadmap": [
+        "Run or extend one or more cash-transfer trials with multi-year follow-up (3\u20135 years) that include objective biomarkers of stress and health (for example hair cortisol, HbA1c, blood pressure), administrative healthcare utilization, and linkage to earnings records to test whether longer follow-up and objective measures reveal delayed effects.",
+        "Conduct an individual participant data meta-analysis or meta-regression of existing UBI/cash-transfer trials, coding follow-up length, measurement modality (objective biomarkers vs self-report), and payment universality/regularity to test whether studies with longer windows and objective measures show systematically larger effects.",
+        "Carry out qualitative and process evaluations that document how measurement choices and political messaging influenced pilot design changes and subsequent payment regimes, to directly test the proposed policy\u2013measurement feedback loop."
+      ],
+      "critique": {
+        "interpretation": "The reviewed literature does not support the hypothesis that measurement choices systematically hide large, long\u2011term psychosocial or health benefits of unconditional basic income: most studies are neutral and one high\u2011quality U.S. cash\u2011transfer trial contradicts the proposed effect, producing an overall pattern that undermines the hypothesized feedback loop. In short, available evaluations either find no detectable downstream health/empowerment gains or are too heterogeneous to show the consistent biased under\u2011detection the hypothesis predicts.",
+        "structural_assessment": "Verdict: Structurally Undermined. The main scientific risk is that policymakers will treat the current null/neutral evidence as definitive and prematurely abandon or narrow large, sustained UBI experiments when insufficiently powered or short\u2011term measures may still miss modest or delayed health and empowerment effects.",
+        "limitations": [
+          "Interventions and contexts differ substantially from the canonical UBI (many studies examine time\u2011limited or targeted cash transfers, variable payment size/regularity, and developing\u2011country settings), so causal inferences about universal, permanent UBI are indirect.",
+          "Outcome measurement across studies is heterogeneous and often limited (short follow\u2011up windows, sparse objective biomarkers or physiological measures, reliance on self\u2011report), producing low power to detect small or delayed effects and making cross\u2011study synthesis difficult."
+        ],
+        "suggestions": [
+          "Implement a purpose\u2011built trial or pooled reanalysis that targets the hypothesized mechanisms: a sufficiently powered randomized study of sustained, universal unconditional payments with multi\u2011year follow\u2011up, pre\u2011registered mediation analyses, and objective measures (e.g., biomarkers of stress/metabolic health, actigraphy for sleep, administrative health/service use, validated autonomy/participation scales)."
+        ],
+        "decision": "Structurally Undermined",
+        "confidence": 0.8,
+        "weighted_score": -4.0,
+        "hash": "a52d112b3daec572ed5d021766400dba",
+        "risk_assessment": "The main scientific risk is that policymakers will treat the current null/neutral evidence as definitive and prematurely abandon or narrow large, sustained UBI experiments when insufficiently powered or short\u2011term measures may still miss modest or delayed health and empowerment effects."
+      }
+    },
+    {
+      "id": "62a94f7f-8728-4de5-8551-208718aa6d6b",
+      "text": "Design compromises introduced to secure political approval for UBI-style pilots \u2014 specifically conditionality, targeting/means-testing, reduced or irregular payment size, exclusions, and interactions with existing social assistance \u2014 systematically attenuate the core causal levers (income security, predictability, perceived agency) through which unconditional basic income would produce psychosocial relief and downstream biological and health benefits. These attenuated levers reduce measurable effects on stress, mental-health, health behaviors, and healthcare use, and produce weaker, less persuasive evidence for political scale-up; therefore pilots that depart from universality and unconditionality will tend to produce smaller or null psychosocial/biological/health outcomes and weaker political effects than a true UBI would. The mechanism is moderated by payment size, duration, population baseline vulnerability, measurement sensitivity (objective biomarkers vs self-report), and the political framing and process evaluation that documents compromises.",
+      "domain_tags": [
+        "Political",
+        "Policy",
+        "Public Health",
+        "Evaluation"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.6,
+      "testability_score": 0.8,
+      "search_query": "\"universal basic income\" OR \"basic income\" AND (conditional* OR target* OR \"means test\" OR \"means-test\" OR \"exclusion\") AND (health OR psychosocial OR stress OR cortisol OR biomarker OR \"mental health\" OR \"health utilization\") AND (pilot OR trial OR RCT OR evaluation OR political OR \"policy process\")",
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Explains why politically feasible pilots may not test true UBI.",
+      "is_recommended": true,
+      "rank": 3,
+      "causal_chain": {
+        "nodes": [
+          "Political negotiation introduces design compromises (conditionality, targeting, reduced size/irregularity, exclusions)",
+          "Intervention departs from universality/unconditionality (reduced coverage, predictability, and real value)",
+          "Household-level income security and predictability are reduced relative to ideal UBI",
+          "Psychosocial mediators are weakly affected (less stress reduction, lower perceived agency and planning horizon)",
+          "Physiological stress markers and health-related biomarkers show minimal change (cortisol, CRP, HbA1c, HRV)",
+          "Observable health outcomes and health-care utilization remain unchanged or only marginally improved",
+          "Measured economic/labour outcomes are ambiguous (short-run effects dominate) and do not convincingly demonstrate broader wellbeing gains",
+          "Political/policy traction for scaling up weakens because evidence is inconclusive or framed as limited"
+        ],
+        "relations": [
+          "causes",
+          "leads to",
+          "reduces",
+          "attenuates",
+          "fails to improve",
+          "results in",
+          "produces",
+          "undermines"
+        ],
+        "source": "deep_synthesis",
+        "confidence": 0.75
+      },
+      "evidence_summary": "VERDICT: Lacks specific data \u2014 while qualitative accounts and perception\u2011based studies suggest that conditionality, targeting, and other design compromises can undermine psychosocial benefits of basic income, the reviewed literature provides only indirect, theoretical, or non\u2011experimental evidence and no rigorous, systematic empirical tests showing that such compromises reliably attenuate biological/health or political outcomes.",
+      "evidence": [
+        {
+          "paper_id": "https://openalex.org/W3081902051",
+          "title": "Why has the COVID-19 pandemic increased support for Universal Basic Income?",
+          "venue": null,
+          "year": 2021,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "Three survey experiments (UK/US, n\u2248400\u2013802) measured public preferences for UBI during the 2020 COVID-19 pandemic, not outcomes of policy pilots.",
+            "Respondents showed stronger support for UBI in pandemic times than in normal times, and preferred UBI over a conditional targeted transfer in at least one study.",
+            "Increased support was partly explained by perceived advantages of UBI such as simplicity of administration and the belief that it would reduce stress and anxiety.",
+            "Findings persisted six months after the pandemic onset but with attenuated effect sizes.",
+            "The studies assess public perceptions and preference formation, not empirical effects of program design (conditionality, targeting, payment size, duration) on psychosocial, biological, health, or political outcomes.",
+            "Therefore the abstract provides only indirect, perception-based information relevant to the hypothesis and does not test or document the hypothesised causal mechanisms or mitigations from design compromises."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W4238613555",
+          "title": "The State of Social Safety Nets 2015",
+          "venue": null,
+          "year": 2015,
+          "stance": "neutral",
+          "strength": 2,
+          "key_points": [
+            "The report documents widespread expansion of non\u2011contributory transfers (cash and in\u2011kind) across >130 developing countries and aggregates evidence on their impacts using the World Bank ASPIRE database.",
+            "The abstract asserts that \u201csocial safety nets work\u201d and that there is rigorous evidence demonstrating their impact, and discusses improving efficiency and effectiveness of programs.",
+            "The document covers a broad range of programs (conditional and unconditional cash transfers, pensions, public works, subsidies) but the abstract does not specify differential effects by design features such as universality, unconditionality, targeting, payment regularity, or interactions with other assistance.",
+            "The abstract does not address the specific mechanisms central to the hypothesis (income security, predictability, perceived agency) nor does it report on psychosocial, biological, or health biomarkers or political signaling effects of pilot design compromises.",
+            "Overall, the abstract is high\u2011level and programmatic; it is relevant background but does not provide direct evidence for or against the hypothesis about design compromises attenuating UBI\u2019s psychosocial/health and political effects."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W4246685888",
+          "title": "For Protection and Promotion",
+          "venue": null,
+          "year": 2008,
+          "stance": "neutral",
+          "strength": 2,
+          "key_points": [
+            "Focuses on social safety nets broadly (targeted noncontributory transfers) rather than on universal basic income pilots.",
+            "Emphasizes that program design and implementation matter: coverage, generosity, targeting/eligibility, benefit levels, and payment mechanisms affect effectiveness.",
+            "States safety nets redistribute income, help households manage risk, and enable investments\u2014functions related to income security and risk management but does not measure psychosocial or biological outcomes.",
+            "Discusses conditional and unconditional cash transfers and various design trade-offs, but does not explicitly link design compromises (conditionality, targeting, reduced/irregular payments, exclusions) to attenuation of psychosocial mechanisms (predictability, perceived agency) or to weaker health/biological outcomes.",
+            "Provides practical guidance on tailoring programs to country circumstances and on monitoring and evaluation, but contains no direct empirical evidence about UBI-style pilots or the specific hypothesized causal pathway."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W3111604197",
+          "title": "Designing trials of Universal Basic Income for health impact: identifying interdisciplinary questions to address",
+          "venue": null,
+          "year": 2020,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "Recognizes UBI as a potential upstream intervention affecting material, biopsychosocial, and behavioural determinants of health.",
+            "Presents a theoretical model identifying three pathways to health impact (material, psychosocial, behavioural).",
+            "Identifies open questions about design features relevant to the hypothesis: regularity, size of payment, needs-based supplements, conditionality, and duration.",
+            "Notes that existing UBI schemes were not specifically designed to promote health and that evidence comes from cash transfer studies generally.",
+            "Frames the paper as scoping literature and setting interdisciplinary research challenges rather than providing empirical tests of how design compromises affect health outcomes."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W2946269302",
+          "title": "\u201cHuman Again\u201d: The (Unrealized) Promise of Basic Income in Ontario",
+          "venue": null,
+          "year": 2019,
+          "stance": "support",
+          "strength": 2,
+          "key_points": [
+            "Qualitative phenomenological study comparing Ontario traditional social assistance with a recent basic income pilot based on interviews with pilot recipients who had previously received traditional assistance.",
+            "Respondents reported that basic income improved nutrition, health, housing stability, social connections, and enabled longer-term financial planning \u2014 consistent with increases in income security, predictability, and perceived agency.",
+            "Participants described negative repercussions of conditionality in traditional programs, including work disincentives and burdensome bureaucratic hurdles, suggesting conditionality undermines beneficial effects.",
+            "Evidence is based on self-reported qualitative data from a pilot, not objective biomarkers or randomized trial outcomes, and the abstract does not address key hypothesis moderators (payment size, duration, targeting/means-testing, exclusions, interactions with other assistance) or political/process evaluation.",
+            "Overall, the abstract supports the hypothesis in principle (unconditional/basic income yields psychosocial benefits and conditionality is harmful) but provides weak/incomplete evidence for the hypothesis\u2019 broader claim about how specific design compromises systematically attenuate measurable biological/health outcomes or political effects."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W1504646660",
+          "title": "Cash Transfers and Temptation Goods: A Review of Global Evidence",
+          "venue": null,
+          "year": 2014,
+          "stance": "neutral",
+          "strength": 2,
+          "key_points": [
+            "Review of 19 quantitative studies on cash transfers and 'temptation goods' (alcohol, tobacco) finds almost uniformly no increase, and often a significant decrease, in spending on these goods.",
+            "Paper notes theoretical ambiguity: income effect could raise spending on normal goods, but substitution, social messaging, and household bargaining could offset that.",
+            "Results are drawn from multiple regions (Latin America, Africa, Asia) and supported by survey evidence; only two non-experimental studies report small increases.",
+            "Abstract does not report transfer design features relevant to the hypothesis (conditionality vs unconditionality, targeting, payment size/frequency, exclusions) nor mechanisms like predictability or perceived agency.",
+            "Therefore the evidence is tangentially relevant to health-behavior outcomes but inconclusive regarding whether political design compromises attenuate the psychosocial/biological pathways posited in the hypothesis."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W2991169479",
+          "title": "Exploring Universal Basic Income: A Guide to Navigating Concepts, Evidence, and Practices",
+          "venue": null,
+          "year": 2019,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "Provides a broad framework on UBI features, objectives, coverage, incidence, adequacy, incentives, and effects on poverty and inequality.",
+            "Examines financing, political economy, and practical implementation trade-offs and how UBI differs from or complements other social assistance programs (i.e., targeting/conditionality vs universality).",
+            "Reviews past and current country experiences and surveys policy proposals, which may include examples of design compromises but the abstract gives no specific outcome data.",
+            "Presents original micro\u2013tax benefit simulations and discusses analytics and practice, but the abstract does not report findings on psychosocial, biological, or health outcomes or on how design compromises attenuate causal levers."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W4255808176",
+          "title": "Transfer State",
+          "venue": null,
+          "year": 2019,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "Historical/archival analysis of guaranteed income proposals in Britain since 1918; not an empirical trial or evaluation of pilots.",
+            "Describes the contested nature of transfer payments and the use of conditionality and in-work benefits to \u2018activate\u2019 unemployed people (mentions Universal Credit as culmination).",
+            "Examines cultural and political barriers to a Universal Basic Income and the role of an integrated tax-and-benefit system in UK policy.",
+            "Does not report data on psychosocial, biological, or health outcomes, nor on effects of design compromises in pilot implementations.",
+            "Relevant to the hypothesis only insofar as it documents the existence of political compromises and conditionality; provides no direct evidence for or against the hypothesised causal pathways or measured health impacts."
+          ],
+          "url": null
+        }
+      ],
+      "constraints": [
+        {
+          "text": "Randomize design features of interest (unconditional vs conditional; universal vs targeted; payment size levels; regular vs irregular schedules) within trials (factorial or multi-arm) to estimate causal effects of compromises.",
+          "type": "hard",
+          "importance": 10
+        },
+        {
+          "text": "Preserve a true 'UBI' arm that is unconditional, universal within the sample, regular in timing, and of sufficient real value to plausibly affect material security (define minimum real-value threshold in context).",
+          "type": "hard",
+          "importance": 10
+        },
+        {
+          "text": "Include objective physiological biomarkers of chronic stress and cardiometabolic risk (e.g., hair or salivary cortisol, CRP, HbA1c, heart-rate variability) plus administrative health-utilization data, not only self-report.",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "Minimum follow-up of 24 months (preferably longer) to capture medium-term psychosocial and health pathway activation; plan interim measures but prioritize longer-term outcomes.",
+          "type": "hard",
+          "importance": 8
+        },
+        {
+          "text": "Pre-register primary outcomes (including psychosocial/biomarker outcomes and mediator analysis) and statistical analysis plans to avoid outcome-selection bias toward short-term economic metrics.",
+          "type": "hard",
+          "importance": 8
+        },
+        {
+          "text": "Collect detailed process and political-economy data: record design negotiation steps, who requested each compromise, timeline, media framing, and policymakers' post-pilot actions to link design choices to political outcomes.",
+          "type": "hard",
+          "importance": 8
+        },
+        {
+          "text": "Ensure sufficient sample size and power calculations for mediator and biomarker effects (not just employment effects); plan for attrition and use linked administrative data where possible.",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "Avoid layering multiple policy constraints on the UBI arm (e.g., conditionality plus targeting plus supplemental restrictions) that would prevent isolating which compromise drives effect attenuation.",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "Ethical protections and informed consent must be maintained; ensure participants understand arm allocation and any conditionalities, and plan mitigation for harms in severely affected subgroups.",
+          "type": "soft",
+          "importance": 7
+        },
+        {
+          "text": "Where biomarkers are infeasible, implement high-quality, validated psychosocial instruments and maximize administrative linkage to approximate objective outcomes.",
+          "type": "soft",
+          "importance": 6
+        }
+      ],
+      "stability_class": "stable",
+      "stability_reason": "High confidence causal chain.",
+      "evidence_status": "complete",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Policy/political negotiation and trial design literature (political scientists, policy-makers)",
+          "Population health and biomedical measurement literature (epidemiologists, clinicians)",
+          "Evaluation/trial methodology literature (randomized trialists, impact evaluation specialists)"
+        ],
+        "missing_link": "There is little causal evidence directly linking specific design compromises (conditionality, targeting, reduced/irregular payments) to attenuation of psychosocial mediators and objective biomarkers, and to subsequent weakening of political support.",
+        "field_assumption": "Evaluations implicitly assume short-term economic/employment metrics sufficiently capture intervention value, sidelining psychosocial and biological mediators.",
+        "structural_reason": "Different disciplinary incentives, funding priorities, and political timelines separate trial designers from health researchers and political-economy analysts, causing limited cross-disciplinary trial designs and measurement.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Mechanistic models and theory predict substantial psychosocial and health gains from unconditional cash, yet many implemented pilots (often modified for politics) report limited or equivocal health/political effects.",
+        "belief_a": "A true UBI (unconditional, regular, adequate payments) will generate measurable psychosocial relief, biological improvements, and durable political momentum.",
+        "belief_b": "Observed pilots and evaluations generally show small or no health improvements and limited policy traction.",
+        "consistency_constraint": "Any valid explanation must show that variation in explicit design variables (conditionality, targeting, payment size/regularity, duration) causally changes mediating psychosocial and biological pathways, measured objectively and robustly, and that these mediator changes predict downstream health and political outcomes."
+      },
+      "mechanism_class": "Psychosocial-biological stress mediation with political-economy mediation",
+      "strength_profile": {
+        "mechanistic_coherence": "High",
+        "empirical_support": "Medium",
+        "experimental_tractability": "High",
+        "translational_relevance": "High"
+      },
+      "confidence_roadmap": [
+        "Design a randomized or quasi-experimental comparison that varies conditionality/targeting and payment predictability while holding average payment size constant, measuring psychosocial mediators (perceived agency, financial stress), objective biomarkers (hair cortisol, sleep actigraphy, blood pressure), and political outcomes (attitudes to scale-up).",
+        "Exploit natural experiments or phased rollouts where eligibility rules or payment regularity differ across jurisdictions to estimate causal effects of conditionality and irregularity on stress and health outcomes using difference-in-differences and regression discontinuity designs.",
+        "Embed structured process evaluation in pilots to measure recipients\u2019 perceptions of stigma, administrative friction, and sense of security, and test whether these mediators correlate with biological and behavioral outcomes."
+      ],
+      "critique": {
+        "interpretation": "The corpus is sparse and largely conceptual or neutral, providing only weak empirical support for the hypothesis; the Ontario pilot offers suggestive evidence that political compromises can blunt outcomes, but overall the evidence base is insufficient to establish that design compromises systematically attenuate the psychosocial and biological pathways of a true UBI. In short, available studies hint at the proposed mechanism but do not robustly test it or quantify effect modification by common compromises (conditionality, targeting, irregular payments).",
+        "structural_assessment": "Verdict: Requires Refinement. The principal risk is that compromised pilots will yield weak or null health and political effects that are misinterpreted as evidence against UBI generally, prematurely undermining support for genuinely unconditional universal programs.",
+        "limitations": [
+          "Few rigorous, comparative empirical evaluations exist that directly contrast an unconditional universal payment with program variants containing common political compromises, limiting causal inference.",
+          "High heterogeneity across pilots (payment size, duration, target populations, coexisting social assistance) and short follow-up periods impede generalization and make it difficult to isolate which design features drive attenuated effects.",
+          "Outcome measurement is often insufficiently sensitive: many studies rely on self-report rather than objective biomarkers or administrative healthcare utilization, and political/process documentation about compromises is sparse or retrospective."
+        ],
+        "suggestions": [
+          "Conduct a sufficiently powered multi-arm experimental or quasi-experimental study (or coordinated set of trials) that directly compares a universal unconditional arm to arms that introduce specific political compromises (means-testing, conditionality, reduced/irregular payments); ensure long enough duration, collect objective biomarkers (e.g., diurnal cortisol, CRP), healthcare utilization data, and embedded process/political evaluations to document how compromises alter perceived agency, predictability, and income security."
+        ],
+        "decision": "Requires Refinement",
+        "confidence": 0.9,
+        "weighted_score": 2.7,
+        "hash": "9216d874c4f4117d88c9ec37013257f1",
+        "risk_assessment": "The principal risk is that compromised pilots will yield weak or null health and political effects that are misinterpreted as evidence against UBI generally, prematurely undermining support for genuinely unconditional universal programs."
+      }
+    }
+  ],
+  "all_hypotheses": [
+    {
+      "id": "a68dcc24-b525-4ffb-b758-73bb6d5ae385",
+      "text": "Pilots are evaluated using intent-to-treat designs without accounting for take-up heterogeneity, masking subgroup benefits.",
+      "domain_tags": [
+        "Methodology"
+      ],
+      "novelty_score": 0.48,
+      "feasibility_score": 0.82,
+      "testability_score": 0.88,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Encourages nuanced analysis to uncover conditional benefits.",
+      "is_recommended": true,
+      "rank": 1,
+      "causal_chain": {
+        "nodes": [
+          "evaluation design",
+          "heterogeneous take-up",
+          "masked effects"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Methodological",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "e9b5b106-8082-4fa7-83e5-1b792bfacbe4",
+      "text": "Measurement choices focus on short-term economic metrics and miss psychosocial, health, or empowerment gains.",
+      "domain_tags": [
+        "Methodology",
+        "Health"
+      ],
+      "novelty_score": 0.45,
+      "feasibility_score": 0.8,
+      "testability_score": 0.85,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Suggests broadening outcomes to capture full impact.",
+      "is_recommended": true,
+      "rank": 2,
+      "causal_chain": {
+        "nodes": [
+          "narrow metrics",
+          "missed benefits",
+          "false negative"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Measurement",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "62a94f7f-8728-4de5-8551-208718aa6d6b",
+      "text": "Design compromises (conditionality, targeting) made to secure political approval dilute core UBI features and neutralize intended effects.",
+      "domain_tags": [
+        "Political",
+        "Policy"
+      ],
+      "novelty_score": 0.6,
+      "feasibility_score": 0.7,
+      "testability_score": 0.65,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Explains why politically feasible pilots may not test true UBI.",
+      "is_recommended": true,
+      "rank": 3,
+      "causal_chain": {
+        "nodes": [
+          "political compromise",
+          "feature dilution",
+          "reduced effect"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Design",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "2004586a-1b21-4db4-a734-2303ecc5a7b4",
+      "text": "Public framing and messaging around pilots can generate stigma or elite backlash that reduces uptake and political support.",
+      "domain_tags": [
+        "Political",
+        "Communications"
+      ],
+      "novelty_score": 0.5,
+      "feasibility_score": 0.7,
+      "testability_score": 0.7,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Indicates communication strategy is critical to outcomes.",
+      "is_recommended": true,
+      "rank": 4,
+      "causal_chain": {
+        "nodes": [
+          "messaging",
+          "public perception",
+          "reduced support"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Communications",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "88825a05-94fb-4584-916b-65aad2db6600",
+      "text": "Pilots change expectations: recipients spend differently during trials (anticipation or one-off consumption) that vanish after pilots end.",
+      "domain_tags": [
+        "Behavioral"
+      ],
+      "novelty_score": 0.4,
+      "feasibility_score": 0.7,
+      "testability_score": 0.75,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Explains ephemeral positive signals that don't scale.",
+      "is_recommended": true,
+      "rank": 5,
+      "causal_chain": {
+        "nodes": [
+          "participant expectations",
+          "short-term spending",
+          "post-pilot reversal"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Behavioral",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "5f939319-bf60-40a9-9b0a-2ebb96f27935",
+      "text": "Trust deficits in institutions reduce participation fidelity and data quality, biasing pilot results downward.",
+      "domain_tags": [
+        "Sociology",
+        "Implementation"
+      ],
+      "novelty_score": 0.55,
+      "feasibility_score": 0.6,
+      "testability_score": 0.65,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Suggests bolstering legitimacy improves pilot validity.",
+      "is_recommended": true,
+      "rank": 6,
+      "causal_chain": {
+        "nodes": [
+          "institutional trust",
+          "low engagement",
+          "biased outcomes"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Institutional",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "c0bd201c-02b7-4703-a4da-e5ebb5662e65",
+      "text": "Pilot funding and fiscal narratives emphasize short-term costs, enabling opponents to dismiss positive results as unaffordable at scale.",
+      "domain_tags": [
+        "Political",
+        "Economics"
+      ],
+      "novelty_score": 0.5,
+      "feasibility_score": 0.6,
+      "testability_score": 0.6,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Links economic storytelling to policy uptake failures.",
+      "is_recommended": true,
+      "rank": 7,
+      "causal_chain": {
+        "nodes": [
+          "fiscal framing",
+          "cost narrative",
+          "political rejection"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Political",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "ac9a4f2b-96f6-4a11-b386-c5abfa84d3fe",
+      "text": "Coalition dynamics and electoral timing cause pilots to be cut short or reframed, preventing durable policy learning.",
+      "domain_tags": [
+        "Political"
+      ],
+      "novelty_score": 0.55,
+      "feasibility_score": 0.55,
+      "testability_score": 0.5,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Connects political timing to interrupted evidence accumulation.",
+      "is_recommended": false,
+      "rank": 8,
+      "causal_chain": {
+        "nodes": [
+          "electoral cycle",
+          "coalition shifts",
+          "policy discontinuity"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Political",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "70fe91ea-e613-4d57-afd5-e2a4220dbeca",
+      "text": "Small-scale pilots fail to reproduce macro-level externalities (labor markets, prices), so scaled effects differ and pilots mislead.",
+      "domain_tags": [
+        "Economics",
+        "Scaling"
+      ],
+      "novelty_score": 0.6,
+      "feasibility_score": 0.5,
+      "testability_score": 0.45,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Warns that pilot-to-policy extrapolation can be invalid.",
+      "is_recommended": true,
+      "rank": 9,
+      "causal_chain": {
+        "nodes": [
+          "small scale",
+          "externalities absent",
+          "different macro effect"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Scaling",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    }
+  ],
+  "hypothesis_mode": "deep",
+  "critique": {
+    "summary": "The reviewed literature does not support the hypothesis that measurement choices systematically hide large, long\u2011term psychosocial or health benefits of unconditional basic income: most studies are neutral and one high\u2011quality U.S. cash\u2011transfer trial contradicts the proposed effect, producing an overall pattern that undermines the hypothesized feedback loop. In short, available evaluations either find no detectable downstream health/empowerment gains or are too heterogeneous to show the consistent biased under\u2011detection the hypothesis predicts.",
+    "recommendation": "Structurally Undermined: Implement a purpose\u2011built trial or pooled reanalysis that targets the hypothesized mechanisms: a sufficiently powered randomized study of sustained, universal unconditional payments with multi\u2011year follow\u2011up, pre\u2011registered mediation analyses, and objective measures (e.g., biomarkers of stress/metabolic health, actigraphy for sleep, administrative health/service use, validated autonomy/participation scales).",
+    "full_output": {
+      "interpretation": "The reviewed literature does not support the hypothesis that measurement choices systematically hide large, long\u2011term psychosocial or health benefits of unconditional basic income: most studies are neutral and one high\u2011quality U.S. cash\u2011transfer trial contradicts the proposed effect, producing an overall pattern that undermines the hypothesized feedback loop. In short, available evaluations either find no detectable downstream health/empowerment gains or are too heterogeneous to show the consistent biased under\u2011detection the hypothesis predicts.",
+      "structural_assessment": "Verdict: Structurally Undermined. The main scientific risk is that policymakers will treat the current null/neutral evidence as definitive and prematurely abandon or narrow large, sustained UBI experiments when insufficiently powered or short\u2011term measures may still miss modest or delayed health and empowerment effects.",
+      "limitations": [
+        "Interventions and contexts differ substantially from the canonical UBI (many studies examine time\u2011limited or targeted cash transfers, variable payment size/regularity, and developing\u2011country settings), so causal inferences about universal, permanent UBI are indirect.",
+        "Outcome measurement across studies is heterogeneous and often limited (short follow\u2011up windows, sparse objective biomarkers or physiological measures, reliance on self\u2011report), producing low power to detect small or delayed effects and making cross\u2011study synthesis difficult."
+      ],
+      "suggestions": [
+        "Implement a purpose\u2011built trial or pooled reanalysis that targets the hypothesized mechanisms: a sufficiently powered randomized study of sustained, universal unconditional payments with multi\u2011year follow\u2011up, pre\u2011registered mediation analyses, and objective measures (e.g., biomarkers of stress/metabolic health, actigraphy for sleep, administrative health/service use, validated autonomy/participation scales)."
+      ],
+      "decision": "Structurally Undermined",
+      "confidence": 0.8,
+      "weighted_score": -4.0,
+      "hash": "a52d112b3daec572ed5d021766400dba",
+      "risk_assessment": "The main scientific risk is that policymakers will treat the current null/neutral evidence as definitive and prematurely abandon or narrow large, sustained UBI experiments when insufficiently powered or short\u2011term measures may still miss modest or delayed health and empowerment effects."
+    }
+  },
+  "decision_summary": {
+    "primary_hypothesis_id": "62a94f7f-8728-4de5-8551-208718aa6d6b",
+    "primary_hypothesis_reason": "Hypothesis 2 is the most actionable because it specifies a clear, plausible mechanism\u2014design compromises reduce income security, predictability, and perceived agency\u2014and that mechanism is both directly testable and immediately relevant to policy. Evidence to date is sparse but suggestive, and the hypothesis can be evaluated with feasible experimental designs or natural experiments that vary conditionality and payment regularity. Positive findings would directly inform pilot design and political strategy, so investing in tests of Hypothesis 2 yields high translational value and tractable, interpretable data.",
+    "evidence_level": "Inconclusive",
+    "key_risks": [
+      "Heterogeneity across trials: differences in context, baseline vulnerability, and co\u2011programs may mask general patterns and limit external validity.",
+      "Confounding by design choice: politically driven compromises may correlate with unobserved factors (budgetary constraints, local politics) that also affect outcomes, hindering causal attribution.",
+      "Measurement heterogeneity: variable use of self-report versus objective biomarkers and short versus long follow-up windows makes pooled inference difficult.",
+      "Small sample sizes and underpowered health endpoints in existing pilots reduce ability to detect moderate effects.",
+      "Policy feedback complexity: the proposed feedback loop assumes a directional chain that may be bi\u2011directional or broken at multiple points, complicating inference.",
+      "Operational and ethical constraints: randomized manipulation of conditionality or universality may face political resistance or ethical pushback, limiting experimental scope."
+    ],
+    "recommended_next_steps": [
+      "Protocol a factorial or multi-arm randomized trial (cluster or individual) that holds payment size constant while varying conditionality (unconditional vs conditional/targeted) and payment predictability (regular vs irregular). Pre-specify psychosocial mediators, objective biomarkers (hair cortisol, HbA1c, blood pressure, actigraphy for sleep), administrative linkages, and a minimum 3-year follow-up.",
+      "Commission an IPD meta-analysis of existing cash-transfer/UBI trials. Harmonize outcomes (stress biomarkers where available, mental-health scales, healthcare use, employment), and run meta-regressions for moderators: follow-up length, measurement type, payment universality, and regularity.",
+      "Create a harmonized measurement toolkit and minimum dataset for future pilots that includes: baseline health biomarkers, annual biomarker collection, standardized self-report measures of agency and stress, and protocols for administrative data linkage. Make toolkit available to funders and implementers.",
+      "Implement embedded process and political\u2011economy studies in upcoming pilots to document how political negotiations produce design compromises and to trace how those compromises affect participant perceptions and exposure to the hypothesized causal levers.",
+      "Pilot a registry of cash-transfer experiments to track design features, measurement choices, follow-up windows, and results. Use the registry to prioritize re-analyses and to inform power calculations for biomarker endpoints."
+    ],
+    "system_confidence": "Moderate",
+    "near_term_focus": [
+      "62a94f7f-8728-4de5-8551-208718aa6d6b",
+      "e9b5b106-8082-4fa7-83e5-1b792bfacbe4"
+    ],
+    "long_term_focus": [
+      "e9b5b106-8082-4fa7-83e5-1b792bfacbe4",
+      "62a94f7f-8728-4de5-8551-208718aa6d6b"
+    ],
+    "high_risk_high_reward": [
+      "e9b5b106-8082-4fa7-83e5-1b792bfacbe4"
+    ]
+  },
+  "done": true,
+  "exploration_trace": "Summary of approach\n- I explored the graph around trial design, pilot projects, measurements, health impact and actual basic-income experiments to check whether the graph\u2019s structure and content support your two hypotheses and to identify what evidence is missing and what kinds of design/measurement changes would validate or refute them.\n\nWhat the graph evidence says about Hypothesis 1\nHypothesis 1: Measurement choices focus on short-term economic metrics and miss psychosocial, health, or empowerment gains.\n\nGraph nodes/edges that support this\n- trial design -> cost-benefit analysis -> debate -> Universal Basic Income (UBI) -> Health impact\n  - The path suggests trial design and cost\u2013benefit framing dominate the debate; health impact is present but treated as an \u201copen question\u201d rather than the primary outcome.\n- Self-reported measures -> Health outcome measures / Routinely collected linked respondent data / Physiological measures\n  - The graph explicitly links self-reported measures to physiological measures as complementary, and notes health outcome measures and linked administrative data as feasible ways of demonstrating health impact. This implies current reliance on self-report is known to be limited.\n- Theoretical model of impact -> Three pathways to health impact -> Health impact\n  - The model identifies psychosocial/biological pathways but lists many \u201copen questions\u201d (regularity, size, conditionality, duration) \u2014 implying trials often do not measure these pathways conclusively.\n- basic income experiments -> social benefits / social assistance benefits allowed people to keep extra earnings on top of...\n  - Basic experiments appear to be designed in ways that measure short-run labour/income effects (interactions with social benefits), reinforcing an emphasis on economic metrics.\n\nInterpretation\n- The graph portrays trial design and policy debate as dominated by cost\u2013benefit and economic framings, with health and psychosocial outcomes treated as secondary and as \u201copen questions.\u201d Self-reported measures are present but flagged as needing supplementation by physiological measures and linked administrative data, which implies current measurement practice risks missing biological and empowerment effects.\n\nWhat the graph evidence says about Hypothesis 2\nHypothesis 2: Design compromises (conditionality, targeting) made to secure political approval dilute core UBI features and neutralize intended effects.\n\nGraph nodes/edges that support this\n- B-Mincome project -> UB I-style pilot design moved away from -> limited policy and political effects\n  - The B\u2011Mincome example in the graph explicitly shows a pilot that \u201cmoved away\u201d from UBI features and had limited policy effects \u2014 consistent with the claim that compromises dilute impact and political traction.\n- basic income experiments -> exemptions on obligations / social assistance benefits -> allowed people to keep extra earnings\n  - These neighbors indicate many pilots include conditions/exemptions or interact with existing benefits in ways that make them non-universal or conditional.\n- Theoretical model of impact -> Design variables (regularity, size, supplements, conditionality, duration) -> Health impact\n  - The model lists conditionality and targeting as core design variables that shape whether the upstream, psychosocial, and health pathways activate. If conditionality or targeting is introduced, the model predicts different (likely attenuated) effects.\n- pilot projects -> limited policy and political effects\n  - The graph links pilot-style designs with weak political momentum, suggesting compromises may also blunt the political argument for UBI.\n\nInterpretation\n- The graph both documents instances where pilots were altered away from universal/unconditional designs (B\u2011Mincome and other experiments) and identifies conditionality and targeting as design levers that matter for outcomes. That supports the hypothesis that political compromises can nullify intended effects.\n\nGaps and uncertainties highlighted by the graph\n- \u201cOpen questions\u201d are repeatedly listed (size, duration, conditionality, regularity, supplements, personality/behaviour). That signals empirical uncertainty rather than settled evidence.\n- Self\u2011reported measures are used but flagged as insufficient; physiological measures and linked administrative data are suggested as necessary but not necessarily implemented in existing pilots.\n- The graph shows many pilot projects had limited policy impact; it does not clearly show causal linkage from design compromises to neutralized outcomes (we have correlational/qualitative evidence, not definitive causal tests).\n\nHow to validate and deepen the hypotheses (practical study and measurement actions)\n1) Measurement strategy (to detect psychosocial, health, empowerment effects)\n   - Use multi-modal outcome batteries:\n     - Validated psychosocial scales: perceived stress, locus of control/agency, decision-making autonomy, social participation, validated mental health scales (PHQ\u20119, GAD\u20117).\n     - Objective/physiological markers: salivary or hair cortisol (chronic stress), heart rate variability, HbA1c (metabolic risk), inflammatory markers (CRP) where feasible.\n     - Administrative/health utilization data: diagnoses, prescriptions, primary-care visits, hospital admissions.\n     - Economic and material security markers: savings, debt, arrears, housing stability.\n   - Prefer routinely collected linked data sets to reduce attrition and capture long-term effects.\n   - Include qualitative methods to capture empowerment, agency, and decision-making changes that numeric scales miss.\n\n2) Trial design to test the role of conditionality/targeting\n   - Use factorial or multi-arm designs that randomize:\n     - unconditional universal cash vs targeted cash vs conditional cash vs \u201cnear\u2011universal\u201d (eligibility exceptions) to directly estimate dilution effects.\n     - different payment sizes and durations to assess thresholds for psychosocial/health changes.\n   - Preserve internal validity by keeping the intervention arms consistent with intended policy variants (do not layer many policy constraints on a UBI arm).\n   - Include long follow\u2011up (multiple years) because psychosocial and health pathways may require longer to materialize.\n   - Pre-register primary and mediator outcomes (stress, sleep, mental health, health service use), not only short-term employment/income outcomes.\n\n3) Analytic methods\n   - Mediation analysis: test whether reductions in stress, food insecurity, or enhanced agency mediate improvements in health or employment.\n   - Difference-in-differences and ITS for long-run administrative outcomes.\n   - Mixed-methods process evaluation and political economy analysis to document how and why design compromises occurred, and the downstream effect on uptake and outcomes.\n   - Microsimulations for extrapolation to population-level health impacts across policy variants.\n\n4) Policy-process measurement\n   - Collect data on decision points: what compromises were requested, who requested them, and why (budget constraints, political expediency). The graph indicates pilot process and policymakers had limited influence; documenting those dynamics will test your hypothesis about compromises.\n   - Track whether certain compromises predict weaker public/political support afterwards (e.g., comparing pilots that kept universality vs those that did not).\n\nConcrete indicators to include in any new pilot or re-analysis\n- Primary outcomes beyond income: perceived stress, depression/anxiety scores, self-reported health, biomarkers (cortisol/HbA1c/CRP).\n- Empowerment indicators: self-reported control over spending, household decision-making, time use for caregiving/education, engagement in community/political activities.\n- Economic mediators: financial buffer/savings, debt levels, unstable housing events, employment trajectories (not just employment rate).\n- Policy-path metrics: number and nature of design compromises, statements from policymakers, media framing, public opinion shifts.\n\nPriority checklist (short)\n- Reframe primary outcomes to include psychosocial/health/empowerment, not only short-term labour/income metrics.\n- Use multi-arm trials that directly test conditionality and targeting (randomize universality vs targeted vs conditional).\n- Ensure adequate payment size and duration arms to detect threshold effects.\n- Incorporate physiological and linked administrative data for objective, long-term health measurement.\n- Build an explicit political-process evaluation to record compromises and link them to outcome dilution.\n\nBottom line\n- The graph provides coherent, multi-node support for both hypotheses: (1) trial design and measurement emphasis tends to prioritize economic/cost\u2011benefit frames and self\u2011reported short-term metrics, with health/psychosocial outcomes treated as \u201copen questions\u201d; and (2) documented pilot examples (e.g., B\u2011Mincome and other basic income experiments) and the theoretical model show that conditionality/targeting and other compromises are plausible levers that will attenuate the upstream psychosocial and health pathways. To move from plausible to causal evidence you need trials (or quasi\u2011experimental comparisons) that explicitly randomize or compare universal/unconditional vs compromised designs and that measure the psychosocial and physiological mediators over a longer timeframe.\n\nIf you want, I can:\n- Draft a concrete trial protocol outline (sample size considerations, outcomes, timeline) to test these hypotheses, or\n- Produce a set of survey instruments and biomarker choices matched to budget tiers.",
+  "structural_hole_analysis": "",
+  "symbolic_paths": [],
+  "grounded_paths": [],
+  "stance_counts": {
+    "support": 0,
+    "contradict": 0,
+    "neutral": 0
+  },
+  "grounding_metrics": {},
+  "bridge_attempted": false,
+  "cost_report": {
+    "total_tokens": 0,
+    "estimated_cost_usd": 0.0,
+    "by_agent": {
+      "hypothesis": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 117.2781708240509
+      },
+      "evidence": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 30.601025581359863
+      },
+      "critique": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 53.61514091491699
+      },
+      "decision": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 34.05233311653137
+      }
+    },
+    "by_step": {
+      "hypothesis_generation_deep": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 117.2781708240509
+      },
+      "evidence_processing": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 30.601025581359863
+      },
+      "critique_analysis": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 53.61514091491699
+      },
+      "decision_synthesis": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 34.05233311653137
+      }
+    },
+    "by_hypothesis": {}
+  }
+}

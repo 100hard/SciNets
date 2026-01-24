@@ -1,0 +1,65 @@
+{
+  "total_tokens": 0,
+  "estimated_cost_usd": 0.0,
+  "by_agent": {
+    "hypothesis": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 117.2781708240509
+    },
+    "evidence": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 30.601025581359863
+    },
+    "critique": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 53.61514091491699
+    },
+    "decision": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 34.05233311653137
+    }
+  },
+  "by_step": {
+    "hypothesis_generation_deep": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 117.2781708240509
+    },
+    "evidence_processing": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 30.601025581359863
+    },
+    "critique_analysis": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 53.61514091491699
+    },
+    "decision_synthesis": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 34.05233311653137
+    }
+  },
+  "by_hypothesis": {}
+}

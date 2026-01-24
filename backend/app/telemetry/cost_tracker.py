@@ -162,14 +162,13 @@ class CostCallbackHandler(BaseCallbackHandler):
     """LangChain callback to feed the CostTracker."""
     
     def __init__(self):
-        # We fetch the instance dynamically when needed OR store it.
-        # But callbacks are often long-lived? No, get_llm creates new one each time.
-        # So we can fetch instance here.
-        self.tracker = CostTracker.get_instance()
+        # Do not resolve tracker here to avoid binding to wrong context at init time
+        pass
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Collect token usage."""
         try:
+            tracker = CostTracker.get_instance()
             if not response.llm_output:
                 return
                 
@@ -179,7 +178,7 @@ class CostCallbackHandler(BaseCallbackHandler):
             p_tok = token_usage.get("prompt_tokens", 0)
             c_tok = token_usage.get("completion_tokens", 0)
             
-            self.tracker.record_llm_call(p_tok, c_tok, model_name, 0.0)
+            tracker.record_llm_call(p_tok, c_tok, model_name, 0.0)
             
         except Exception as e:
             log.warning(f"Error in CostCallbackHandler: {e}")

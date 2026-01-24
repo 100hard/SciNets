@@ -325,9 +325,13 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
             if res:
                 merged_nodes.update(res.nodes)
                 merged_edges.extend(res.edges)
-                print(f"[Literature] Batch {i+1}/{len(batches)} success. Found {len(res.nodes)} nodes.")
+                msg = f"[Literature] Batch {i+1}/{len(batches)} success. Found {len(res.nodes)} nodes."
+                print(msg)
+                await adispatch_custom_event("log", {"message": msg}, config=config)
                 
-        print(f"[Literature] Batch extraction complete. Total Nodes: {len(merged_nodes)}")
+        msg = f"[Literature] Batch extraction complete. Total Nodes: {len(merged_nodes)}"
+        print(msg)
+        await adispatch_custom_event("log", {"message": msg}, config=config)
         
         # 3.5. APPLY DISCIPLINARY LENS (Inject a node if using a lens)
         if state.lens and state.lens != "none":
@@ -344,21 +348,35 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
     
         # 4. Normalize Graph (Entity Resolution)
         try:
-            print(f"[Literature] Normalizing graph nodes...")
+            msg = f"[Literature] Normalizing graph nodes..."
+            print(msg)
+            await adispatch_custom_event("log", {"message": msg}, config=config)
+            
             # with get_openai_callback() as cb:
             concept_graph = await normalize_graph_nodes(concept_graph)
             # print(f"[Literature] Token Usage (Normalization): {cb}")
-            print(f"[Literature] Graph normalized. Nodes: {len(concept_graph['nodes'])}, Edges: {len(concept_graph['edges'])}")
+            
+            msg = f"[Literature] Graph normalized. Nodes: {len(concept_graph['nodes'])}, Edges: {len(concept_graph['edges'])}"
+            print(msg)
+            await adispatch_custom_event("log", {"message": msg}, config=config)
+            
         except Exception as e:
             print(f"[Literature] Normalization failed: {e}")
     
         # 5. Densify Graph (Grounded Second Pass)
         try:
-            print(f"[Literature] Densifying graph (Second Pass)...")
+            msg = f"[Literature] Densifying graph (Second Pass)..."
+            print(msg)
+            await adispatch_custom_event("log", {"message": msg}, config=config)
+            
             # with get_openai_callback() as cb:
             concept_graph = await densify_graph(concept_graph, papers)
             # print(f"[Literature] Token Usage (Densification): {cb}")
-            print(f"[Literature] Graph densified. Nodes: {len(concept_graph['nodes'])}, Edges: {len(concept_graph['edges'])}")
+            
+            msg = f"[Literature] Graph densified. Nodes: {len(concept_graph['nodes'])}, Edges: {len(concept_graph['edges'])}"
+            print(msg)
+            await adispatch_custom_event("log", {"message": msg}, config=config)
+            
         except Exception as e:
             print(f"[Literature] Densification failed: {e}")
     
@@ -368,6 +386,8 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
         graph_insights = analyze_graph(concept_graph)
         try:
             print(f"[Literature] Graph Analysis:\n{graph_insights.encode('utf-8', 'ignore').decode('utf-8')}")
+            # Stream the top insights (first line usually) or just a summary
+            await adispatch_custom_event("log", {"message": "[Literature] Graph Analysis Complete. Key central nodes identified."}, config=config)
         except:
             print("[Literature] Graph Analysis: (Content hidden due to encoding error)")
         
@@ -481,7 +501,11 @@ async def densify_graph(graph_data: dict, papers: list) -> dict:
                     existing_edges.add((edge.source, edge.target, edge.relation))
                     
     if new_edges:
-        print(f"[Literature] Found {len(new_edges)} new edges in second pass.")
+        msg = f"[Literature] Found {len(new_edges)} new edges in second pass."
+        print(msg)
+        # await adispatch_custom_event("log", {"message": msg}, config=config) # Helper function needed or direct dispatch if config available
+        # Since config is not passed to densify_graph, we can't dispatch events easily here without refactoring.
+        # Ideally, we should pass config. For now, let's focus on the main `literature_node` where config IS available.
         graph_data["edges"].extend(new_edges)
         
     return graph_data
