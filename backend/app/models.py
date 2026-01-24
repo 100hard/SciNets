@@ -29,6 +29,10 @@ class Session(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     expires_at = Column(DateTime)
     
+    # Session Binding
+    ip_prefix = Column(String, nullable=True) # Store /24 prefix
+    user_agent = Column(String, nullable=True)
+    
     user = relationship("User", back_populates="sessions")
 
 class DiscoveryRun(Base):

@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import uuid
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
@@ -13,24 +13,63 @@ import uvicorn
 import os
 import sys
 import time
-
-# Structured Logging Setup
-from app.logging_config import setup_logging, get_logger
-import structlog
-from app.database import SessionLocal
-from app.models import User, Session as DbSession, MagicLink
-from app.auth_utils import create_magic_link_token, verify_magic_link_token, send_magic_link_email, hash_token
-from app.config import config as app_config
-from fastapi import Response, Request, Depends, Cookie, status
-from sqlalchemy.orm import Session
-import datetime
-from app.telemetry.cost_tracker import CostTracker
+import os
+import sys
 
 # Ensure backend dir is in path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(current_dir)
 if current_dir not in sys.path:
     sys.path.append(current_dir)
+
+# Structured Logging Setup
+from app.logging_config import setup_logging, get_logger
+import structlog
+from app.database import SessionLocal, get_db
+from app.models import User, Session as DbSession, MagicLink
+from app.auth_utils import create_magic_link_token, verify_magic_link_token, send_magic_link_email, hash_token
+from app.config import config as app_config
+from fastapi import Response, Request, Depends, Cookie, status
+from sqlalchemy.orm import Session
+import datetime
+import datetime
+from app.telemetry.cost_tracker import CostTracker
+
+# Hardening
+class RateLimiter:
+    def __init__(self):
+        self.requests = {} # ip -> [timestamps]
+    
+    def check(self, ip: str, limit: int = 60, window: int = 60) -> bool:
+        now = time.time()
+        if ip not in self.requests:
+            self.requests[ip] = []
+        
+        # Cleanup old
+        self.requests[ip] = [t for t in self.requests[ip] if now - t < window]
+        
+        if len(self.requests[ip]) >= limit:
+            return False
+            
+        self.requests[ip].append(now)
+        return True
+
+rate_limiter = RateLimiter()
+
+# Active runs per user
+active_runs: Dict[str, str] = {} # user_id -> thread_id
+
+# Active runs per user
+from pydantic import BaseModel, field_validator
+
+# Active runs per user
+active_runs: Dict[str, str] = {} # user_id -> thread_id
+
+class EmailRequest(BaseModel):
+    email: str
+
+class VerifyRequest(BaseModel):
+    token: str
 
 load_dotenv()
 
@@ -50,83 +89,37 @@ log.info("scinets_startup", version="2.0", log_level=log_level, json_mode=json_l
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        app_config.FRONTEND_URL,
         "http://localhost:8080",
         "http://127.0.0.1:8080",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
-        "http://localhost:8081",
-        "http://127.0.0.1:8081"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Global Graph Instance (Singleton with shared Memory)
-from app.graph import create_graph, global_memory
-try:
-    # Initialize the graph once at startup
-    app_graph = create_graph(memory=global_memory)
-    log.info("graph_initialized", status="success")
-except Exception as e:
-    log.error("graph_initialization_failed", error=str(e))
-    app_graph = None # Will fail if called
-
-# Request Logging Middleware
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    request_id = str(uuid.uuid4())[:8]
-    structlog.contextvars.bind_contextvars(request_id=request_id)
-    
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    
-    log.info(
-        "http_request",
-        method=request.method,
-        path=request.url.path,
-        status_code=response.status_code,
-        duration=f"{process_time:.3f}s"
-    )
-    
-    return response
-
-# In-memory session store
-sessions: Dict[str, Any] = {}
-
-
-def custom_serializer(obj):
-    if hasattr(obj, "model_dump"):
-        return obj.model_dump()
-    if hasattr(obj, "dict"):
-        return obj.dict()
-    if isinstance(obj, list):
-        return [custom_serializer(i) for i in obj]
-    return str(obj)
-
-# DB Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-class EmailRequest(BaseModel):
-    email: str
-
-class VerifyRequest(BaseModel):
-    token: str
-
-# Auth Endpoints
+# Middleware: Per-IP Rate Limit
 @app.post("/api/auth/request-link")
-async def request_magic_link(req: EmailRequest, db: Session = Depends(get_db)):
+async def request_magic_link(req: EmailRequest, request: Request, db: Session = Depends(get_db)):
     """Generates a magic link, stores hash, and sends via SMTP."""
+    # Rate Limit Check (stricter for auth)
+    client_ip = request.client.host
+    if not app_config.DEMO_MODE and not rate_limiter.check(client_ip, limit=5, window=3600):
+        # Silent failure on rate limit to prevent enumeration? Or minimal error?
+        # Let's just return success message to be safe.
+        time.sleep(1) # Fake delay
+        return {"message": "If that email exists, we sent a magic link."}
+
     email = req.email.strip().lower()
     user = db.query(User).filter(User.email == email).first()
     if not user:
+        # Silent Success: Don't reveal user existence
+        # But we still want to create users for new signups in this MVP?
+        # If open signup: Create user. If closed: Silent fail.
+        # Assuming OPEN signup for SciNets V2 demo.
         user = User(email=email)
         db.add(user)
         db.commit()
@@ -140,15 +133,20 @@ async def request_magic_link(req: EmailRequest, db: Session = Depends(get_db)):
     db.add(magic_link_record)
     db.commit()
     
-    base_url = "http://localhost:8080" # Should be configurable
+    base_url = app_config.FRONTEND_URL 
     link = f"{base_url}/verify?token={token}"
     send_magic_link_email(email, link)
-    return {"message": "Magic link sent"}
+    
+    # Always return same message
+    return {"message": "If that email exists, we sent a magic link."}
 
 @app.post("/api/auth/verify-link")
-async def verify_magic_link(req: VerifyRequest, response: Response, db: Session = Depends(get_db)):
+async def verify_magic_link(req: VerifyRequest, response: Response, request: Request, db: Session = Depends(get_db)):
     email = verify_magic_link_token(req.token)
-    if not email: raise HTTPException(status_code=400, detail="Invalid token")
+    if not email: 
+        # Random delay to prevent timing attacks
+        time.sleep(0.5)
+        raise HTTPException(status_code=400, detail="Invalid token")
     
     hashed = hash_token(req.token)
     record = db.query(MagicLink).filter(MagicLink.token_hash == hashed).first()
@@ -161,10 +159,27 @@ async def verify_magic_link(req: VerifyRequest, response: Response, db: Session 
     user = db.query(User).filter(User.email == email).first()
     if not user: raise HTTPException(status_code=400, detail="User not found")
     
-    # Create Session
+    # Create Session with Binding
     session_id = str(uuid.uuid4())
     expires = datetime.datetime.utcnow() + datetime.timedelta(days=7)
-    db_session = DbSession(id=session_id, user_id=user.id, expires_at=expires)
+    
+    # Capture IP Prefix (/24)
+    client_ip = request.client.host
+    ip_parts = client_ip.split('.')
+    if len(ip_parts) == 4:
+        ip_prefix = ".".join(ip_parts[:3]) # 192.168.1
+    else:
+        ip_prefix = client_ip # IPv6 or other
+        
+    user_agent = request.headers.get("User-Agent", "Unknown")
+    
+    db_session = DbSession(
+        id=session_id, 
+        user_id=user.id, 
+        expires_at=expires,
+        ip_prefix=ip_prefix,
+        user_agent=user_agent
+    )
     db.add(db_session)
     db.commit()
     
@@ -172,11 +187,30 @@ async def verify_magic_link(req: VerifyRequest, response: Response, db: Session 
     return {"message": "Logged in", "user": {"id": user.id, "email": user.email}}
 
 @app.get("/api/auth/me")
-async def get_current_user(session_id: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+async def get_current_user(request: Request, session_id: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     if not session_id: raise HTTPException(status_code=401, detail="Not authenticated")
     session = db.query(DbSession).filter(DbSession.id == session_id).first()
     if not session: raise HTTPException(status_code=401, detail="Invalid session")
     if session.expires_at < datetime.datetime.utcnow(): raise HTTPException(status_code=401, detail="Session expired")
+    
+    # Validate Session Binding
+    current_ip = request.client.host
+    current_ua = request.headers.get("User-Agent", "Unknown")
+    
+    # IP Check (relaxed to /24)
+    if session.ip_prefix:
+        ip_parts = current_ip.split('.')
+        current_prefix = ".".join(ip_parts[:3]) if len(ip_parts) == 4 else current_ip
+        if current_prefix != session.ip_prefix and not app_config.DEMO_MODE:
+             # In Demo Mode, IP might change if behind load balancers/proxies oddly, strict check might be annoying
+             # But for public deployment, this is good.
+             log.warning("session_hijack_attempt_ip", stored=session.ip_prefix, current=current_prefix)
+             raise HTTPException(status_code=401, detail="Session expired (IP change)")
+
+    # UA Check
+    if session.user_agent and session.user_agent != current_ua:
+         log.warning("session_hijack_attempt_ua", stored=session.user_agent, current=current_ua)
+         raise HTTPException(status_code=401, detail="Session expired (UA change)")
     
     user = db.query(User).filter(User.id == session.user_id).first()
     if not user: raise HTTPException(status_code=401, detail="User not found")
@@ -201,7 +235,17 @@ class RunRequest(BaseModel):
     timeline: str = "recent"
     max_papers: int = 10
     guidance: Optional[str] = None
+    max_papers: int = 10
+    guidance: Optional[str] = None
     run_experiments: bool = False
+    
+    @field_validator('query')
+    @classmethod
+    def validate_input(cls, v: str) -> str:
+        if len(v) > app_config.MAX_INPUT_CHARS:
+             raise ValueError(f"Query too long (max {app_config.MAX_INPUT_CHARS} chars)")
+        return v
+
     documents: List[str] = []
     selected_hypothesis_ids: List[str] = [] # Resume: specific IDs to deep-dive
     thread_id: str | None = None # For resuming sessions
@@ -425,23 +469,80 @@ async def search_papers_endpoint(request: SearchRequest):
         return {"papers": []}
 
 @app.post("/run_stream")
-async def run_discovery_stream(request: RunRequest):
+async def run_discovery_stream(request: RunRequest, http_request: Request, db: Session = Depends(get_db)):
     """
     Trigger the discovery loop and stream events.
     Supports resuming via thread_id and providing feedback.
     """
     request_id = str(uuid.uuid4())[:8]
-    
+
+    # 0. Kill Switch Check
+    if app_config.SCINETS_READONLY_MODE:
+        raise HTTPException(status_code=503, detail="SciNets is currently in Read-Only mode. Discovery is paused.")
+
     # Bind request ID to logger for this request
     request_log = log.bind(request_id=request_id, query=request.query[:50])
     
+    # 1. Auth & Quota Check
+    session_id = http_request.cookies.get("session_id")
+    user_id = None
+    
+    if session_id:
+        session = db.query(DbSession).filter(DbSession.id == session_id).first()
+        if session and session.expires_at > datetime.datetime.utcnow():
+             user_id = session.user_id
+    
+    if not user_id and not request.mock: # Allow mock runs without auth? Maybe not for public demo.
+         # For public demo, strictly require auth
+         raise HTTPException(status_code=401, detail="Authentication required for discovery.")
+
+    # QUOTA LOGIC
+    if user_id:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            now = datetime.datetime.utcnow()
+            # 1. Reset Window if needed (Weekly)
+            if not user.window_start_at or (now - user.window_start_at).days >= 7:
+                user.window_start_at = now
+                user.discoveries_in_window = 0
+                db.commit()
+            
+            # 2. Check Limit
+            if user.discoveries_in_window >= app_config.MAX_RUNS_PER_USER_PER_WEEK:
+                log.warning("quota_exceeded", user_id=user_id, count=user.discoveries_in_window)
+                
+                # Calculate reset time
+                reset_date = user.window_start_at + datetime.timedelta(days=7)
+                hours_remaining = int((reset_date - now).total_seconds() / 3600)
+                if hours_remaining < 1: hours_remaining = 1 # Avoid 0 hours confusion
+                
+                detail = {
+                    "error": "quota_exceeded",
+                    "message": f"You've used your {app_config.MAX_RUNS_PER_USER_PER_WEEK} SciNets discoveries for this week.",
+                    "resets_in_hours": hours_remaining
+                }
+                # Raise as JSON response via HTTPException detail or custom response
+                # FastAPI HTTPException detail can be a dict/object
+                raise HTTPException(status_code=429, detail=detail)
+            
+            # 3. Increment (Optimistic - we count it even if it fails later to prevent free retries)
+            user.discoveries_in_window += 1
+            user.last_discovery_at = now
+            db.commit()
+
     # Check concurrency
     thread_id = request.thread_id or str(uuid.uuid4())
     if thread_id in active_threads:
         log.warning("concurrency_blocked", thread_id=thread_id)
         raise HTTPException(status_code=409, detail="Pipeline already running for this thread. Please wait.")
     
-    # Acquire Lock
+    # Acquire Lock via User/Thread
+    lock_key = f"{user_id}:{thread_id}" if user_id else thread_id
+    if lock_key in active_runs.values():
+         log.warning("concurrency_blocked", user_id=user_id, thread_id=thread_id)
+         raise HTTPException(status_code=429, detail="You already have an active search running.")
+    
+    active_runs[user_id or thread_id] = lock_key
     active_threads.add(thread_id)
     
     try:
@@ -462,6 +563,7 @@ async def run_discovery_stream(request: RunRequest):
         global app_graph
         graph = app_graph
         
+        # ... (State Init Logic Skipped for Brevity - Keeping Existing Logic) ...
         # If resuming with feedback
         initial_state = None
         if request.feedback and request.thread_id:
@@ -499,6 +601,24 @@ async def run_discovery_stream(request: RunRequest):
              initial_state = None
         else:
              # Start new
+             # QUOTA CHECK (Weekly)
+             # Note: thread_id is random for new runs, we need USER context.
+             # Ideally, we should pass user_id/session_id to run_stream or look it up.
+             # However, run_stream is POSTed to by frontend with session cookie.
+             # We rely on active_runs[user_id] being set above, but that needs to be robust.
+             
+             # Fetch User for Quota Update
+             # Since we are in an async loop and DB session is not passed in easily here 
+             # (we only have get_db dependency in the endpoint signature if we add it),
+             # let's assume valid user_id from the endpoint auth check.
+             
+             if user_id: # Only enforce if we identified a user
+                 # We need a fresh DB session here as this is inside the event generator/endpoint
+                 # Use the 'db' session we can inject into the endpoint
+                 pass 
+                 # Wait, we can't easily inject DB into this inner scope if we didn't pass it.
+                 # Let's verify if we can do the check BEFORE entering the event loop (at endpoint level).
+             
              # Force 6 candidates for selection mode
              target_hypotheses = request.num_hypotheses if request.num_hypotheses > 3 else 6
              initial_state = DiscoveryState(
@@ -516,35 +636,58 @@ async def run_discovery_stream(request: RunRequest):
              )
 
     except Exception as e:
-        active_threads.discard(thread_id) # Release on init failure
+        active_threads.discard(thread_id)
+        if user_id or thread_id in active_runs: del active_runs[user_id or thread_id]
         import traceback
         request_log.error("discovery_init_failed", error=str(e), traceback=traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Init failed: {e}")
 
     async def event_generator():
-        # Register CostTracker for this async context
-        # Since this generator runs in a new task/context, we must set it here.
+        # Register CostTracker
         cost_tracker = CostTracker()
         ct_token = CostTracker.register_context(cost_tracker)
         
+        # Hardening Counters
+        step_count = 0
+        start_time_glob = time.time()
+        
         try:
             try:
-                # Emit initial thinking event with Thread ID
+                # Emit initial thinking event
                 data = {'agent': 'orchestrator', 'action': f'Starting discovery for: {request.query}', 'status': 'thinking'}
                 yield f"data: {json.dumps({'type': 'activity', 'data': data, 'thread_id': thread_id})}\n\n"
-                await asyncio.sleep(0.1) # Force flush
+                await asyncio.sleep(0.1) 
             
-                # Accumulator for final result
                 accumulated_state = {}
-                start_times = {} # Track durations
+                start_times = {} 
                 
-                # Use astream_events to get granular updates
+                # Stream events
                 async for event in graph.astream_events(initial_state, config=config, version="v2"):
+                    # 1. ENFORCE LIMITS
+                    step_count += 1
+                    elapsed = time.time() - start_time_glob
+                    current_tokens = cost_tracker.total_tokens
+                    
+                    if step_count > app_config.MAX_AGENT_STEPS * 10: # Rough multiplier for events vs steps
+                        yield f"data: {json.dumps({'type': 'error', 'data': 'Max steps exceeded.'})}\n\n"
+                        request_log.warning("limit_hit_steps", steps=step_count)
+                        break
+                        
+                    if elapsed > app_config.MAX_RUN_TIME_SECONDS:
+                        yield f"data: {json.dumps({'type': 'error', 'data': 'Max run time exceeded.'})}\n\n"
+                        request_log.warning("limit_hit_time", elapsed=elapsed)
+                        break
+                        
+                    if current_tokens > app_config.MAX_TOTAL_TOKENS:
+                         yield f"data: {json.dumps({'type': 'error', 'data': 'Max token limit exceeded.'})}\n\n"
+                         request_log.warning("limit_hit_tokens", tokens=current_tokens)
+                         break
+
                     kind = event["event"]
                     name = event.get("name", "")
                     data = event.get("data", {})
     
-                    # DEBUG PRINT (Visible in server console)
+                    # DEBUG PRINT
                     if kind == "on_custom_event":
                         print(f"DEBUG_EVENT: {kind} name={name} data={str(data)[:100]}")
                     
@@ -583,6 +726,7 @@ async def run_discovery_stream(request: RunRequest):
                         if run_id:
                             start_times[run_id] = time.time()
                         msg = f"[TOOL START] {name}"
+                        # ... (Tool Log formatting logic same as before)
                         if name == "get_neighbors":
                             node = data.get("input", {}).get("node", "?")
                             msg = f"[Graph] Exploring neighbors of '{node}'..."
@@ -660,6 +804,7 @@ async def run_discovery_stream(request: RunRequest):
             finally:
                 # RELEASE LOCK
                 active_threads.discard(thread_id)
+                if user_id or thread_id in active_runs: del active_runs[user_id or thread_id]
                 print(f"DEBUG: Released lock for {thread_id}")
     
             # Check if we are interrupted or done
@@ -672,7 +817,11 @@ async def run_discovery_stream(request: RunRequest):
                 # 1. Log Summary
                 summary_str = f"[COST] Total: ${cost_report['estimated_cost_usd']} | Tokens: {cost_report['total_tokens']}"
                 print(summary_str)
-                request_log.info("cost_report", **cost_report)
+                request_log.info("run_completed", 
+                                 cost_usd=cost_report['estimated_cost_usd'], 
+                                 tokens=cost_report['total_tokens'],
+                                 duration=time.time() - start_time_glob,
+                                 status="finished" if not snapshot.next else "interrupted")
                 
                 # 2. Save JSON to disk
                 try:
@@ -688,11 +837,11 @@ async def run_discovery_stream(request: RunRequest):
                 final_data["cost_report"] = cost_report
 
                 if snapshot.next:
-                    request_log.info("workflow_interrupted", next_nodes=list(snapshot.next))
+                    # request_log.info("workflow_interrupted", next_nodes=list(snapshot.next)) -- already logged in run_completed
                     yield f"data: {json.dumps({'type': 'result', 'data': final_data}, default=custom_serializer)}\n\n"
                     yield f"data: {json.dumps({'type': 'interrupt', 'data': {'next': list(snapshot.next), 'thread_id': thread_id}})}\n\n"
                 else:
-                    request_log.info("workflow_completed")
+                    # request_log.info("workflow_completed") -- already logged
                     
                     # PERSIST FOR EXPORT
                     try:
@@ -755,5 +904,11 @@ def health_check():
     return {"status": "ok", "version": "2.0"}
 
 if __name__ == "__main__":
+    from app.database import engine, Base
+    # Models are already imported at top level, which registers them with Base
+    
+    print("Creating database tables...")
+    Base.metadata.create_all(bind=engine)
+    
     print("Starting SciNets Server on Port 8005...")
-    uvicorn.run(app, host="127.0.0.1", port=8005, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=8005, log_level="info")

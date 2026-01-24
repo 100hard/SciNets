@@ -13,9 +13,15 @@ class AgentConfig(BaseSettings):
     # =============================================================================
     # Auth & Security
     # =============================================================================
+    # Auth & Security
+    # =============================================================================
     SECRET_KEY: str = "dev-secret-key-change-in-prod"
     SESSION_EXPIRE_DAYS: int = 7
     MAGIC_LINK_EXPIRE_MINUTES: int = 15
+    
+    # Deployment
+    DATABASE_URL: str = "sqlite:///./scinets.db"
+    FRONTEND_URL: str = "http://localhost:8080"
 
     # =============================================================================
     # Feature Flags
@@ -53,6 +59,34 @@ class AgentConfig(BaseSettings):
     
     # Memory thresholds
     MEMORY_SIMILARITY_THRESHOLD: float = 0.7
+    
+    # =============================================================================
+    # Hardening & Limits
+    # =============================================================================
+    # Default to True for Public Demo safety
+    DEMO_MODE: bool = True
+    
+    # Run Limits (Public Demo V1)
+    MAX_AGENT_STEPS: int = 10      # Was 50 - Reduced to prevent runaway chains
+    MAX_TOOL_CALLS: int = 5        # Was 20 - interactions are expensive
+    MAX_TOTAL_TOKENS: int = 10000  # Was 100k - Strict budget per run
+    MAX_RUN_TIME_SECONDS: int = 120 # Was 300 - 2 mins max per run
+
+    # Requests
+    MAX_INPUT_CHARS: int = 2000
+    
+    # =============================================================================
+    # Security & Quotas
+    # =============================================================================
+    JWT_ISSUER: str = "scinets-auth"
+    JWT_AUDIENCE: str = "scinets-frontend"
+    
+    SCINETS_READONLY_MODE: bool = False
+    
+    # Weekly Quota (Public Demo)
+    MAX_RUNS_PER_USER_PER_WEEK: int = 2
+    MAX_TOKENS_PER_USER_PER_WEEK: int = 200000 
+    MAX_OPENALEX_CALLS_PER_USER_PER_DAY: int = 30
     
     # LLM settings
     DEFAULT_TEMPERATURE: float = 0.0

@@ -4,6 +4,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 OPENALEX_API_URL = "https://api.openalex.org/works"
 
+from app.config import config
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -13,6 +15,20 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
     Search for papers on OpenAlex with retry logic.
     """
+    if config.DEMO_MODE:
+        return [
+            {
+                "id": f"https://openalex.org/W{i}",
+                "title": f"Demo Paper {i}: {query}",
+                "publication_year": 2024,
+                "abstract": {"demo": [1], "abstract": [2]}, # Minimal inverted index
+                "host_venue": "Journal of Demo Science",
+                "cited_by_count": 100 - i,
+                "landing_page_url": f"https://example.com/demo/{i}"
+            }
+            for i in range(1, min(limit, 5) + 1)
+        ]
+
     params = {
         "search": query,
         "filter": "has_abstract:true",

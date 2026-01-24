@@ -566,7 +566,7 @@ async def request_magic_link(req: EmailRequest, db: Session = Depends(get_db)):
     db.commit()
     
     # 3. Construct Link
-    base_url = "http://localhost:8080"
+    base_url = app_config.FRONTEND_URL
     link = f"{base_url}/verify?token={token}"
     
     # 4. Send Email

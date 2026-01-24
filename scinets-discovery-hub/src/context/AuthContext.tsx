@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom";
 // In Vite dev, we need to ensure proxy is set up or use absolute URL.
 // Backend is likely on 8000. Frontend on 5173/8080.
 // Ideally, use a relative path /api and configured proxy.
-const API_URL = "http://localhost:8005";
+// Ideally, use a relative path /api and configured proxy.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
 
 interface User {
     id: string;
@@ -33,7 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const checkUser = async () => {
         try {
-            const res = await fetch(`${API_URL}/auth/me`, { credentials: "include" });
+            const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" });
             if (res.ok) {
                 const data = await res.json();
                 setUser(data);
@@ -49,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const login = async (email: string) => {
-        const res = await fetch(`${API_URL}/auth/request-link`, {
+        const res = await fetch(`${API_URL}/api/auth/request-link`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email }),
@@ -59,7 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const verify = async (token: string) => {
-        const res = await fetch(`${API_URL}/auth/verify-link`, {
+        const res = await fetch(`${API_URL}/api/auth/verify-link`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token }),
@@ -72,7 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
+        await fetch(`${API_URL}/api/auth/logout`, { method: "POST", credentials: "include" });
         setUser(null);
         navigate("/login");
     };

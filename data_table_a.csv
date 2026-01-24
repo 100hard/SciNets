@@ -1,5 +1,0 @@
-method,avg_path_length,avg_diversity,avg_papers_per_edge
-full,1.5,0.18,0.0
-rag,0.0,0.13,0.0
-random,0.33,0.17,0.0
-shortest,3.67,0.21,0.0

@@ -17,17 +17,28 @@ services:
     build: ./backend
     restart: always
     ports:
-      - "8000:8000"
+      - "8005:8005"
     environment:
-      - POSTGRES_URL=postgresql://user:password@postgres:5432/scinets
+      - DATABASE_URL=postgresql://user:password@postgres:5432/scinets
       - QDRANT_URL=http://qdrant:6333
+      # Frontend URL for Magic Links
+      - SCINETS_FRONTEND_URL=http://localhost:8080
+      # Valid SMTP credentials required for real emails, logging otherwise
+      - SCINETS_SMTP_EMAIL=
+      - SCINETS_SMTP_PASSWORD=
     env_file:
       - ./backend/.env
     depends_on:
       - postgres
       - qdrant
-    volumes:
-      - ./backend/app:/app/app
+
+  frontend:
+    build: ./scinets-discovery-hub
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
 
   qdrant:
     image: qdrant/qdrant:latest

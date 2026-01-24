@@ -1,19 +1,33 @@
+# Use official Python runtime as a parent image
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies (gcc for building some python packages)
-RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
+# Install system dependencies (needed for some python packages like psycopg2-binary if used later)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY pyproject.toml .
-RUN pip install --no-cache-dir .
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
 
-# Copy app code
-COPY app ./app
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose port
-EXPOSE 8000
+# Copy the rest of the application code
+COPY . .
 
-# Run command
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Expose port (Backend runs on 8005)
+EXPOSE 8005
+
+# Define environment variable defaults (can be overridden)
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8005
+ENV PYTHONPATH=/app
+
+# Debug: Check file structure in build log
+RUN ls -R /app
+
+# Run the server
+CMD ["python", "server.py"]

@@ -15,15 +15,25 @@ def create_magic_link_token(email: str) -> str:
         "sub": email,
         "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=config.MAGIC_LINK_EXPIRE_MINUTES),
         "iat": datetime.datetime.utcnow(),
-        "type": "magic_link"
+        "type": "magic_link",
+        "iss": config.JWT_ISSUER,
+        "aud": config.JWT_AUDIENCE
     }
     encoded_jwt = jwt.encode(payload, config.SECRET_KEY, algorithm="HS256")
+    print(f"DEBUG_JWT_VERSION: {jwt.__version__}")
+    print(f"DEBUG_INSPECT_TOKEN: {encoded_jwt}")
     return encoded_jwt
 
 def verify_magic_link_token(token: str) -> str | None:
     """Verifies JWT token and returns email if valid."""
     try:
-        payload = jwt.decode(token, config.SECRET_KEY, algorithms=["HS256"])
+        payload = jwt.decode(
+            token, 
+            config.SECRET_KEY, 
+            algorithms=["HS256"],
+            audience=config.JWT_AUDIENCE,
+            issuer=config.JWT_ISSUER
+        )
         if payload.get("type") != "magic_link":
             return None
         return payload.get("sub")
