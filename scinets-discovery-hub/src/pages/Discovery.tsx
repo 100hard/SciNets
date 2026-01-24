@@ -5,11 +5,11 @@ import { DiscoveryQueryStep } from "@/components/discovery/DiscoveryQueryStep";
 import { DiscoveryClarificationStep, ClarificationAnswers } from "@/components/discovery/DiscoveryClarificationStep";
 import { PaperCurationStep, CandidatePaper } from "@/components/discovery/PaperCurationStep";
 import { DiscoveryExecutionStep } from "@/components/discovery/DiscoveryExecutionStep";
-import { startDiscoveryStream, SSECallback } from "@/lib/api";
+import { startDiscoveryStream, resumeDiscoveryStream, SSECallback } from "@/lib/api"; // Added resumeDiscoveryStream
 import type { Hypothesis, DiscoveryResult, ActivityEvent, ConceptGraph, DecisionSummary } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 import { SearchOverlay } from "@/components/discovery/SearchOverlay";
-
+import { HypothesisSelection } from "@/components/HypothesisSelection"; // Added Import
 
 export interface GraphNode {
   id: string;
@@ -31,12 +31,12 @@ export interface AgentActivity {
   id: string;
   agent: "planner" | "scientist" | "critic" | "orchestrator" | "literature" | "hypothesis" | "experiment" | "decision";
   action: string;
-  status: "reading" | "thinking" | "building" | "complete";
+  status: "reading" | "thinking" | "building" | "complete" | "failed" | "abstained";
   timestamp: Date;
   nodeId?: string;
 }
 
-type DiscoveryStep = "query" | "clarification" | "searching" | "curation" | "execution";
+type DiscoveryStep = "query" | "clarification" | "searching" | "curation" | "execution" | "selection"; // Added 'selection'
 
 const Discovery = () => {
   const [step, setStep] = useState<DiscoveryStep>("query");
@@ -62,6 +62,122 @@ const Discovery = () => {
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [isSearching, setIsSearching] = useState(false); // New searching state
 
+  // Persistence Key
+  const STORAGE_KEY = "scinets_discovery_state";
+
+  // Load state on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Only restore if valid data exists
+        if (parsed.step) setStep(parsed.step);
+        if (parsed.query) setQuery(parsed.query);
+        if (parsed.papers) setPapers(parsed.papers);
+        if (parsed.answers) setAnswers(parsed.answers);
+        if (parsed.curatedPapers) setCuratedPapers(parsed.curatedPapers);
+        if (parsed.nodes) setNodes(parsed.nodes);
+        if (parsed.edges) setEdges(parsed.edges);
+
+        let restoredActivities: AgentActivity[] = [];
+        // Fix dates in activities and Sanitize status
+        if (parsed.activities) {
+          restoredActivities = parsed.activities.map((a: any) => ({
+            ...a,
+            timestamp: new Date(a.timestamp)
+          }));
+
+          // CHECK: If last activity was left "running", mark it as failed/interrupted
+          if (restoredActivities.length > 0) {
+            const last = restoredActivities[restoredActivities.length - 1];
+            const runningStatuses = ["reading", "thinking", "building", "running"];
+
+            if (runningStatuses.includes(last.status)) {
+              // Modify the last activity in the restored array
+              restoredActivities[restoredActivities.length - 1] = {
+                ...last,
+                status: "failed", // Mark as failed so UI stops spinning
+                action: last.action + " (Interrupted)"
+              };
+              // Also indicate in logs
+              if (parsed.logs) {
+                parsed.logs.push("Session interrupted by reload or termination.");
+              }
+            }
+          }
+          setActivities(restoredActivities);
+        }
+
+        if (parsed.isComplete) setIsComplete(parsed.isComplete);
+        if (parsed.threadId) setThreadId(parsed.threadId);
+        if (parsed.hypotheses) setHypotheses(parsed.hypotheses);
+        if (parsed.conceptGraph) setConceptGraph(parsed.conceptGraph);
+        if (parsed.decisionSummary) setDecisionSummary(parsed.decisionSummary);
+        if (parsed.literatureCount) setLiteratureCount(parsed.literatureCount);
+        if (parsed.logs) setLogs(parsed.logs);
+
+        // Reset active flags safely
+        setIsDiscovering(false);
+        setIsSearching(false);
+
+        console.log("Restored discovery state from storage");
+      } catch (e) {
+        console.error("Failed to restore state", e);
+      }
+    }
+  }, []);
+
+  // Save state on change
+  useEffect(() => {
+    // Only save if we have some minimal state
+    if (step !== "query" || query.length > 0) {
+      const state = {
+        step,
+        query,
+        papers,
+        answers,
+        curatedPapers,
+        nodes,
+        edges,
+        activities,
+        isComplete,
+        threadId,
+        hypotheses,
+        conceptGraph,
+        decisionSummary,
+        literatureCount,
+        logs
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+  }, [step, query, papers, answers, curatedPapers, nodes, edges, activities, isComplete, threadId, hypotheses, conceptGraph, decisionSummary, literatureCount, logs]);
+
+  const handleReset = () => {
+    // Clear storage
+    localStorage.removeItem(STORAGE_KEY);
+    // Reset State
+    setStep("query");
+    setQuery("");
+    setPapers([]);
+    setAnswers(null);
+    setCuratedPapers([]);
+    setNodes([]);
+    setEdges([]);
+    setActivities([]);
+    setIsComplete(false);
+    setError(null);
+    setThreadId(null);
+    setHypotheses([]);
+    setConceptGraph(null);
+    setDecisionSummary(undefined);
+    setLiteratureCount(0);
+    setLogs([]);
+    setIsDiscovering(false);
+    setIsSearching(false);
+    setNumHypotheses(3); // Reset config
+  };
+
   // Abort controller for cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -72,6 +188,9 @@ const Discovery = () => {
     };
   }, []);
 
+  // New State for config
+  const [numHypotheses, setNumHypotheses] = useState(3);
+
   const handleQuerySubmit = (q: string, p: string[]) => {
     setQuery(q);
     setPapers(p);
@@ -80,6 +199,7 @@ const Discovery = () => {
 
   const handleClarificationSubmit = async (a: ClarificationAnswers) => {
     setAnswers(a);
+    setNumHypotheses(a.numHypotheses); // Capture from clarification step
     setError(null);
 
     // TRANSITION TO SEARCHING STEP (reusing Execution UI)
@@ -116,6 +236,7 @@ const Discovery = () => {
       }
 
       const data = await response.json();
+
       const fetchedPapers: CandidatePaper[] = data.papers.map((p: any) => ({
         id: p.id,
         title: p.title,
@@ -126,11 +247,25 @@ const Discovery = () => {
         locked: false
       }));
 
+      // Create candidate papers from manual abstracts
+      const manualCandidates: CandidatePaper[] = papers.map((abstract, index) => ({
+        id: `manual-${index}-${Date.now()}`,
+        title: `[User Input] ${abstract.substring(0, 50)}...`,
+        year: new Date().getFullYear(),
+        venue: "User Provided",
+        rationale: abstract, // Store full abstract here
+        selected: true,
+        locked: true
+      }));
+
+      // Combine with fetched papers
+      const allCandidates = [...manualCandidates, ...fetchedPapers];
+
       // Simulate completion before transition
       setActivities(prev => [...prev, {
         id: "act-search-complete",
         agent: "scientist",
-        action: `Found ${fetchedPapers.length} candidate papers.`,
+        action: `Found ${fetchedPapers.length} papers from OpenAlex and ${manualCandidates.length} user inputs.`,
         status: "complete",
         timestamp: new Date()
       }]);
@@ -138,14 +273,24 @@ const Discovery = () => {
 
       // Small delay to let user see "Complete" status
       setTimeout(() => {
-        setCuratedPapers(fetchedPapers);
+        setCuratedPapers(allCandidates);
         setStep("curation");
       }, 1500);
 
     } catch (err) {
       console.error("Paper fetch failed:", err);
-      // Fallback: show curation with empty list (allows manual entry)
-      setCuratedPapers([]);
+      // Fallback: show curation with manual papers only (if any)
+      const manualCandidates: CandidatePaper[] = papers.map((abstract, index) => ({
+        id: `manual-${index}-${Date.now()}`,
+        title: `[User Input] ${abstract.substring(0, 50)}...`,
+        year: new Date().getFullYear(),
+        venue: "User Provided",
+        rationale: abstract,
+        selected: true,
+        locked: true
+      }));
+
+      setCuratedPapers(manualCandidates);
       setStep("curation");
     }
   };
@@ -157,33 +302,18 @@ const Discovery = () => {
     startDiscovery(answers!, selectedPapers);
   };
 
-  const startDiscovery = async (clarificationAnswers: ClarificationAnswers, selectedPapers: CandidatePaper[]) => {
-    if (isDiscovering) {
-      console.warn("Discovery already in progress, ignoring duplicate call.");
-      return;
-    }
-    setIsDiscovering(true);
+  // Define Callbacks for both Start and Resume
+  const createCallbacks = (isPreviewMode: boolean): SSECallback => {
+    let activityCounter = activities.length; // Continue counting
 
-    // Reset state
-    setNodes([]);
-    setEdges([]);
-    setActivities([]);
-    setLogs([]);
-    setHypotheses([]);
-    setConceptGraph(null);
-    setIsComplete(false);
-    setError(null);
-
-    let activityCounter = 0;
-
-    const callbacks: SSECallback = {
+    return {
       onThreadId: (id) => {
-        setThreadId(id);
+        // Only set thread ID if not already set (retains original session)
+        if (!threadId) setThreadId(id);
       },
-
       onActivity: (activity: ActivityEvent) => {
         const newActivity: AgentActivity = {
-          id: `act-${activityCounter++}`,
+          id: `act-${Date.now()}`,
           agent: activity.agent,
           action: activity.action,
           status: activity.status,
@@ -191,32 +321,24 @@ const Discovery = () => {
         };
         setActivities(prev => [...prev, newActivity]);
       },
-
-      onLog: (message: string) => {
-        setLogs(prev => [...prev, message]);
-      },
-
+      onLog: ((msg: string) => setLogs(prev => [...prev, msg])),
       onResult: (result: Partial<DiscoveryResult>) => {
-        // Update hypotheses if present
         if (result.hypotheses && result.hypotheses.length > 0) {
           setHypotheses(result.hypotheses);
-        }
 
-        // Update literature stats if present
-        if (result.literature && (result.literature as any).papers) {
-          setLiteratureCount((result.literature as any).papers.length);
-        }
+          // NEW TRIGGER: If we get hypotheses in "execution" step (start), 
+          // it means preview generation is done.
+          // We check if "interrupt" happens via onInterrupt callback, 
+          // OR we can infer it if we are in initial start mode and get hypotheses.
 
-        // Update decision summary if present
-        if (result.decision_summary) {
-          setDecisionSummary(result.decision_summary);
+          // In this architecture, let's rely on onInterrupt, 
+          // or manual check if we are in 'execution' and see hypotheses appearing.
         }
-
-        // Update concept graph if present
         if (result.concept_graph) {
           setConceptGraph(result.concept_graph);
+          // Graph update logic (nodes/edges setup) omitted for brevity to keep clean,
+          // assumes graph updates happen same as before.
 
-          // Convert to display nodes/edges
           const graphNodes: GraphNode[] = result.concept_graph.nodes.map((node, i) => ({
             id: node.id,
             label: node.label,
@@ -238,48 +360,54 @@ const Discovery = () => {
 
           setNodes(graphNodes);
           setEdges(graphEdges);
-
-          // Remove isNew flag after animation
-          setTimeout(() => {
-            setNodes(prev => prev.map(n => ({ ...n, isNew: false })));
-          }, 2000);
+        }
+        if (result.decision_summary) setDecisionSummary(result.decision_summary);
+        if (result.literature && (result.literature as any).papers) {
+          setLiteratureCount((result.literature as any).papers.length);
         }
       },
-
-      onError: (errorMsg: string) => {
-        setError(errorMsg);
-        console.error('Discovery error:', errorMsg);
-        setIsDiscovering(false); // Enable retry
+      onError: (msg) => {
+        setError(msg);
+        setIsDiscovering(false);
       },
-
       onInterrupt: (data) => {
-        console.log('Workflow interrupted, next nodes:', data.next);
-        // Could prompt user for input here
+        console.log("INTERRUPT RECEIVED");
+        setIsDiscovering(false); // Stop "loading" state
+        setStep("selection"); // Switch to selection screen
       },
-
       onDone: () => {
         setIsComplete(true);
         setIsDiscovering(false);
-      },
+      }
     };
+  };
 
-    // Map depth to approximate paper count for backend
-    const depthToMaxPapers: Record<string, number> = {
-      quick: 5,
-      standard: 10,
-      deep: 20,
-    };
+  const startDiscovery = async (clarificationAnswers: ClarificationAnswers, selectedPapers: CandidatePaper[]) => {
+    if (isDiscovering) return;
+    setIsDiscovering(true);
 
-    // Start the SSE stream
+    // Reset UI for new run
+    setNodes([]);
+    setEdges([]);
+    setActivities([]);
+    setLogs([]);
+    setHypotheses([]);
+    setConceptGraph(null);
+    setIsComplete(false);
+    setError(null);
+
+    const callbacks = createCallbacks(true); // Preview Mode
+
     try {
       abortControllerRef.current = await startDiscoveryStream(
         {
           query,
-          documents: selectedPapers.map(p => p.id || p.title),
-          max_papers: 10, // Default to standard
+          documents: selectedPapers.map(p => p.id.startsWith("manual-") ? p.rationale : (p.id || p.title)),
+          max_papers: 10,
           timeline: clarificationAnswers.timeline,
           guidance: clarificationAnswers.guidance,
-          goal: 'discover', // Default to discovery mode
+          num_hypotheses: numHypotheses,
+          goal: 'discover',
         },
         callbacks
       );
@@ -289,6 +417,41 @@ const Discovery = () => {
       setIsDiscovering(false);
     }
   };
+
+  const handleSelectionConfirm = async (selectedIds: string[]) => {
+    // User selected hypotheses, now resume deep mode
+    if (!threadId) {
+      setError("Session lost. Please restart.");
+      return;
+    }
+
+    setStep("execution"); // Go back to graph view
+    setIsDiscovering(true); // Re-enable loading
+    setIsComplete(false); // <--- FIX: Ensure we don't show results immediately
+
+    // Add activity log for resume
+    setActivities(prev => [...prev, {
+      id: `act-resume-${Date.now()}`,
+      agent: "orchestrator",
+      action: `Resuming deep investigation on ${selectedIds.length} hypotheses...`,
+      status: "thinking",
+      timestamp: new Date()
+    }]);
+
+    const callbacks = createCallbacks(false); // Deep Mode
+
+    try {
+      abortControllerRef.current = await resumeDiscoveryStream(
+        threadId,
+        selectedIds,
+        callbacks
+      );
+    } catch (err) {
+      setError("Failed to resume: " + (err as Error).message);
+      setIsDiscovering(false);
+    }
+  };
+
 
   const handleNodeSelect = (nodeId: string) => {
     console.log("Selected node:", nodeId);
@@ -336,11 +499,19 @@ const Discovery = () => {
               error={error}
               threadId={threadId}
               decision_summary={decisionSummary}
+              onReset={handleReset}
             />
           </div>
         )}
 
-        {/* ... (rest of render steps) ... */}
+        {step === "selection" && (
+          <div className="flex-1 overflow-auto py-8">
+            <HypothesisSelection
+              hypotheses={hypotheses}
+              onConfirm={handleSelectionConfirm}
+            />
+          </div>
+        )}
 
         {step === "curation" && (
           <div className="flex-1 flex items-center justify-center overflow-auto py-8">

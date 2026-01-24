@@ -3,7 +3,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     AlertTriangle, ArrowRight, ShieldAlert,
-    ChevronDown, ChevronUp, FileText, CheckCircle2
+    ChevronDown, ChevronUp, CheckCircle2
 } from "lucide-react";
 import { DecisionSummary as IDecisionSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -24,10 +24,9 @@ export function DecisionSummary({ summary }: DecisionSummaryProps) {
             {/* 1. Synthesis Paragraph */}
             <div className="mb-6">
                 <h2 className="text-lg font-bold flex items-center gap-2 mb-3 text-foreground">
-                    <FileText className="w-5 h-5 text-primary" />
                     Executive Synthesis
                 </h2>
-                <div className="prose prose-sm text-foreground/90 max-w-none leading-relaxed border-l-2 border-primary/30 pl-4 py-1">
+                <div className="prose prose-sm text-foreground/90 max-w-none leading-relaxed py-1">
                     {summary.primary_hypothesis_reason}
                 </div>
             </div>

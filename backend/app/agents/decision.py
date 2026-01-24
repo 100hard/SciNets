@@ -5,6 +5,9 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.callbacks import adispatch_custom_event
 from pydantic import BaseModel, Field
 from typing import List, Literal
+from app.logging_config import get_logger
+
+log = get_logger(__name__)
 
 class DecisionOutput(BaseModel):
     """
@@ -28,114 +31,133 @@ class DecisionOutput(BaseModel):
     long_term_focus_indices: List[int] = Field(description="Indices of hypotheses best for long-term theory building")
     high_risk_high_reward_indices: List[int] = Field(description="Indices of speculative but high-impact hypotheses")
 
+from app.telemetry.cost_tracker import CostTracker
+
 async def decision_node(state: DiscoveryState, config: RunnableConfig) -> dict:
     """
     Decision Agent: Synthesizes hypotheses into an executive decision summary.
     Run AFTER evidence and critique agents.
     """
-    await adispatch_custom_event("log", {"message": "[Decision Agent] Synthesizing decision summary..."}, config=config)
-    
-    if not state.hypotheses:
-        await adispatch_custom_event("log", {"message": "[Decision Agent] No hypotheses to analyze."}, config=config)
-        return {"done": True}
-
-    # Prepare Hypothesis Context
-    hypotheses_text = ""
-    for i, h in enumerate(state.hypotheses):
-        evidence_summary = h.evidence_summary or "No evidence summary."
-        support_count = len([e for e in h.evidence if e.stance == 'support'])
-        contradict_count = len([e for e in h.evidence if e.stance == 'contradict'])
-        
-        hypotheses_text += f"""
----
-[Hypothesis {i+1}] {h.text}
-ID: {h.id}
-Status: {h.stability_class}
-Evidence: {support_count} Support, {contradict_count} Contradict
-Summary: {evidence_summary}
-Rationale: {h.rationale_gap.rationale_type if h.rationale_gap else 'N/A'}
----
-"""
-
-    system_msg = f"""You are a Strategic Research Director. Your goal is to synthesize the current findings into a DECISION-READY summary.
-
-CONTEXT:
-User Query: {state.user_query}
-Goal: {state.goal}
-
-YOUR TASKS:
-1. PROFILE: Assign a 4-axis strength profile to EACH hypothesis (Mechanistic, Empirical, Tractable, Translational).
-2. ROADMAP: For EACH hypothesis, list 2-3 specific items (experiments/data) that would most increase confidence.
-3. PRIORITIZE: Rank hypotheses for different use cases (Near-term, Long-term, High-risk).
-4. DECIDE: Select ONE primary actionable hypothesis and justify it.
-5. RECOMMEND: Provide concrete next steps (experiments, assays, studies) for the overall project.
-
-GUIDELINES:
-- "Abstained" or "Neutral" evidence is valuable signal -> Treat as "Inconclusive".
-- Do NOT inflate confidence. If evidence is weak, say so.
-- Translational relevance means: "Can this solve a real problem?"
-- Tractability means: "Can we test this with current tools?"
-
-STYLE GUIDELINES (CRITICAL):
-- Write naturally and professionally. Avoid robotic lists or dense academic jargon if simpler words suffice.
-- **Reference hypotheses as "Hypothesis 1", "Hypothesis 2", etc., or descriptively (e.g., "The Glymphatic Hypothesis"). NEVER use "H0" or "H1".**
-- The "Reason" field should be a standalone executive paragraph. Start directly (e.g., "Hypothesis 1 is the most viable because...").
-- Avoid nested parentheses where possible. Use commas or separate sentences.
-
-OUTPUT FORMAT:
-Return a structured JSON object satisfying the DecisionOutput schema.
-"""
-
-    messages = [
-        SystemMessage(content=system_msg),
-        HumanMessage(content=f"Analyze these hypotheses and generate the decision summary:\n{hypotheses_text}")
-    ]
-    
-    llm = get_llm(temperature=0.2) # Low temp for stable decisioning
-    # FIX: Use json schema for serialization safety
-    structured_llm = llm.with_structured_output(DecisionOutput.model_json_schema())
-    
+    CostTracker.get_instance().start_step("decision", "decision_synthesis")
     try:
-        # A. Generate Decision Data
-        raw_output = await structured_llm.ainvoke(messages)
-        output = DecisionOutput(**raw_output)
+        await adispatch_custom_event("log", {"message": "[Decision Agent] Synthesizing decision summary..."}, config=config)
         
-        # B. Post-Process State Updates
-        updated_hypotheses = []
+        if not state.hypotheses:
+            await adispatch_custom_event("log", {"message": "[Decision Agent] No hypotheses to analyze."}, config=config)
+            return {"done": True}
+    
+        # Prepare Hypothesis Context
+        hypotheses_text = ""
         for i, h in enumerate(state.hypotheses):
-            # Attach strength profile (convert Pydantic to dict for state storage)
-            if i < len(output.profiles):
-                h.strength_profile = output.profiles[i].model_dump()
-            # Attach confidence roadmap
-            if i < len(output.confidence_roadmaps):
-                h.confidence_roadmap = output.confidence_roadmaps[i]
+            evidence_summary = h.evidence_summary or "No evidence summary."
+            support_count = len([e for e in h.evidence if e.stance == 'support'])
+            contradict_count = len([e for e in h.evidence if e.stance == 'contradict'])
             
-            updated_hypotheses.append(h)
+            critique_info = "Critique: Not available"
+            if h.critique:
+                critique_info = f"Critique Verdict: {h.critique.get('decision', 'N/A')} (Conf: {h.critique.get('confidence', 0.0)})\nInterpretation: {h.critique.get('interpretation', 'N/A')}"
             
-        # Map indices back to IDs
-        def map_indices(indices):
-            return [state.hypotheses[i].id for i in indices if 0 <= i < len(state.hypotheses)]
+            hypotheses_text += f"""
+    ---
+    [Hypothesis {i+1}] {h.text}
+    ID: {h.id}
+    Status: {h.stability_class}
+    Evidence: {support_count} Support, {contradict_count} Contradict
+    {critique_info}
+    Summary: {evidence_summary}
+    Rationale: {h.rationale_gap.rationale_type if h.rationale_gap else 'N/A'}
+    ---
+    """
+    
+        system_msg = f"""You are a Strategic Research Director. Your goal is to synthesize the current findings into a DECISION-READY summary.
+    
+    CONTEXT:
+    User Query: {state.user_query}
+    Goal: {state.goal}
+    
+    YOUR TASKS:
+    1. PROFILE: Assign a 4-axis strength profile to EACH hypothesis (Mechanistic, Empirical, Tractable, Translational).
+    2. ROADMAP: For EACH hypothesis, list 2-3 specific items (experiments/data) that would most increase confidence.
+    3. PRIORITIZE: Rank hypotheses for different use cases (Near-term, Long-term, High-risk).
+    4. DECIDE: Select ONE primary actionable hypothesis and justify it.
+    5. RECOMMEND: Provide concrete next steps (experiments, assays, studies) for the overall project.
+    
+    GUIDELINES:
+    - "Abstained" or "Neutral" evidence is valuable signal -> Treat as "Inconclusive".
+    - Do NOT inflate confidence. If evidence is weak, say so.
+    - Translational relevance means: "Can this solve a real problem?"
+    - Tractability means: "Can we test this with current tools?"
+    
+    STYLE GUIDELINES (CRITICAL):
+    - Write naturally and professionally. Avoid robotic lists or dense academic jargon if simpler words suffice.
+    - **Reference hypotheses as "Hypothesis 1", "Hypothesis 2", etc., or descriptively (e.g., "The Glymphatic Hypothesis"). NEVER use "H0" or "H1".**
+    - The "Reason" field should be a standalone executive paragraph. Start directly (e.g., "Hypothesis 1 is the most viable because...").
+    - Avoid nested parentheses where possible. Use commas or separate sentences.
+    
+    OUTPUT FORMAT:
+    Return a structured JSON object satisfying the DecisionOutput schema.
+    """
+    
+        messages = [
+            SystemMessage(content=system_msg),
+            HumanMessage(content=f"Analyze these hypotheses and generate the decision summary:\n{hypotheses_text}")
+        ]
+        
+        llm = get_llm(temperature=0.2) # Low temp for stable decisioning
+        # FIX: Use json schema for serialization safety
+        structured_llm = llm.with_structured_output(DecisionOutput.model_json_schema())
+        
+        try:
+            # A. Generate Decision Data
+            raw_output = await structured_llm.ainvoke(messages)
+            output = DecisionOutput(**raw_output)
             
-        decision_summary = DecisionSummary(
-            primary_hypothesis_id=state.hypotheses[output.primary_hypothesis_index].id if state.hypotheses and 0 <= output.primary_hypothesis_index < len(state.hypotheses) else (state.hypotheses[0].id if state.hypotheses else ""),
-            primary_hypothesis_reason=output.primary_hypothesis_reason,
-            evidence_level=output.evidence_level,
-            key_risks=output.key_risks,
-            recommended_next_steps=output.recommended_next_steps,
-            system_confidence=output.system_confidence,
-            near_term_focus=map_indices(output.near_term_focus_indices),
-            long_term_focus=map_indices(output.long_term_focus_indices),
-            high_risk_high_reward=map_indices(output.high_risk_high_reward_indices)
-        )
-        
-        await adispatch_custom_event("log", {"message": f"[Decision Agent] Decision: Primary H{output.primary_hypothesis_index} - {output.evidence_level}"}, config=config)
-        
-        return {
-            "hypotheses": updated_hypotheses,
-            "decision_summary": decision_summary
-        }
-        
-    except Exception as e:
-        await adispatch_custom_event("log", {"message": f"[Decision Agent] Failed: {e}"}, config=config)
-        print(f"[Decision Agent] Error: {e}")
-        return {"done": True}
+            # B. Post-Process State Updates
+            updated_hypotheses = []
+            for i, h in enumerate(state.hypotheses):
+                # Attach strength profile (convert Pydantic to dict for state storage)
+                if i < len(output.profiles):
+                    h.strength_profile = output.profiles[i].model_dump()
+                # Attach confidence roadmap
+                if i < len(output.confidence_roadmaps):
+                    h.confidence_roadmap = output.confidence_roadmaps[i]
+                
+                updated_hypotheses.append(h)
+                
+            # Map indices back to IDs
+            def map_indices(indices):
+                return [state.hypotheses[i].id for i in indices if 0 <= i < len(state.hypotheses)]
+                
+            decision_summary = DecisionSummary(
+                primary_hypothesis_id=state.hypotheses[output.primary_hypothesis_index].id if state.hypotheses and 0 <= output.primary_hypothesis_index < len(state.hypotheses) else (state.hypotheses[0].id if state.hypotheses else ""),
+                primary_hypothesis_reason=output.primary_hypothesis_reason,
+                evidence_level=output.evidence_level,
+                key_risks=output.key_risks,
+                recommended_next_steps=output.recommended_next_steps,
+                system_confidence=output.system_confidence,
+                near_term_focus=map_indices(output.near_term_focus_indices),
+                long_term_focus=map_indices(output.long_term_focus_indices),
+                high_risk_high_reward=map_indices(output.high_risk_high_reward_indices)
+            )
+            
+            await adispatch_custom_event("log", {"message": f"[Decision Agent] Decision: Primary H{output.primary_hypothesis_index} - {output.evidence_level}"}, config=config)
+            
+            log.info("decision_made",
+                     primary_id=decision_summary.primary_hypothesis_id,
+                     reason=decision_summary.primary_hypothesis_reason[:200], # Truncate for log
+                     level=decision_summary.evidence_level,
+                     risks=decision_summary.key_risks,
+                     confidence=decision_summary.system_confidence
+            )
+    
+            return {
+                "hypotheses": updated_hypotheses,
+                "decision_summary": decision_summary
+            }
+            
+        except Exception as e:
+            await adispatch_custom_event("log", {"message": f"[Decision Agent] Failed: {e}"}, config=config)
+            print(f"[Decision Agent] Error: {e}")
+            return {"done": True}
+    finally:
+        CostTracker.get_instance().end_step("decision", "decision_synthesis")

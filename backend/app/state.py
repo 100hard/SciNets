@@ -50,6 +50,12 @@ class Hypothesis(BaseModel):
     search_query: Optional[str] = None # Keywords for evidence search
     required_data: List[str] = []
     experiment_idea: str | None = None
+    
+    # Preview Refinement Fields
+    impact_hook: Optional[str] = None # 1-line impact statement (Preview)
+    is_recommended: bool = False # Tier 1 vs Tier 2
+    rank: Optional[int] = None # Global rank (1..N)
+
     causal_chain: Optional[CausalChain] = None # Structured causal mechanism (Linear Projection)
     evidence_summary: Optional[str] = None # Textual summary of evidence
     evidence: List[EvidenceItem] = []
@@ -79,6 +85,9 @@ class Hypothesis(BaseModel):
     
     # New: Actionability Roadmap (What would increase confidence)
     confidence_roadmap: List[str] = []
+
+    # Critique Data (Refactor)
+    critique: Optional[dict] = None
 
 
 class HypothesisStrengthProfile(BaseModel):
@@ -161,7 +170,7 @@ class DiscoveryState(BaseModel):
     NOTE: Experiments are NOT part of this state.
     They are handled separately via ExperimentState and POST /run_experiment.
     """
-    user_query: str
+    user_query: Optional[str] = None
     goal: str = "discover"           # discover, survey, write
     lens: str = "none"               # Disciplinary lens (e.g., "game theory")
     speculation: str = "medium"      # low, medium, high
@@ -187,6 +196,10 @@ class DiscoveryState(BaseModel):
     literature: Optional[dict] = None
     concept_graph: Optional[dict] = None
     hypotheses: List[Hypothesis] = []
+    # New: Full storage and mode tracking
+    all_hypotheses: List[Hypothesis] = [] # Stores all candidates before filtering
+    hypothesis_mode: Literal["preview", "deep"] = "preview"
+    
     selected_hypothesis_id: Optional[str] = None
     # REMOVED: experiment_plans, selected_experiment_plan_id, experiments
     critique: Optional[dict] = None
@@ -204,3 +217,6 @@ class DiscoveryState(BaseModel):
     stance_counts: Dict[str, int] = {"support": 0, "contradict": 0, "neutral": 0}
     grounding_metrics: Dict[str, Any] = {}
     bridge_attempted: bool = False
+    
+    # Telemetry
+    cost_report: Optional[dict] = None

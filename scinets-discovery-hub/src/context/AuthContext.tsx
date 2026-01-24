@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 // In Vite dev, we need to ensure proxy is set up or use absolute URL.
 // Backend is likely on 8000. Frontend on 5173/8080.
 // Ideally, use a relative path /api and configured proxy.
-const API_URL = "http://localhost:8000/api";
+const API_URL = "http://localhost:8005";
 
 interface User {
     id: string;

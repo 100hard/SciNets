@@ -14,6 +14,8 @@ import uuid
 from langchain_core.runnables import RunnableConfig
 from langchain_core.callbacks import adispatch_custom_event
 
+from app.telemetry.cost_tracker import CostTracker
+
 class ExperimentAction(BaseModel):
     thought: str = Field(description="Your detailed reasoning about what to do next. Analyze errors if present. Include 'runtime_estimate' and 'data_size_estimate'.")
     code: str = Field(description="The executable Python code to run.")
@@ -25,15 +27,18 @@ async def experiment_node(state: ExperimentState, config: RunnableConfig) -> dic
     Iteratively thinks, writes code, executes, and fixes it until success.
     Works on a Single Hypothesis defined in ExperimentState.
     """
+    CostTracker.get_instance().start_step("experiment", "process_loop")
+    CostTracker.get_instance().push_hypothesis_context(state.hypothesis_id)
+    try:
+        # DEBUG LOG
+        await adispatch_custom_event("log", {"message": f"[Debug] Experiment Node: ID={state.hypothesis_id}, Intent={state.intent}"}, config=config)
     
-    # DEBUG LOG
-    await adispatch_custom_event("log", {"message": f"[Debug] Experiment Node: ID={state.hypothesis_id}, Intent={state.intent}"}, config=config)
+        hypothesis_text = state.hypothesis_text
+        
+        if not hypothesis_text:
+            await adispatch_custom_event("log", {"message": "[Error] No hypothesis text provided."}, config=config)
+            return {"experiment_result": Experiment(hypothesis_id=state.hypothesis_id, status="failed", result_summary="Missing hypothesis text")}
 
-    hypothesis_text = state.hypothesis_text
-    
-    if not hypothesis_text:
-        await adispatch_custom_event("log", {"message": "[Error] No hypothesis text provided."}, config=config)
-        return {"experiment_result": Experiment(hypothesis_id=state.hypothesis_id, status="failed", result_summary="Missing hypothesis text")}
 
     # 1. Real Experiment Loop (Agentic)
     await adispatch_custom_event("log", {"message": f"[Experiment] Starting Code Generation Loop for: {hypothesis_text[:50]}..."}, config=config)
@@ -252,3 +257,6 @@ except ImportError:
     )
     
     return {"experiment_result": new_experiment}
+    finally:
+        CostTracker.get_instance().pop_hypothesis_context()
+        CostTracker.get_instance().end_step("experiment", "process_loop")

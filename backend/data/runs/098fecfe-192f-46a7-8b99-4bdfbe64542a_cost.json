@@ -1,0 +1,23 @@
+{
+  "total_tokens": 0,
+  "estimated_cost_usd": 0.0,
+  "by_agent": {
+    "evidence": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 26.879689931869507
+    }
+  },
+  "by_step": {
+    "evidence_processing": {
+      "calls": 0,
+      "prompt": 0,
+      "completion": 0,
+      "cost": 0.0,
+      "time": 26.879689931869507
+    }
+  },
+  "by_hypothesis": {}
+}

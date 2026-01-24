@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, Network, ExternalLink, Star, Beaker, Target, BookOpen, Lightbulb } from "lucide-react";
+import { FileText, Network, ExternalLink, Star, Beaker, BookOpen, Lightbulb, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GraphNode, GraphEdge } from "@/pages/Discovery";
 import type { ClarificationAnswers } from "./DiscoveryClarificationStep";
@@ -24,6 +24,7 @@ interface DiscoveryResultsProps {
   literatureCount?: number;
   threadId?: string | null;
   decision_summary?: IDecisionSummary;
+  onReset?: () => void;
 }
 
 interface ExperimentConfig {
@@ -122,6 +123,7 @@ export const DiscoveryResults = ({
   literatureCount = 0,
   threadId = null,
   decision_summary,
+  onReset,
 }: DiscoveryResultsProps) => {
   // Convert API hypotheses to UI format, fallback to mock if empty
   const displayHypotheses: UIHypothesis[] = apiHypotheses.length > 0
@@ -165,6 +167,23 @@ export const DiscoveryResults = ({
             <span title="Papers Analyzed" className="flex items-center gap-1.5">{displayPaperCount} Papers</span>
             <span title="Hypotheses Generated" className="flex items-center gap-1.5">{apiHypotheses.length} Hypotheses</span>
             <span title="Connections Explored" className="flex items-center gap-1.5">{edgeCount} Connections</span>
+            {threadId && (
+              <button
+                onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:8005'}/api/discovery/${threadId}/export/pdf`, '_blank')}
+                className="ml-2 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors text-xs font-medium flex items-center gap-2 border border-border"
+              >
+                <Download className="w-3 h-3" />
+                Download Report (PDF)
+              </button>
+            )}
+            {onReset && (
+              <button
+                onClick={onReset}
+                className="ml-2 px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-xs font-medium flex items-center gap-2"
+              >
+                New Discovery
+              </button>
+            )}
           </div>
         </div>
         <motion.h1
@@ -208,30 +227,7 @@ export const DiscoveryResults = ({
         <DecisionSummary summary={decision_summary} />
       )}
 
-      {/* 5. Graph Access */}
-      <div className="pt-8 border-t border-border">
-        <button
-          className={cn(
-            "w-full flex items-center justify-between px-4 py-4 rounded-lg",
-            "border border-dashed border-border bg-background/20",
-            "hover:border-foreground/20 transition-colors group"
-          )}
-          onClick={() => {
-            console.log("Knowledge graph would open here", { nodes, edges, conceptGraph });
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <Network className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <div className="text-left">
-              <span className="text-sm font-medium text-foreground">View reasoning in knowledge graph</span>
-              <p className="text-xs text-muted-foreground">
-                Explore {entityCount} nodes and {edgeCount} connections
-              </p>
-            </div>
-          </div>
-          <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-        </button>
-      </div>
+
 
     </div>
   );

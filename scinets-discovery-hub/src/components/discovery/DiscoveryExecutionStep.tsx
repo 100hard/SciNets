@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, BookOpen, Lightbulb, Search,
   CheckCircle, Loader2, AlertCircle, Clock,
-  Activity, Layers, Route, Sparkles, FlaskConical, ChevronRight, Terminal, Bot
+  Activity, Layers, Route, Sparkles, FlaskConical,
+  MessageSquare, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GraphNode, GraphEdge, AgentActivity } from "@/pages/Discovery";
@@ -22,7 +23,6 @@ interface DiscoveryExecutionStepProps {
   activities: AgentActivity[];
   isComplete: boolean;
   onNodeSelect: (nodeId: string) => void;
-  // New props from real API
   hypotheses?: Hypothesis[];
   conceptGraph?: ConceptGraph | null;
   logs?: string[];
@@ -30,21 +30,21 @@ interface DiscoveryExecutionStepProps {
   literatureCount?: number;
   threadId?: string | null;
   decision_summary?: DecisionSummary;
+  onReset?: () => void;
 }
 
-// Process-focused status config - no discovery verbs
+// Process-focused status config
 const statusConfig = {
   pending: { icon: Clock, label: "Pending", color: "text-foreground-muted" },
-  running: { icon: Loader2, label: "Running", color: "text-agent-scientist", animate: true },
+  // Removed "running" as it is not a valid AgentActivity status
   completed: { icon: CheckCircle, label: "Completed", color: "text-foreground" },
   failed: { icon: AlertCircle, label: "Failed", color: "text-destructive" },
   abstained: { icon: AlertCircle, label: "Abstained", color: "text-foreground-muted" },
-  // Legacy mapping for existing status types
-  reading: { icon: Bot, label: "Running", color: "text-agent-scientist", animate: true },
-  thinking: { icon: Bot, label: "Running", color: "text-agent-planner", animate: true },
-  building: { icon: Bot, label: "Running", color: "text-agent-orchestrator", animate: true },
-  experimenting: { icon: Bot, label: "Running", color: "text-agent-experiment", animate: true },
-  complete: { icon: CheckCircle, label: "Completed", color: "text-foreground" },
+  reading: { icon: BookOpen, label: "Reading", color: "text-blue-500", animate: true },
+  thinking: { icon: Brain, label: "Reasoning", color: "text-purple-500", animate: true },
+  building: { icon: Layers, label: "Building", color: "text-indigo-500", animate: true },
+  experimenting: { icon: FlaskConical, label: "Experimenting", color: "text-orange-500", animate: true },
+  complete: { icon: CheckCircle, label: "Completed", color: "text-green-500" },
 };
 
 const agentLabels = {
@@ -54,7 +54,8 @@ const agentLabels = {
   critic: "Critique Agent",
   experiment: "Experiment Agent",
   orchestrator: "Orchestrator",
-  scientist: "Research Agent", // Legacy fallback
+  scientist: "Research Agent",
+  decision: "Decision Agent",
 };
 
 interface ExplorationStatus {
@@ -85,6 +86,7 @@ export const DiscoveryExecutionStep = ({
   literatureCount = 0,
   threadId = null,
   decision_summary,
+  onReset,
 }: DiscoveryExecutionStepProps) => {
   const activityRef = useRef<HTMLDivElement>(null);
   const logsRef = useRef<HTMLDivElement>(null);
@@ -102,7 +104,7 @@ export const DiscoveryExecutionStep = ({
     hypothesisSynthesis: "pending",
   });
 
-  // Auto-scroll activity feed
+  // Auto-scroll activity list
   useEffect(() => {
     if (activityRef.current) {
       activityRef.current.scrollTop = activityRef.current.scrollHeight;
@@ -132,11 +134,6 @@ export const DiscoveryExecutionStep = ({
     }));
   }, [activities.length, curatedPapers.length, isComplete, conceptGraph, hypotheses.length]);
 
-  const currentActivity = activities[activities.length - 1];
-  const CurrentStatusIcon = currentActivity
-    ? statusConfig[currentActivity.status]?.icon || Loader2
-    : Loader2;
-
   // Show results when complete
   if (isComplete) {
     return (
@@ -152,6 +149,7 @@ export const DiscoveryExecutionStep = ({
         literatureCount={literatureCount}
         threadId={threadId}
         decision_summary={decision_summary}
+        onReset={onReset}
       />
     );
   }
@@ -182,6 +180,51 @@ export const DiscoveryExecutionStep = ({
     );
   };
 
+  // Process logs to find the latest meaningful "thought"
+  const getThinkingMessage = (logs: string[], agentType: string) => {
+    // 1. Scan backwards for the last "clean" message
+    for (let i = logs.length - 1; i >= 0; i--) {
+      let log = logs[i];
+
+      // FILTER: Skip technical/raw logs
+      if (
+        log.includes("[Result]") ||
+        log.includes("content='{") ||
+        log.includes('"{') ||
+        log.includes("http") ||
+        log.includes("Error:") ||
+        log.length > 150 // Skip overly long dumps
+      ) {
+        continue;
+      }
+
+      // CLEANUP: Remove brackets and internal prefixes
+      log = log.replace(/\[.*?\]/g, "").trim();
+      log = log.replace(/^log:\s*/i, "");
+
+      // MAPPING: Beautify common backend terms
+      if (log.toLowerCase().includes("openalex")) return "Querying global knowledge graph...";
+      if (log.toLowerCase().includes("retrieving")) return "Retrieving academic sources...";
+      if (log.toLowerCase().includes("analyzing")) return "Synthesizing information...";
+
+      // If fairly clean, return it
+      if (log.length > 5) return log;
+    }
+
+    // Default fallbacks if no clean logs found
+    const defaults: Record<string, string> = {
+      literature: "Reviewing academic papers...",
+      planner: "Structuring research strategy...",
+      scientist: "Analyzing data patterns...",
+      node: "Processing...",
+      orchestrator: "Coordinating agent workflow...",
+      critic: "Verifying consistency...",
+      hypothesis: "Formulating theories..."
+    };
+
+    return defaults[agentType] || "Thinking...";
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Error Banner */}
@@ -202,14 +245,13 @@ export const DiscoveryExecutionStep = ({
       <div className="flex-shrink-0 mb-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
+            {/* Simple Header Icon */}
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center",
               "bg-foreground/5"
             )}>
-              <CurrentStatusIcon className={cn(
-                "w-4 h-4",
-                "animate-pulse",
-                currentActivity ? statusConfig[currentActivity.status]?.color : "text-foreground-muted"
+              <Loader2 className={cn(
+                "w-4 h-4 text-primary animate-spin"
               )} />
             </div>
             <div>
@@ -222,9 +264,21 @@ export const DiscoveryExecutionStep = ({
             </div>
           </div>
           <div className="flex items-center gap-4 text-xs text-foreground-muted">
+            {/* New Reset Button */}
+            {onReset && (
+              <button
+                onClick={onReset}
+                className="px-3 py-1.5 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20 transition-colors flex items-center gap-1.5 font-medium"
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                Stop & Reset
+              </button>
+            )}
+
+            {/* Stats */}
             <div className="flex items-center gap-2">
               <Activity className="w-3 h-3" />
-              <span>{activities.length} actions</span>
+              <span>{activities.length} steps</span>
             </div>
             <button
               onClick={() => setShowLogs(!showLogs)}
@@ -233,7 +287,7 @@ export const DiscoveryExecutionStep = ({
                 showLogs ? "bg-foreground/10 text-foreground" : "hover:bg-foreground/5"
               )}
             >
-              {showLogs ? "Hide Logs" : "Show Logs"}
+              {showLogs ? "Hide Log History" : "View Log History"}
             </button>
           </div>
         </div>
@@ -251,16 +305,13 @@ export const DiscoveryExecutionStep = ({
 
       {/* Main Content Area */}
       <div className="flex-1 flex gap-4 min-h-0">
-        {/* Activity Stream - Primary */}
+        {/* Activity List - Minimal with Enhanced Active State */}
         <div className="flex-1 flex flex-col border border-border rounded-lg bg-background/30 overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-foreground-muted" />
+              <MessageSquare className="w-3.5 h-3.5 text-foreground-muted" />
               <span className="text-xs font-medium text-foreground">Agent Activity</span>
             </div>
-            <span className="text-[10px] text-foreground-muted">
-              Execution trace
-            </span>
           </div>
 
           <div
@@ -269,10 +320,17 @@ export const DiscoveryExecutionStep = ({
           >
             <AnimatePresence>
               {activities.map((activity, index) => {
-                const config = statusConfig[activity.status] || statusConfig.running;
+                // Determine config and running state safely
+                const config = statusConfig[activity.status] || statusConfig.completed;
                 const Icon = config.icon;
+
+                // Correctly check running state against valid types
                 const isRunning = activity.status === "reading" || activity.status === "thinking" || activity.status === "building";
                 const isLast = index === activities.length - 1;
+
+                // Grab the very last log line if this is the active agent to show "Thinking"
+                // const lastLog = isLast && isRunning && logs.length > 0 ? logs[logs.length - 1] : null;
+                const thinkingMessage = isLast && isRunning ? getThinkingMessage(logs, activity.agent) : null;
 
                 return (
                   <motion.div
@@ -281,34 +339,52 @@ export const DiscoveryExecutionStep = ({
                     animate={{ opacity: 1, y: 0 }}
                     className="flex gap-3"
                   >
-                    <div className="flex-shrink-0 flex flex-col items-center">
-                      <div className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center",
-                        "bg-foreground/5"
-                      )}>
-                        <Icon className={cn(
-                          "w-3 h-3",
-                          config.color,
-                          isRunning && isLast && "animate-spin"
-                        )} />
-                      </div>
+                    <div className="flex-shrink-0 flex flex-col items-center w-6">
+                      {/* Vertical connector line */}
                       {index < activities.length - 1 && (
                         <div className="w-px flex-1 bg-border mt-1" />
                       )}
                     </div>
+
                     <div className="flex-1 pb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-medium text-foreground-muted uppercase tracking-wide">
-                          {agentLabels[activity.agent]}
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-medium text-foreground-muted uppercase tracking-wide w-24 flex-shrink-0">
+                          {agentLabels[activity.agent] || activity.agent}
                         </span>
-                        <span className={cn(
-                          "text-[9px] px-1.5 py-0.5 rounded",
-                          isRunning && isLast ? "bg-agent-scientist/10 text-agent-scientist" : "bg-foreground/5 text-foreground-muted"
-                        )}>
-                          {isRunning && isLast ? "Running" : "Completed"}
-                        </span>
+
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "text-[9px] px-1.5 py-0.5 rounded",
+                              isRunning && isLast ? "bg-primary/10 text-primary" : "bg-foreground/5 text-foreground-muted"
+                            )}>
+                              {isRunning && isLast ? "Running" : "Completed"}
+                            </span>
+                            <p className="text-xs text-foreground font-medium">{activity.action}</p>
+                          </div>
+
+                          {/* ENHANCEMENT: Automated "Thinking" Line for Active Agent */}
+                          {isLast && isRunning && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              className="mt-2 pl-2 border-l-2 border-primary/20"
+                            >
+                              <div className="flex items-center gap-2 text-[10px] text-foreground-muted font-mono">
+                                <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                                <motion.span
+                                  key={thinkingMessage} // Animate text changes
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 0.7 }}
+                                  className="opacity-70"
+                                >
+                                  {thinkingMessage}
+                                </motion.span>
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs text-foreground mt-0.5">{activity.action}</p>
                     </div>
                   </motion.div>
                 );
@@ -325,7 +401,7 @@ export const DiscoveryExecutionStep = ({
             )}
           </div>
 
-          {/* Logs Panel (collapsible) */}
+          {/* Logs Panel (Hidden by default, user can toggle for full history) */}
           {showLogs && logs.length > 0 && (
             <div className="border-t border-border">
               <div
@@ -333,14 +409,17 @@ export const DiscoveryExecutionStep = ({
                 className="h-32 overflow-auto p-3 bg-background/50 font-mono text-[10px] text-foreground-muted"
               >
                 {logs.map((log, i) => (
-                  <div key={i} className="py-0.5">{log}</div>
+                  <div key={i} className="py-0.5 border-l-2 border-transparent hover:border-foreground/20 pl-1 active:bg-foreground/5">
+                    <span className="opacity-50 mr-2">{i + 1}.</span>
+                    {log}
+                  </div>
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* Exploration Status - Neutral metrics only */}
+        {/* Exploration Status - Minimal Metrics */}
         <div className="w-80 flex flex-col border border-border rounded-lg bg-background/30 overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -350,90 +429,38 @@ export const DiscoveryExecutionStep = ({
           </div>
 
           <div className="flex-1 overflow-auto p-4 space-y-4">
-            {/* Paper Processing */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-[10px] text-foreground-muted uppercase tracking-wide">
-                <BookOpen className="w-3 h-3" />
-                Corpus Processing
+            {/* Minimal Metrics - No fancy graphs, just clean data */}
+            <div className="space-y-4 text-xs">
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
+                <span className="text-foreground-muted">Papers Processed</span>
+                <span className="font-mono text-foreground">{explorationStatus.papersRetrieved}</span>
               </div>
-              <div className="space-y-1.5 pl-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground-muted">Papers retrieved</span>
-                  <span className="text-xs font-mono text-foreground">{explorationStatus.papersRetrieved}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground-muted">Papers validated</span>
-                  <span className="text-xs font-mono text-foreground">{explorationStatus.papersValidated}</span>
-                </div>
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
+                <span className="text-foreground-muted">Concepts Extracted</span>
+                <span className="font-mono text-foreground">{explorationStatus.nodesExtracted}</span>
               </div>
-            </div>
-
-            {/* Graph Construction */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-[10px] text-foreground-muted uppercase tracking-wide">
-                <Layers className="w-3 h-3" />
-                Graph Construction
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
+                <span className="text-foreground-muted">Relations Inferred</span>
+                <span className="font-mono text-foreground">{explorationStatus.relationsInferred}</span>
               </div>
-              <div className="space-y-1.5 pl-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground-muted">Nodes extracted</span>
-                  <span className="text-xs font-mono text-foreground">{explorationStatus.nodesExtracted}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground-muted">Relations inferred</span>
-                  <span className="text-xs font-mono text-foreground">{explorationStatus.relationsInferred}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground-muted">Graph densification</span>
-                  {getStatusLabel(explorationStatus.graphDensification)}
-                </div>
+              <div className="flex justify-between items-center py-2 border-b border-border/50">
+                <span className="text-foreground-muted">Hypotheses</span>
+                <span className="font-mono text-foreground">{hypotheses.length || "-"}</span>
               </div>
             </div>
 
-            {/* Reasoning */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-[10px] text-foreground-muted uppercase tracking-wide">
-                <Route className="w-3 h-3" />
-                Reasoning Exploration
-              </div>
-              <div className="space-y-1.5 pl-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground-muted">Paths explored</span>
-                  <span className="text-xs font-mono text-foreground">{explorationStatus.reasoningPathsExplored}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground-muted">Structural bridges attempted</span>
-                  <span className="text-xs font-mono text-foreground">{explorationStatus.structuralBridgesAttempted}</span>
-                </div>
+            {/* Active Phase Indicator */}
+            <div className="pt-4">
+              <div className="text-[10px] uppercase text-foreground-muted tracking-wide mb-2">Current Phase</div>
+              <div className="bg-foreground/5 rounded p-2 text-xs font-medium flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                {activities.length > 0 ? "Processing" : "Waiting"}
+                <span className="ml-auto opacity-50 font-normal">
+                  {explorationStatus.graphDensification === "running" ? "Densifying Graph" :
+                    explorationStatus.hypothesisSynthesis === "running" ? "Synthesizing" : "Active"}
+                </span>
               </div>
             </div>
-
-            {/* Synthesis */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-[10px] text-foreground-muted uppercase tracking-wide">
-                <Sparkles className="w-3 h-3" />
-                Synthesis
-              </div>
-              <div className="space-y-1.5 pl-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground-muted">Hypothesis synthesis</span>
-                  {getStatusLabel(explorationStatus.hypothesisSynthesis)}
-                </div>
-                {hypotheses.length > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-foreground-muted">Hypotheses generated</span>
-                    <span className="text-xs font-mono text-foreground">{hypotheses.length}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Footer note */}
-          <div className="px-4 py-3 border-t border-border">
-            <p className="text-[10px] text-foreground-muted text-center">
-              Results will be available upon completion
-            </p>
           </div>
         </div>
       </div>

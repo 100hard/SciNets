@@ -24,6 +24,7 @@ from app.config import config as app_config
 from fastapi import Response, Request, Depends, Cookie, status
 from sqlalchemy.orm import Session
 import datetime
+from app.telemetry.cost_tracker import CostTracker
 
 # Ensure backend dir is in path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -53,15 +54,48 @@ app.add_middleware(
         "http://127.0.0.1:8080",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Global Graph Instance (Singleton with shared Memory)
+from app.graph import create_graph, global_memory
+try:
+    # Initialize the graph once at startup
+    app_graph = create_graph(memory=global_memory)
+    log.info("graph_initialized", status="success")
+except Exception as e:
+    log.error("graph_initialization_failed", error=str(e))
+    app_graph = None # Will fail if called
+
+# Request Logging Middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    request_id = str(uuid.uuid4())[:8]
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+    
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    
+    log.info(
+        "http_request",
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration=f"{process_time:.3f}s"
+    )
+    
+    return response
+
 # In-memory session store
 sessions: Dict[str, Any] = {}
+
 
 def custom_serializer(obj):
     if hasattr(obj, "model_dump"):
@@ -169,8 +203,10 @@ class RunRequest(BaseModel):
     guidance: Optional[str] = None
     run_experiments: bool = False
     documents: List[str] = []
+    selected_hypothesis_ids: List[str] = [] # Resume: specific IDs to deep-dive
     thread_id: str | None = None # For resuming sessions
     feedback: str | None = None # User feedback when resuming
+    num_hypotheses: int = 3 # Configurable hypothesis count
     mock: bool = False
 
 class ExperimentRequest(BaseModel):
@@ -332,7 +368,8 @@ async def search_papers_endpoint(request: SearchRequest):
         from app.tools.openalex import search_papers
         
         # Search OpenAlex
-        results = await search_papers(request.query, limit=request.max_papers)
+        # Fetch extra to account for filtering (3x buffer)
+        results = await search_papers(request.query, limit=request.max_papers * 3)
         log.info("paper_search_results", count=len(results), query=request.query)
         
         # FALLBACK LOGIC (copied from main.py)
@@ -342,7 +379,7 @@ async def search_papers_endpoint(request: SearchRequest):
             keywords = [w for w in request.query.lower().split() if w not in stopwords]
             simple_query = " ".join(keywords)
             
-            results = await search_papers(simple_query, limit=request.max_papers)
+            results = await search_papers(simple_query, limit=request.max_papers * 3)
             log.info("paper_search_fallback_results", count=len(results), simple_query=simple_query)
 
         papers = []
@@ -364,8 +401,8 @@ async def search_papers_endpoint(request: SearchRequest):
                  except: 
                     abstract_text = "Error reconstructing abstract"
             
-            if not abstract_text:
-                abstract_text = "No abstract available."
+            if not abstract_text or abstract_text == "No abstract available.":
+                continue
 
             papers.append({
                 "id": p["id"],
@@ -376,6 +413,10 @@ async def search_papers_endpoint(request: SearchRequest):
                 "rationale": abstract_text[:200] + "...",
                 "url": p.get("landing_page_url")
             })
+
+            # Stop once we have enough valid papers
+            if len(papers) >= request.max_papers:
+                break
             
         return {"papers": papers}
     except Exception as e:
@@ -404,7 +445,6 @@ async def run_discovery_stream(request: RunRequest):
     active_threads.add(thread_id)
     
     try:
-        from app.graph import create_graph
         from app.state import DiscoveryState
         
         config = {"configurable": {"thread_id": thread_id}}
@@ -419,28 +459,61 @@ async def run_discovery_stream(request: RunRequest):
             is_resume=bool(request.thread_id)
         )
 
-        graph = create_graph()
+        global app_graph
+        graph = app_graph
         
         # If resuming with feedback
         initial_state = None
         if request.feedback and request.thread_id:
+             # Regular Resume with Feedback (Legacy)
             request_log.info("resuming_with_feedback", feedback=request.feedback[:100])
             graph.update_state(config, {"human_feedback": request.feedback})
-            initial_state = None # Resume from current state
+            initial_state = None 
+        elif request.selected_hypothesis_ids and request.thread_id:
+             # NEW: Resume with Selection
+             request_log.info("resuming_with_selection", selected_ids=request.selected_hypothesis_ids)
+             
+             # Fetch current state
+             current_state = graph.get_state(config).values
+             log.info("resume_state_trace", 
+                      thread_id=request.thread_id, 
+                      state_keys=list(current_state.keys()), 
+                      hypotheses_count=len(current_state.get("hypotheses", []))
+             )
+
+             all_hypotheses = current_state.get("hypotheses", [])
+             
+             # Filter hypotheses
+             selected = [h for h in all_hypotheses if h.id in request.selected_hypothesis_ids]
+             if not selected:
+                 # Fallback if IDs don't match (maybe just take top 3)
+                 log.warning("selection_mismatch", requested=request.selected_hypothesis_ids)
+                 selected = all_hypotheses[:3]
+             
+             # Update state with filtered list AND set mode to DEEP
+             graph.update_state(config, {
+                 "hypotheses": selected, 
+                 "selected_hypothesis_ids": request.selected_hypothesis_ids,
+                 "hypothesis_mode": "deep" 
+             })
+             initial_state = None
         else:
-            # Start new
-            initial_state = DiscoveryState(
-                user_query=request.query,
-                goal=request.goal,
-                lens=request.lens,
-                speculation=request.speculation,
-                timeline=request.timeline,
-                max_papers=request.max_papers,
-                guidance=request.guidance,
-                run_experiments=request.run_experiments,
-                documents=request.documents,
-                mock=request.mock
-            )
+             # Start new
+             # Force 6 candidates for selection mode
+             target_hypotheses = request.num_hypotheses if request.num_hypotheses > 3 else 6
+             initial_state = DiscoveryState(
+                 user_query=request.query,
+                 goal=request.goal,
+                 lens=request.lens,
+                 speculation=request.speculation,
+                 timeline=request.timeline,
+                 max_papers=request.max_papers,
+                 guidance=request.guidance,
+                 run_experiments=request.run_experiments,
+                 num_hypotheses=target_hypotheses, # Use the forced 6 or user value
+                 documents=request.documents,
+                 mock=request.mock
+             )
 
     except Exception as e:
         active_threads.discard(thread_id) # Release on init failure
@@ -449,150 +522,192 @@ async def run_discovery_stream(request: RunRequest):
         raise HTTPException(status_code=500, detail=f"Init failed: {e}")
 
     async def event_generator():
-        try:
-            # Emit initial thinking event with Thread ID
-            data = {'agent': 'orchestrator', 'action': f'Starting discovery for: {request.query}', 'status': 'thinking'}
-            yield f"data: {json.dumps({'type': 'activity', 'data': data, 'thread_id': thread_id})}\n\n"
-            await asyncio.sleep(0.1) # Force flush
+        # Register CostTracker for this async context
+        # Since this generator runs in a new task/context, we must set it here.
+        cost_tracker = CostTracker()
+        ct_token = CostTracker.register_context(cost_tracker)
         
-            # Accumulator for final result
-            accumulated_state = {}
-            start_times = {} # Track durations
+        try:
+            try:
+                # Emit initial thinking event with Thread ID
+                data = {'agent': 'orchestrator', 'action': f'Starting discovery for: {request.query}', 'status': 'thinking'}
+                yield f"data: {json.dumps({'type': 'activity', 'data': data, 'thread_id': thread_id})}\n\n"
+                await asyncio.sleep(0.1) # Force flush
             
-            # Use astream_events to get granular updates
-            async for event in graph.astream_events(initial_state, config=config, version="v2"):
-                kind = event["event"]
-                name = event.get("name", "")
-                data = event.get("data", {})
-
-                # DEBUG PRINT (Visible in server console)
-                if kind == "on_custom_event":
-                    print(f"DEBUG_EVENT: {kind} name={name} data={str(data)[:100]}")
+                # Accumulator for final result
+                accumulated_state = {}
+                start_times = {} # Track durations
                 
-                # 1. MAJOR NODE UPDATES (High Level)
-                if kind == "on_chain_start" and name in ["literature", "hypothesis", "evidence", "experiment", "critique", "plan"]:
-                    agent_map = {
-                        "plan": "planner", 
-                        "literature": "literature", 
-                        "hypothesis": "hypothesis",
-                        "evidence": "critic", 
-                        "experiment": "experiment", 
-                        "critique": "critic"
-                    }
-                    action_map = {
-                        "plan": "Structuring research plan...",
-                        "literature": "Searching and reading literature...",
-                        "hypothesis": "Generating and refining hypotheses...",
-                        "evidence": "Verifying evidence and facts...",
-                        "experiment": "Designing and running experiments...",
-                        "critique": "Critiquing and validating findings..."
-                    }
-                    if name in agent_map:
-                        activity = {
-                            "agent": agent_map[name],
-                            "action": action_map.get(name, f"Starting {name}..."),
-                            "status": "thinking" if name in ["plan", "critique", "evidence"] else "reading" if name == "literature" else "building"
+                # Use astream_events to get granular updates
+                async for event in graph.astream_events(initial_state, config=config, version="v2"):
+                    kind = event["event"]
+                    name = event.get("name", "")
+                    data = event.get("data", {})
+    
+                    # DEBUG PRINT (Visible in server console)
+                    if kind == "on_custom_event":
+                        print(f"DEBUG_EVENT: {kind} name={name} data={str(data)[:100]}")
+                    
+                    # 1. MAJOR NODE UPDATES (High Level)
+                    if kind == "on_chain_start" and name in ["literature", "hypothesis", "evidence", "experiment", "critique", "plan", "decision"]:
+                        agent_map = {
+                            "plan": "planner", 
+                            "literature": "literature", 
+                            "hypothesis": "hypothesis",
+                            "evidence": "critic", 
+                            "experiment": "experiment", 
+                            "critique": "critic",
+                            "decision": "orchestrator"
                         }
-                        yield f"data: {json.dumps({'type': 'activity', 'data': activity})}\n\n"
-                        await asyncio.sleep(0) # Yield control
-
-                # 2. TOOL & LOG UPDATES (In-Depth)
-                elif kind == "on_tool_start":
-                    run_id = event.get("run_id")
-                    if run_id:
-                        start_times[run_id] = time.time()
-                    msg = f"[TOOL START] {name}"
-                    if name == "get_neighbors":
-                        node = data.get("input", {}).get("node", "?")
-                        msg = f"[Graph] Exploring neighbors of '{node}'..."
-                    elif name == "find_paths":
-                        start = data.get("input", {}).get("start_node", "?")
-                        end = data.get("input", {}).get("end_node", "?")
-                        msg = f"[Graph] Tracing path: {start} -> {end}..."
-                    elif name == "get_central_nodes":
-                        msg = f"[Graph] Identifying central concepts..."
-                    elif "search" in name or "openalex" in name:
-                        q = data.get("input", {}).get("query", str(data.get("input", "")))[:40]
-                        msg = f"[Search] Querying: {q}..."
-                    
-                    yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
-                    await asyncio.sleep(0)
-                
-                elif kind == "on_tool_end":
-                    run_id = event.get("run_id")
-                    duration_str = ""
-                    if run_id and run_id in start_times:
-                        duration = time.time() - start_times[run_id]
-                        duration_str = f" ({duration:.2f}s)"
-                        del start_times[run_id]
-
-                    output = str(data.get("output"))
-                    if len(output) < 150:
-                        preview = output
-                    else:
-                        preview = output[:150] + "..."
-                    
-                    if "error" in output.lower():
-                        msg = f"[Tool Error] {preview}"
-                    else:
-                        msg = f"[Result] {preview}"
-                    msg += duration_str
-                    yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
-                    await asyncio.sleep(0)
-                
-                elif kind == "on_custom_event":
-                    if event["name"] == "log":
-                        log_data = data.get("message", str(data))
-                        yield f"data: {json.dumps({'type': 'log', 'data': log_data})}\n\n"
+                        action_map = {
+                            "plan": "Structuring research plan...",
+                            "literature": "Searching and reading literature...",
+                            "hypothesis": "Generating and refining hypotheses...",
+                            "evidence": "Verifying evidence and facts...",
+                            "experiment": "Designing and running experiments...",
+                            "critique": "Critiquing and validating findings...",
+                            "decision": "Synthesizing final decision..."
+                        }
+                        if name in agent_map:
+                            activity = {
+                                "agent": agent_map[name],
+                                "action": action_map.get(name, f"Starting {name}..."),
+                                "status": "thinking" if name in ["plan", "critique", "evidence", "decision"] else "reading" if name == "literature" else "building"
+                            }
+                            yield f"data: {json.dumps({'type': 'activity', 'data': activity})}\n\n"
+                            await asyncio.sleep(0) # Yield control
+    
+                    # 2. TOOL & LOG UPDATES (In-Depth)
+                    elif kind == "on_tool_start":
+                        run_id = event.get("run_id")
+                        if run_id:
+                            start_times[run_id] = time.time()
+                        msg = f"[TOOL START] {name}"
+                        if name == "get_neighbors":
+                            node = data.get("input", {}).get("node", "?")
+                            msg = f"[Graph] Exploring neighbors of '{node}'..."
+                        elif name == "find_paths":
+                            start = data.get("input", {}).get("start_node", "?")
+                            end = data.get("input", {}).get("end_node", "?")
+                            msg = f"[Graph] Tracing path: {start} -> {end}..."
+                        elif name == "get_central_nodes":
+                            msg = f"[Graph] Identifying central concepts..."
+                        elif "search" in name or "openalex" in name:
+                            q = data.get("input", {}).get("query", str(data.get("input", "")))[:40]
+                            msg = f"[Search] Querying: {q}..."
+                        
+                        yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                         await asyncio.sleep(0)
-                    elif event["name"] == "activity":
-                        msg = data.get("message", str(data))
-                        activity_data = {"agent": "scientist", "action": msg, "status": "thinking"}
-                        yield f"data: {json.dumps({'type': 'activity', 'data': activity_data})}\n\n"
-                        await asyncio.sleep(0)
-
-                elif kind == "on_chain_end":
-                    batch_output = event.get('data', {}).get('output', {})
-                    if hasattr(batch_output, "dict"): update_dict = batch_output.model_dump()
-                    elif isinstance(batch_output, dict): update_dict = batch_output
-                    else: update_dict = {}
                     
-                    relevant_keys = ["plan", "literature", "hypotheses", "evidence", "experiments", "experiment_plans", "critique", "user_query", "concept_graph", "domain_tags"]
-                    has_update = False
-                    for key in relevant_keys:
-                        if key in update_dict:
-                            accumulated_state[key] = update_dict[key]
-                            has_update = True
-                    if has_update:
-                        if "user_query" not in accumulated_state: accumulated_state["user_query"] = request.query
-                        yield f"data: {json.dumps({'type': 'result', 'data': accumulated_state}, default=custom_serializer)}\n\n"
+                    elif kind == "on_tool_end":
+                        run_id = event.get("run_id")
+                        duration_str = ""
+                        if run_id and run_id in start_times:
+                            duration = time.time() - start_times[run_id]
+                            duration_str = f" ({duration:.2f}s)"
+                            del start_times[run_id]
+    
+                        output = str(data.get("output"))
+                        if len(output) < 150:
+                            preview = output
+                        else:
+                            preview = output[:150] + "..."
+                        
+                        if "error" in output.lower():
+                            msg = f"[Tool Error] {preview}"
+                        else:
+                            msg = f"[Result] {preview}"
+                        msg += duration_str
+                        yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
+                        await asyncio.sleep(0)
+                    
+                    elif kind == "on_custom_event":
+                        if event["name"] == "log":
+                            log_data = data.get("message", str(data))
+                            yield f"data: {json.dumps({'type': 'log', 'data': log_data})}\n\n"
+                            await asyncio.sleep(0)
+                        elif event["name"] == "activity":
+                            msg = data.get("message", str(data))
+                            activity_data = {"agent": "scientist", "action": msg, "status": "thinking"}
+                            yield f"data: {json.dumps({'type': 'activity', 'data': activity_data})}\n\n"
+                            await asyncio.sleep(0)
+    
+                    elif kind == "on_chain_end":
+                        batch_output = event.get('data', {}).get('output', {})
+                        if hasattr(batch_output, "dict"): update_dict = batch_output.model_dump()
+                        elif isinstance(batch_output, dict): update_dict = batch_output
+                        else: update_dict = {}
+                        
+                        relevant_keys = ["plan", "literature", "hypotheses", "evidence", "experiments", "experiment_plans", "critique", "user_query", "concept_graph", "domain_tags", "decision_summary"]
+                        has_update = False
+                        for key in relevant_keys:
+                            if key in update_dict:
+                                accumulated_state[key] = update_dict[key]
+                                has_update = True
+                        if has_update:
+                            if "user_query" not in accumulated_state: accumulated_state["user_query"] = request.query
+                            yield f"data: {json.dumps({'type': 'result', 'data': accumulated_state}, default=custom_serializer)}\n\n"
+                            # await asyncio.sleep(0)
+    
+            except Exception as e:
+                request_log.error("stream_loop_error", error=str(e), thread_id=thread_id)
+                yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
+            except BaseException as e:
+                request_log.error("stream_loop_critical_failure", error=str(e), type=type(e).__name__, thread_id=thread_id)
+                print(f"DEBUG: Critical failure for {thread_id}: {type(e).__name__} - {e}")
+                raise e
+            
+            finally:
+                # RELEASE LOCK
+                active_threads.discard(thread_id)
+                print(f"DEBUG: Released lock for {thread_id}")
+    
+            # Check if we are interrupted or done
+            try:
+                snapshot = await graph.aget_state(config)
+                
+                # --- COST REPORTING ---
+                cost_report = cost_tracker.get_report()
+                
+                # 1. Log Summary
+                summary_str = f"[COST] Total: ${cost_report['estimated_cost_usd']} | Tokens: {cost_report['total_tokens']}"
+                print(summary_str)
+                request_log.info("cost_report", **cost_report)
+                
+                # 2. Save JSON to disk
+                try:
+                    os.makedirs("data/runs", exist_ok=True)
+                    cost_file = f"data/runs/{thread_id}_cost.json"
+                    with open(cost_file, "w") as f:
+                        json.dump(cost_report, f, indent=2)
+                except Exception as e:
+                    print(f"Failed to save cost file: {e}")
 
-        except Exception as e:
-            request_log.error("stream_loop_error", error=str(e), thread_id=thread_id)
-            yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
-        except BaseException as e:
-            request_log.error("stream_loop_critical_failure", error=str(e), type=type(e).__name__, thread_id=thread_id)
-            print(f"DEBUG: Critical failure for {thread_id}: {type(e).__name__} - {e}")
-            raise e
-        
-        finally:
-            # RELEASE LOCK
-            active_threads.discard(thread_id)
-            print(f"DEBUG: Released lock for {thread_id}")
+                # 3. Attach to state (if possible) or just result payload
+                final_data = dict(snapshot.values) if snapshot.values else {}
+                final_data["cost_report"] = cost_report
 
-        # Check if we are interrupted or done
-        try:
-            snapshot = await graph.aget_state(config)
-            if snapshot.next:
-                request_log.info("workflow_interrupted", next_nodes=list(snapshot.next))
-                yield f"data: {json.dumps({'type': 'interrupt', 'data': {'next': list(snapshot.next), 'thread_id': thread_id}})}\n\n"
-            else:
-                request_log.info("workflow_completed")
-                yield f"data: {json.dumps({'type': 'result', 'data': snapshot.values}, default=custom_serializer)}\n\n"
+                if snapshot.next:
+                    request_log.info("workflow_interrupted", next_nodes=list(snapshot.next))
+                    yield f"data: {json.dumps({'type': 'result', 'data': final_data}, default=custom_serializer)}\n\n"
+                    yield f"data: {json.dumps({'type': 'interrupt', 'data': {'next': list(snapshot.next), 'thread_id': thread_id}})}\n\n"
+                else:
+                    request_log.info("workflow_completed")
+                    
+                    # PERSIST FOR EXPORT
+                    try:
+                        from app.storage import save_run_result
+                        save_run_result(thread_id, final_data)
+                    except Exception as save_err:
+                         print(f"Error saving run result: {save_err}")
+    
+                    yield f"data: {json.dumps({'type': 'result', 'data': final_data}, default=custom_serializer)}\n\n"
+                    yield "data: [DONE]\n\n"
+            except Exception as e:
+                request_log.error("fail_safe_sync_failed", error=str(e))
                 yield "data: [DONE]\n\n"
-        except Exception as e:
-            request_log.error("fail_safe_sync_failed", error=str(e))
-            yield "data: [DONE]\n\n"
+        finally:
+            CostTracker.reset_context(ct_token)
 
     return StreamingResponse(
         event_generator(),
@@ -607,6 +722,33 @@ async def run_discovery_stream(request: RunRequest):
 @app.get("/sessions")
 def get_sessions():
     return [{"id": k, "query": "session"} for k in sessions]
+
+@app.get("/api/discovery/{thread_id}/export/pdf")
+async def export_pdf(thread_id: str):
+    """
+    Exports a completed discovery run as a PDF report.
+    """
+    from app.storage import get_run_result
+    from app.reporting import generate_markdown_report, render_pdf
+    from io import BytesIO
+    
+    state = get_run_result(thread_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Run not found or expired")
+        
+    try:
+        md = generate_markdown_report(state)
+        pdf_bytes = render_pdf(md)
+        
+        headers = {
+            "Content-Disposition": f"attachment; filename=scinets_report_{thread_id}.pdf"
+        }
+        return StreamingResponse(BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        log.error("pdf_export_failed", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to generate PDF")
 
 @app.get("/health")
 def health_check():

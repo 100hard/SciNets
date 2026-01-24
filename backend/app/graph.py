@@ -10,7 +10,10 @@ from app.agents.decision import decision_node
 
 from langgraph.checkpoint.memory import MemorySaver
 
-def create_graph():
+# Singleton Memory for In-Memory Persistence across requests
+global_memory = MemorySaver()
+
+def create_graph(memory=None):
     """
     Main discovery graph.
     
@@ -24,7 +27,11 @@ def create_graph():
     # Add nodes (NO experiment_node in default pipeline)
     workflow.add_node("plan", plan_node)
     workflow.add_node("literature", literature_node)
-    workflow.add_node("hypothesis", hypothesis_node)
+    
+    # Split Node for Loop/Resume Support
+    workflow.add_node("hypothesis_preview", hypothesis_node)
+    workflow.add_node("hypothesis_deep", hypothesis_node)
+
     workflow.add_node("evidence", evidence_node)
     workflow.add_node("critique", critique_node)
     workflow.add_node("decision", decision_node)
@@ -36,26 +43,27 @@ def create_graph():
     def route_literature(state: DiscoveryState):
         if state.goal == "survey":
             return "critique"
-        return "hypothesis"
+        return "hypothesis_preview"
 
     workflow.add_conditional_edges(
         "literature",
         route_literature,
         {
             "critique": "critique",
-            "hypothesis": "hypothesis"
+            "hypothesis_preview": "hypothesis_preview"
         }
     )
     
-    # Sequential: Hypothesis → Evidence → Critique → Decision
-    # (No more parallel experiment branch)
-    workflow.add_edge("hypothesis", "evidence")
+    # NEW FLOW: Preview -> Interrupt -> Deep -> Evidence
+    workflow.add_edge("hypothesis_preview", "hypothesis_deep")
+    workflow.add_edge("hypothesis_deep", "evidence")
     workflow.add_edge("evidence", "critique")
     workflow.add_edge("critique", "decision")
     workflow.add_edge("decision", END)
     
     # MemorySaver for state persistence (Verified on Windows)
-    memory = MemorySaver()
+    # Use passed memory (global) or create new one (fallback)
+    checkpointer = memory if memory else MemorySaver()
     
-    return workflow.compile(checkpointer=memory)
+    return workflow.compile(checkpointer=checkpointer, interrupt_after=["hypothesis_preview"])
 

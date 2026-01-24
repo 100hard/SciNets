@@ -1,0 +1,1809 @@
+{
+  "user_query": "Identify safety gaps in multi-agent Reinforcement Learning",
+  "goal": "discover",
+  "lens": "none",
+  "speculation": "medium",
+  "timeline": "recent",
+  "guidance": "",
+  "mock": false,
+  "documents": [
+    "https://openalex.org/W3140854437",
+    "https://openalex.org/W4206484811",
+    "https://openalex.org/W4213147678",
+    "https://openalex.org/W2953303875",
+    "https://openalex.org/W2137514195",
+    "https://openalex.org/W3003667836",
+    "https://openalex.org/W2569214105",
+    "https://openalex.org/W2783963507",
+    "https://openalex.org/W1501005121",
+    "https://openalex.org/W2300445845"
+  ],
+  "evaluation_mode": false,
+  "evaluation_strategy": "full",
+  "max_papers": 10,
+  "num_hypotheses": 6,
+  "enable_citation_expansion": false,
+  "domain_tags": [
+    "ml"
+  ],
+  "plan": {
+    "steps": [
+      "literature",
+      "hypothesis"
+    ],
+    "current_step": "literature"
+  },
+  "literature": {
+    "papers": {
+      "https://openalex.org/W2623431351": {
+        "title": "Multi-Agent Actor-Critic for Mixed Cooperative-Competitive Environments",
+        "year": 2024,
+        "venue": null,
+        "abstract": "We explore deep reinforcement learning methods for multi-agent domains. We begin by analyzing the difficulty of traditional algorithms in the multi-agent case: Q-learning is challenged by an inherent non-stationarity of the environment, while policy gradient suffers from a variance that increases as the number of agents grows. We then present an adaptation of actor-critic methods that considers action policies of other agents and is able to successfully learn policies that require complex multi-agent coordination. Additionally, we introduce a training regimen utilizing an ensemble of policies for each agent that leads to more robust multi-agent policies. We show the strength of our approach compared to existing methods in cooperative as well as competitive scenarios, where agent populations are able to discover various physical and informational coordination strategies.",
+        "url": null
+      },
+      "https://openalex.org/W3116666954": {
+        "title": "On the Robustness of Cooperative Multi-Agent Reinforcement Learning",
+        "year": 2020,
+        "venue": null,
+        "abstract": "In cooperative multi-agent reinforcement learning (c-MARL), agents learn to cooperatively take actions as a team to maximize a total team reward. We analyze the robustness of c-MARL to adversaries capable of attacking one of the agents on a team. Through the ability to manipulate this agent's observations, the adversary seeks to decrease the total team reward. Attacking c-MARL is challenging for three reasons: first, it is difficult to estimate team rewards or how they are impacted by an agent mispredicting; second, models are non-differentiable; and third, the feature space is low-dimensional. Thus, we introduce a novel attack. The attacker first trains a policy network with reinforcement learning to find a wrong action it should encourage the victim agent to take. Then, the adversary uses targeted adversarial examples to force the victim to take this action. Our results on the StartCraft II multi-agent benchmark demonstrate that c-MARL teams are highly vulnerable to perturbations applied to one of their agent's observations. By attacking a single agent, our attack method has highly negative impact on the overall team reward, reducing it from 20 to 9.4. This results in the team's winning rate to go down from 98.9% to 0%.",
+        "url": null
+      },
+      "https://openalex.org/W4224874620": {
+        "title": "Towards Comprehensive Testing on the Robustness of Cooperative Multi-agent Reinforcement Learning",
+        "year": 2022,
+        "venue": null,
+        "abstract": "While deep neural networks (DNNs) have strengthened the performance of cooperative multi-agent reinforcement learning (c-MARL), the agent policy can be easily perturbed by adversarial examples. Considering the safety critical applications of c-MARL, such as traffic management, power management and unmanned aerial vehicle control, it is crucial to test the robustness of c-MARL algorithm before it was deployed in reality. Existing adversarial attacks for MARL could be used for testing, but is limited to one robustness aspects (e.g., reward, state, action), while c-MARL model could be attacked from any aspect. To overcome the challenge, we propose MARLSafe, the first robustness testing framework for c-MARL algorithms. First, motivated by Markov Decision Process (MDP), MARLSafe consider the robustness of c-MARL algorithms comprehensively from three aspects, namely state robustness, action robustness and reward robustness. Any c-MARL algorithm must simultaneously satisfy these robustness aspects to be considered secure. Second, due to the scarceness of c- MARL attack, we propose c-MARL attacks as robustness testing algorithms from multiple aspects. Experiments on SMAC environment reveals that many state-of-the-art c- MARL algorithms are of low robustness in all aspect, pointing out the urgent need to test and enhance robustness of c-MARL algorithms.",
+        "url": null
+      },
+      "https://openalex.org/W3205647333": {
+        "title": "Optimal robust formation control for heterogeneous multi\u2010agent systems based on reinforcement learning",
+        "year": 2021,
+        "venue": null,
+        "abstract": "Abstract In this article, a reinforcement learning (RL)\u2010based robust control strategy is proposed for uncertain heterogeneous multi\u2010agent systems to achieve optimal collision\u2010free time\u2010varying formations. Without using any global information, a fully distributed adaptive observer is developed to estimate both dynamics and states of the reference and disturbance systems. The observer parameters are found by an observed model\u2010based or a model\u2010free off\u2010policy RL algorithm. Using the internal model principle, a novel optimal robust formation control strategy is developed based on another proposed off\u2010policy RL algorithm. The algorithm addresses the nonquadratic optimization problem when the system model is completely unknown. Taking the bushfire edge tracking and patrolling task for an unmanned aerial vehicle\u2010unmanned ground vehicle heterogeneous system as an example, the effectiveness and robustness of the developed control strategy are verified by simulations.",
+        "url": null
+      },
+      "https://openalex.org/W4375846667": {
+        "title": "An analysis of the robustness of UAV agriculture field coverage using multi-agent reinforcement learning",
+        "year": 2023,
+        "venue": null,
+        "abstract": "Agriculture is a vital sector in developing nations such as India, and the use of autonomous vehicles and Internet of Things (IoT) technology has the potential to revolutionize farming practices. Unmanned Aerial Vehicles (UAVs) are becoming increasingly important in agriculture, as they can provide valuable data for crop monitoring and pest control. In this study, we investigate the reliability of a Multi-Agent Reinforcement Learning (MARL) method for UAV field coverage. The algorithm enables a group of UAVs equipped with ground-facing cameras to learn how to provide complete coverage of an unknown Field of Interest (FoI) while minimizing camera view overlap. We test the algorithm in scenarios where the FoI and camera Field of View (FoV) are dynamically updated in the environment, to evaluate its performance under more dynamic conditions. Our results demonstrate the effectiveness and resilience of the proposed method in varying environmental conditions, highlighting its potential for Precision Agriculture (PA) applications.",
+        "url": null
+      },
+      "https://openalex.org/W3010038222": {
+        "title": "Risk-Aware Energy Scheduling for Edge Computing With Microgrid: A Multi-Agent Deep Reinforcement Learning Approach",
+        "year": 2021,
+        "venue": null,
+        "abstract": "In recent years, multi-access edge computing (MEC) is a key enabler for\\nhandling the massive expansion of Internet of Things (IoT) applications and\\nservices. However, energy consumption of a MEC network depends on volatile\\ntasks that induces risk for energy demand estimations. As an energy supplier, a\\nmicrogrid can facilitate seamless energy supply. However, the risk associated\\nwith energy supply is also increased due to unpredictable energy generation\\nfrom renewable and non-renewable sources. Especially, the risk of energy\\nshortfall is involved with uncertainties in both energy consumption and\\ngeneration. In this paper, we study a risk-aware energy scheduling problem for\\na microgrid-powered MEC network. First, we formulate an optimization problem\\nconsidering the conditional value-at-risk (CVaR) measurement for both energy\\nconsumption and generation, where the objective is to minimize the expected\\nresidual of scheduled energy for the MEC networks and we show this problem is\\nan NP-hard problem. Second, we analyze our formulated problem using a\\nmulti-agent stochastic game that ensures the joint policy Nash equilibrium, and\\nshow the convergence of the proposed model. Third, we derive the solution by\\napplying a multi-agent deep reinforcement learning (MADRL)-based asynchronous\\nadvantage actor-critic (A3C) algorithm with shared neural networks. This method\\nmitigates the curse of dimensionality of the state space and chooses the best\\npolicy among the agents for the proposed problem. Finally, the experimental\\nresults establish a significant performance gain by considering CVaR for high\\naccuracy energy scheduling of the proposed model than both the single and\\nrandom agent models.\\n",
+        "url": null
+      }
+    },
+    "summary": "Emerging themes across recent multi-agent reinforcement learning (MARL) work converge on two linked priorities: improving coordinated decision-making under non-stationarity, and hardening learned policies against realistic uncertainties and attacks. There is a growing consensus that actor-critic-style algorithms that explicitly condition on other agents\u2019 policies, together with ensemble or population-based training regimens, can materially improve an agent population\u2019s ability to discover complex cooperative and competitive coordination strategies while mitigating some variance and non-stationarity issues that plague value- and policy-only methods. At the same time, empirical analyses point to a pronounced fragility: carefully constructed perturbations or targeted adversarial inputs to a single team member can substantially degrade overall performance, and many state-of-the-art cooperative training methods appear vulnerable when evaluated across multiple perturbation modes (state, action, reward). These observations together suggest that improvements in coordination performance need to be pursued in tandem with systematic robustness evaluation and mitigation.\n\nApplication-driven studies reinforce and extend these methodological themes, producing an emerging consensus that domain-aware objectives and decentralized architectures help bridge lab advances to real-world deployments. Risk-aware formulations (e.g., CVaR-based objectives) and multi-agent stochastic-game treatments paired with shared-network actor-critic training show promise for managing uncertainty in energy scheduling and other resource-constrained settings. Similarly, model-free observers and off-policy RL schemes informed by internal-model principles can support robust, collision-free formation and coverage behaviors for heterogeneous UAV teams in dynamic environments. The collective body of work points to an actionable frontier: combine coordination-focused algorithmic adaptations (policy-conditioned critics, ensembles), rigorous multi-aspect robustness testing, and risk-sensitive objective design to move toward dependable MARL systems\u2014while recognizing trade-offs in complexity, computational cost, and the need for domain-specific validation.",
+    "full_context": "Title: Multi-Agent Actor-Critic for Mixed Cooperative-Competitive Environments\nAbstract: We explore deep reinforcement learning methods for multi-agent domains. We begin by analyzing the difficulty of traditional algorithms in the multi-agent case: Q-learning is challenged by an inherent non-stationarity of the environment, while policy gradient suffers from a variance that increases as the number of agents grows. We then present an adaptation of actor-critic methods that considers action policies of other agents and is able to successfully learn policies that require complex multi-agent coordination. Additionally, we introduce a training regimen utilizing an ensemble of policies for each agent that leads to more robust multi-agent policies. We show the strength of our approach compared to existing methods in cooperative as well as competitive scenarios, where agent populations are able to discover various physical and informational coordination strategies.\n\nTitle: On the Robustness of Cooperative Multi-Agent Reinforcement Learning\nAbstract: In cooperative multi-agent reinforcement learning (c-MARL), agents learn to cooperatively take actions as a team to maximize a total team reward. We analyze the robustness of c-MARL to adversaries capable of attacking one of the agents on a team. Through the ability to manipulate this agent's observations, the adversary seeks to decrease the total team reward. Attacking c-MARL is challenging for three reasons: first, it is difficult to estimate team rewards or how they are impacted by an agent mispredicting; second, models are non-differentiable; and third, the feature space is low-dimensional. Thus, we introduce a novel attack. The attacker first trains a policy network with reinforcement learning to find a wrong action it should encourage the victim agent to take. Then, the adversary uses targeted adversarial examples to force the victim to take this action. Our results on the StartCraft II multi-agent benchmark demonstrate that c-MARL teams are highly vulnerable to perturbations applied to one of their agent's observations. By attacking a single agent, our attack method has highly negative impact on the overall team reward, reducing it from 20 to 9.4. This results in the team's winning rate to go down from 98.9% to 0%.\n\nTitle: Towards Comprehensive Testing on the Robustness of Cooperative Multi-agent Reinforcement Learning\nAbstract: While deep neural networks (DNNs) have strengthened the performance of cooperative multi-agent reinforcement learning (c-MARL), the agent policy can be easily perturbed by adversarial examples. Considering the safety critical applications of c-MARL, such as traffic management, power management and unmanned aerial vehicle control, it is crucial to test the robustness of c-MARL algorithm before it was deployed in reality. Existing adversarial attacks for MARL could be used for testing, but is limited to one robustness aspects (e.g., reward, state, action), while c-MARL model could be attacked from any aspect. To overcome the challenge, we propose MARLSafe, the first robustness testing framework for c-MARL algorithms. First, motivated by Markov Decision Process (MDP), MARLSafe consider the robustness of c-MARL algorithms comprehensively from three aspects, namely state robustness, action robustness and reward robustness. Any c-MARL algorithm must simultaneously satisfy these robustness aspects to be considered secure. Second, due to the scarceness of c- MARL attack, we propose c-MARL attacks as robustness testing algorithms from multiple aspects. Experiments on SMAC environment reveals that many state-of-the-art c- MARL algorithms are of low robustness in all aspect, pointing out the urgent need to test and enhance robustness of c-MARL algorithms.\n\nTitle: Optimal robust formation control for heterogeneous multi\u2010agent systems based on reinforcement learning\nAbstract: Abstract In this article, a reinforcement learning (RL)\u2010based robust control strategy is proposed for uncertain heterogeneous multi\u2010agent systems to achieve optimal collision\u2010free time\u2010varying formations. Without using any global information, a fully distributed adaptive observer is developed to estimate both dynamics and states of the reference and disturbance systems. The observer parameters are found by an observed model\u2010based or a model\u2010free off\u2010policy RL algorithm. Using the internal model principle, a novel optimal robust formation control strategy is developed based on another proposed off\u2010policy RL algorithm. The algorithm addresses the nonquadratic optimization problem when the system model is completely unknown. Taking the bushfire edge tracking and patrolling task for an unmanned aerial vehicle\u2010unmanned ground vehicle heterogeneous system as an example, the effectiveness and robustness of the developed control strategy are verified by simulations.\n\nTitle: An analysis of the robustness of UAV agriculture field coverage using multi-agent reinforcement learning\nAbstract: Agriculture is a vital sector in developing nations such as India, and the use of autonomous vehicles and Internet of Things (IoT) technology has the potential to revolutionize farming practices. Unmanned Aerial Vehicles (UAVs) are becoming increasingly important in agriculture, as they can provide valuable data for crop monitoring and pest control. In this study, we investigate the reliability of a Multi-Agent Reinforcement Learning (MARL) method for UAV field coverage. The algorithm enables a group of UAVs equipped with ground-facing cameras to learn how to provide complete coverage of an unknown Field of Interest (FoI) while minimizing camera view overlap. We test the algorithm in scenarios where the FoI and camera Field of View (FoV) are dynamically updated in the environment, to evaluate its performance under more dynamic conditions. Our results demonstrate the effectiveness and resilience of the proposed method in varying environmental conditions, highlighting its potential for Precision Agriculture (PA) applications.\n\nTitle: Risk-Aware Energy Scheduling for Edge Computing With Microgrid: A Multi-Agent Deep Reinforcement Learning Approach\nAbstract: In recent years, multi-access edge computing (MEC) is a key enabler for\\nhandling the massive expansion of Internet of Things (IoT) applications and\\nservices. However, energy consumption of a MEC network depends on volatile\\ntasks that induces risk for energy demand estimations. As an energy supplier, a\\nmicrogrid can facilitate seamless energy supply. However, the risk associated\\nwith energy supply is also increased due to unpredictable energy generation\\nfrom renewable and non-renewable sources. Especially, the risk of energy\\nshortfall is involved with uncertainties in both energy consumption and\\ngeneration. In this paper, we study a risk-aware energy scheduling problem for\\na microgrid-powered MEC network. First, we formulate an optimization problem\\nconsidering the conditional value-at-risk (CVaR) measurement for both energy\\nconsumption and generation, where the objective is to minimize the expected\\nresidual of scheduled energy for the MEC networks and we show this problem is\\nan NP-hard problem. Second, we analyze our formulated problem using a\\nmulti-agent stochastic game that ensures the joint policy Nash equilibrium, and\\nshow the convergence of the proposed model. Third, we derive the solution by\\napplying a multi-agent deep reinforcement learning (MADRL)-based asynchronous\\nadvantage actor-critic (A3C) algorithm with shared neural networks. This method\\nmitigates the curse of dimensionality of the state space and chooses the best\\npolicy among the agents for the proposed problem. Finally, the experimental\\nresults establish a significant performance gain by considering CVaR for high\\naccuracy energy scheduling of the proposed model than both the single and\\nrandom agent models.\\n\n\n\n\nGraph Analysis Insights:\nKey Concepts (Centrality): reinforcement learning (0.10), MARLSafe (0.09), c-MARL (0.09), Multi-Agent Reinforcement Learning (MARL) method (0.09), unpredictable energy generation (0.08)\nBridge Concepts (Connecting topics): reinforcement learning (0.01), c-MARL (0.01), robust control strategy (0.01)\nKey Relationships:\n- MARLSafe --[tests_robustness_of]--> c-MARL\n- c-MARL --[is_a_type_of]--> reinforcement learning\n- Multi-Agent Reinforcement Learning (MARL) method --[is a type of]--> reinforcement learning\n- reinforcement learning --[is used to develop]--> robust control strategy",
+    "web_research": ""
+  },
+  "concept_graph": {
+    "nodes": [
+      "ground-facing cameras",
+      "victim agent",
+      "agent's observations",
+      "observer parameters",
+      "observed model-based off-policy RL algorithm",
+      "Precision Agriculture (PA) applications",
+      "best policy among the agents",
+      "Markov Decision Process (MDP)",
+      "multi-agent stochastic game",
+      "reward robustness",
+      "state robustness",
+      "internal model principle",
+      "adversaries",
+      "wrong action",
+      "dynamics",
+      "risk-aware energy scheduling problem",
+      "StartCraft II multi-agent benchmark",
+      "fully distributed adaptive observer",
+      "multi-agent deep reinforcement learning (MADRL)-based asynchronous advantage actor-critic (A3C) algorithm with shared neural networks",
+      "optimal collision-free time-varying formations",
+      "states",
+      "MARLSafe",
+      "informational coordination strategies",
+      "nonquadratic optimization problem",
+      "competitive scenarios",
+      "group of UAVs",
+      "non-differentiable models",
+      "joint policy Nash equilibrium",
+      "uncertainties in both energy consumption and generation",
+      "state-of-the-art c-MARL algorithms",
+      "c-MARL",
+      "convergence of the proposed model",
+      "targeted adversarial examples",
+      "variance that increases as the number of agents grows",
+      "risk of energy shortfall",
+      "non-renewable sources",
+      "simulations",
+      "effectiveness and robustness",
+      "curse of dimensionality of the state space",
+      "action policies of other agents",
+      "low-dimensional feature space",
+      "volatile tasks",
+      "unknown Field of Interest (FoI)",
+      "multi-access edge computing (MEC)",
+      "disturbance system",
+      "bushfire edge tracking and patrolling task",
+      "robust control strategy",
+      "NP-hard problem",
+      "robust multi-agent policies",
+      "camera view overlap",
+      "deep reinforcement learning methods",
+      "team reward",
+      "camera Field of View (FoV)",
+      "policy gradient",
+      "dynamic conditions",
+      "multi-agent domains",
+      "expected residual of scheduled energy",
+      "Multi-Agent Reinforcement Learning (MARL) method",
+      "conditional value-at-risk (CVaR) measurement",
+      "SMAC environment",
+      "renewable sources",
+      "c-MARL attacks",
+      "multi-agent coordination",
+      "risk for energy demand estimations",
+      "robustness testing framework",
+      "Q-learning",
+      "policy network",
+      "action robustness",
+      "attacking c-MARL",
+      "model-free off-policy RL algorithm",
+      "actor-critic methods",
+      "ensemble of policies",
+      "energy consumption of a MEC network",
+      "training regimen",
+      "system model",
+      "complete coverage",
+      "c-MARL teams",
+      "reference system",
+      "microgrid",
+      "non-stationarity of the environment",
+      "global information",
+      "reinforcement learning",
+      "resilience",
+      "microgrid-powered MEC network",
+      "experimental results",
+      "energy supply",
+      "unpredictable energy generation",
+      "Unmanned Aerial Vehicles (UAVs)",
+      "crop monitoring",
+      "pest control"
+    ],
+    "edges": [
+      {
+        "source": "victim agent",
+        "target": "wrong action",
+        "relation": "is_forced_to_take_wrong_action"
+      },
+      {
+        "source": "agent's observations",
+        "target": "team reward",
+        "relation": "decrease when manipulated"
+      },
+      {
+        "source": "observer parameters",
+        "target": "observed model-based off-policy RL algorithm",
+        "relation": "found by"
+      },
+      {
+        "source": "observer parameters",
+        "target": "model-free off-policy RL algorithm",
+        "relation": "found by"
+      },
+      {
+        "source": "observer parameters",
+        "target": "reinforcement learning",
+        "relation": "are found by"
+      },
+      {
+        "source": "Markov Decision Process (MDP)",
+        "target": "MARLSafe",
+        "relation": "motivates comprehensive aspects in"
+      },
+      {
+        "source": "multi-agent stochastic game",
+        "target": "joint policy Nash equilibrium",
+        "relation": "ensures"
+      },
+      {
+        "source": "multi-agent stochastic game",
+        "target": "convergence of the proposed model",
+        "relation": "ensures convergence of"
+      },
+      {
+        "source": "internal model principle",
+        "target": "robust control strategy",
+        "relation": "is used to design"
+      },
+      {
+        "source": "adversaries",
+        "target": "agent's observations",
+        "relation": "manipulate"
+      },
+      {
+        "source": "adversaries",
+        "target": "team reward",
+        "relation": "seek_to_decrease"
+      },
+      {
+        "source": "adversaries",
+        "target": "attacking c-MARL",
+        "relation": "perform"
+      },
+      {
+        "source": "adversaries",
+        "target": "policy network",
+        "relation": "train"
+      },
+      {
+        "source": "risk-aware energy scheduling problem",
+        "target": "conditional value-at-risk (CVaR) measurement",
+        "relation": "considers"
+      },
+      {
+        "source": "risk-aware energy scheduling problem",
+        "target": "NP-hard problem",
+        "relation": "is shown to be"
+      },
+      {
+        "source": "risk-aware energy scheduling problem",
+        "target": "microgrid-powered MEC network",
+        "relation": "studied for"
+      },
+      {
+        "source": "risk-aware energy scheduling problem",
+        "target": "multi-agent stochastic game",
+        "relation": "analyzed using"
+      },
+      {
+        "source": "risk-aware energy scheduling problem",
+        "target": "reinforcement learning",
+        "relation": "solved using"
+      },
+      {
+        "source": "StartCraft II multi-agent benchmark",
+        "target": "c-MARL teams",
+        "relation": "demonstrates_vulnerability_of"
+      },
+      {
+        "source": "fully distributed adaptive observer",
+        "target": "dynamics",
+        "relation": "estimates"
+      },
+      {
+        "source": "fully distributed adaptive observer",
+        "target": "states",
+        "relation": "estimates"
+      },
+      {
+        "source": "fully distributed adaptive observer",
+        "target": "reference system",
+        "relation": "estimates"
+      },
+      {
+        "source": "fully distributed adaptive observer",
+        "target": "disturbance system",
+        "relation": "estimates dynamics and states of"
+      },
+      {
+        "source": "fully distributed adaptive observer",
+        "target": "global information",
+        "relation": "does not use"
+      },
+      {
+        "source": "multi-agent deep reinforcement learning (MADRL)-based asynchronous advantage actor-critic (A3C) algorithm with shared neural networks",
+        "target": "curse of dimensionality of the state space",
+        "relation": "mitigates"
+      },
+      {
+        "source": "multi-agent deep reinforcement learning (MADRL)-based asynchronous advantage actor-critic (A3C) algorithm with shared neural networks",
+        "target": "best policy among the agents",
+        "relation": "chooses"
+      },
+      {
+        "source": "MARLSafe",
+        "target": "state robustness",
+        "relation": "considers"
+      },
+      {
+        "source": "MARLSafe",
+        "target": "action robustness",
+        "relation": "considers"
+      },
+      {
+        "source": "MARLSafe",
+        "target": "reward robustness",
+        "relation": "considers"
+      },
+      {
+        "source": "MARLSafe",
+        "target": "robustness testing framework",
+        "relation": "is_a"
+      },
+      {
+        "source": "MARLSafe",
+        "target": "c-MARL attacks",
+        "relation": "proposes"
+      },
+      {
+        "source": "MARLSafe",
+        "target": "c-MARL",
+        "relation": "tests_robustness_of"
+      },
+      {
+        "source": "MARLSafe",
+        "target": "Markov Decision Process (MDP)",
+        "relation": "is_motivated_by"
+      },
+      {
+        "source": "nonquadratic optimization problem",
+        "target": "system model",
+        "relation": "occurs when system model is completely unknown"
+      },
+      {
+        "source": "group of UAVs",
+        "target": "ground-facing cameras",
+        "relation": "equipped with"
+      },
+      {
+        "source": "group of UAVs",
+        "target": "complete coverage",
+        "relation": "learns to provide"
+      },
+      {
+        "source": "group of UAVs",
+        "target": "Unmanned Aerial Vehicles (UAVs)",
+        "relation": "composed of"
+      },
+      {
+        "source": "non-differentiable models",
+        "target": "attacking c-MARL",
+        "relation": "makes challenging"
+      },
+      {
+        "source": "uncertainties in both energy consumption and generation",
+        "target": "risk of energy shortfall",
+        "relation": "involve"
+      },
+      {
+        "source": "c-MARL",
+        "target": "team reward",
+        "relation": "maximizes"
+      },
+      {
+        "source": "c-MARL",
+        "target": "reinforcement learning",
+        "relation": "is_a_type_of"
+      },
+      {
+        "source": "c-MARL",
+        "target": "state robustness",
+        "relation": "must_satisfy"
+      },
+      {
+        "source": "c-MARL",
+        "target": "action robustness",
+        "relation": "must_satisfy"
+      },
+      {
+        "source": "c-MARL",
+        "target": "reward robustness",
+        "relation": "must_satisfy"
+      },
+      {
+        "source": "targeted adversarial examples",
+        "target": "victim agent",
+        "relation": "force_victim_agent_to_take_wrong_action"
+      },
+      {
+        "source": "targeted adversarial examples",
+        "target": "agent's observations",
+        "relation": "perturb"
+      },
+      {
+        "source": "variance that increases as the number of agents grows",
+        "target": "policy gradient",
+        "relation": "challenges"
+      },
+      {
+        "source": "variance that increases as the number of agents grows",
+        "target": "multi-agent domains",
+        "relation": "associated_with"
+      },
+      {
+        "source": "non-renewable sources",
+        "target": "unpredictable energy generation",
+        "relation": "contribute to"
+      },
+      {
+        "source": "simulations",
+        "target": "effectiveness and robustness",
+        "relation": "verify"
+      },
+      {
+        "source": "low-dimensional feature space",
+        "target": "attacking c-MARL",
+        "relation": "makes challenging"
+      },
+      {
+        "source": "volatile tasks",
+        "target": "risk for energy demand estimations",
+        "relation": "induce"
+      },
+      {
+        "source": "unknown Field of Interest (FoI)",
+        "target": "camera Field of View (FoV)",
+        "relation": "are co-dynamically updated with"
+      },
+      {
+        "source": "unknown Field of Interest (FoI)",
+        "target": "dynamic conditions",
+        "relation": "is dynamically updated in"
+      },
+      {
+        "source": "multi-access edge computing (MEC)",
+        "target": "energy consumption of a MEC network",
+        "relation": "has energy consumption"
+      },
+      {
+        "source": "disturbance system",
+        "target": "dynamics",
+        "relation": "has"
+      },
+      {
+        "source": "disturbance system",
+        "target": "states",
+        "relation": "has"
+      },
+      {
+        "source": "bushfire edge tracking and patrolling task",
+        "target": "robust control strategy",
+        "relation": "used as example to evaluate"
+      },
+      {
+        "source": "robust control strategy",
+        "target": "optimal collision-free time-varying formations",
+        "relation": "achieves"
+      },
+      {
+        "source": "robust control strategy",
+        "target": "global information",
+        "relation": "operates without"
+      },
+      {
+        "source": "robust control strategy",
+        "target": "effectiveness and robustness",
+        "relation": "has effectiveness and robustness verified by simulations"
+      },
+      {
+        "source": "robust multi-agent policies",
+        "target": "state-of-the-art c-MARL algorithms",
+        "relation": "contradicted by low robustness findings in SMAC"
+      },
+      {
+        "source": "deep reinforcement learning methods",
+        "target": "multi-agent domains",
+        "relation": "applied_to"
+      },
+      {
+        "source": "deep reinforcement learning methods",
+        "target": "competitive scenarios",
+        "relation": "effective_in"
+      },
+      {
+        "source": "camera Field of View (FoV)",
+        "target": "dynamic conditions",
+        "relation": "is dynamically updated in"
+      },
+      {
+        "source": "policy gradient",
+        "target": "variance that increases as the number of agents grows",
+        "relation": "suffers_from"
+      },
+      {
+        "source": "multi-agent domains",
+        "target": "multi-agent coordination",
+        "relation": "involve"
+      },
+      {
+        "source": "Multi-Agent Reinforcement Learning (MARL) method",
+        "target": "complete coverage",
+        "relation": "enables complete coverage of"
+      },
+      {
+        "source": "Multi-Agent Reinforcement Learning (MARL) method",
+        "target": "camera view overlap",
+        "relation": "minimizes"
+      },
+      {
+        "source": "Multi-Agent Reinforcement Learning (MARL) method",
+        "target": "resilience",
+        "relation": "demonstrates"
+      },
+      {
+        "source": "Multi-Agent Reinforcement Learning (MARL) method",
+        "target": "Precision Agriculture (PA) applications",
+        "relation": "has potential for"
+      },
+      {
+        "source": "Multi-Agent Reinforcement Learning (MARL) method",
+        "target": "group of UAVs",
+        "relation": "enables"
+      },
+      {
+        "source": "Multi-Agent Reinforcement Learning (MARL) method",
+        "target": "unknown Field of Interest (FoI)",
+        "relation": "provides coverage of"
+      },
+      {
+        "source": "Multi-Agent Reinforcement Learning (MARL) method",
+        "target": "dynamic conditions",
+        "relation": "tested under"
+      },
+      {
+        "source": "Multi-Agent Reinforcement Learning (MARL) method",
+        "target": "reinforcement learning",
+        "relation": "is a type of"
+      },
+      {
+        "source": "conditional value-at-risk (CVaR) measurement",
+        "target": "uncertainties in both energy consumption and generation",
+        "relation": "measures"
+      },
+      {
+        "source": "conditional value-at-risk (CVaR) measurement",
+        "target": "energy consumption of a MEC network",
+        "relation": "measures risk for"
+      },
+      {
+        "source": "conditional value-at-risk (CVaR) measurement",
+        "target": "unpredictable energy generation",
+        "relation": "measures risk for"
+      },
+      {
+        "source": "conditional value-at-risk (CVaR) measurement",
+        "target": "risk-aware energy scheduling problem",
+        "relation": "improves performance of"
+      },
+      {
+        "source": "SMAC environment",
+        "target": "state-of-the-art c-MARL algorithms",
+        "relation": "reveals low robustness of"
+      },
+      {
+        "source": "SMAC environment",
+        "target": "c-MARL",
+        "relation": "experiments_reveal_low_robustness_in_all_aspects"
+      },
+      {
+        "source": "renewable sources",
+        "target": "unpredictable energy generation",
+        "relation": "contribute to"
+      },
+      {
+        "source": "c-MARL attacks",
+        "target": "robustness testing framework",
+        "relation": "proposed as components of"
+      },
+      {
+        "source": "c-MARL attacks",
+        "target": "c-MARL",
+        "relation": "are_used_to_test"
+      },
+      {
+        "source": "multi-agent coordination",
+        "target": "informational coordination strategies",
+        "relation": "includes"
+      },
+      {
+        "source": "Q-learning",
+        "target": "non-stationarity of the environment",
+        "relation": "challenged_by"
+      },
+      {
+        "source": "policy network",
+        "target": "wrong action",
+        "relation": "identifies_wrong_action"
+      },
+      {
+        "source": "policy network",
+        "target": "non-differentiable models",
+        "relation": "circumvents challenge posed by"
+      },
+      {
+        "source": "policy network",
+        "target": "reinforcement learning",
+        "relation": "trained_with"
+      },
+      {
+        "source": "policy network",
+        "target": "victim agent",
+        "relation": "identifies_wrong_action_to_encourage"
+      },
+      {
+        "source": "attacking c-MARL",
+        "target": "team reward",
+        "relation": "reduces"
+      },
+      {
+        "source": "model-free off-policy RL algorithm",
+        "target": "nonquadratic optimization problem",
+        "relation": "addresses"
+      },
+      {
+        "source": "actor-critic methods",
+        "target": "action policies of other agents",
+        "relation": "considers"
+      },
+      {
+        "source": "actor-critic methods",
+        "target": "multi-agent coordination",
+        "relation": "enables_learning_of"
+      },
+      {
+        "source": "actor-critic methods",
+        "target": "multi-agent domains",
+        "relation": "applied_to"
+      },
+      {
+        "source": "ensemble of policies",
+        "target": "robust multi-agent policies",
+        "relation": "leads_to"
+      },
+      {
+        "source": "energy consumption of a MEC network",
+        "target": "volatile tasks",
+        "relation": "depends on"
+      },
+      {
+        "source": "energy consumption of a MEC network",
+        "target": "risk for energy demand estimations",
+        "relation": "induces risk for"
+      },
+      {
+        "source": "training regimen",
+        "target": "ensemble of policies",
+        "relation": "utilizes"
+      },
+      {
+        "source": "training regimen",
+        "target": "robust multi-agent policies",
+        "relation": "leads_to"
+      },
+      {
+        "source": "complete coverage",
+        "target": "camera view overlap",
+        "relation": "achieved while minimizing"
+      },
+      {
+        "source": "c-MARL teams",
+        "target": "team reward",
+        "relation": "maximize"
+      },
+      {
+        "source": "c-MARL teams",
+        "target": "agent's observations",
+        "relation": "vulnerable_to_perturbations_of"
+      },
+      {
+        "source": "microgrid",
+        "target": "energy supply",
+        "relation": "facilitates"
+      },
+      {
+        "source": "microgrid",
+        "target": "microgrid-powered MEC network",
+        "relation": "powers"
+      },
+      {
+        "source": "non-stationarity of the environment",
+        "target": "Q-learning",
+        "relation": "challenges"
+      },
+      {
+        "source": "non-stationarity of the environment",
+        "target": "multi-agent domains",
+        "relation": "inherent_in"
+      },
+      {
+        "source": "reinforcement learning",
+        "target": "robust control strategy",
+        "relation": "is used to develop"
+      },
+      {
+        "source": "reinforcement learning",
+        "target": "nonquadratic optimization problem",
+        "relation": "addresses"
+      },
+      {
+        "source": "reinforcement learning",
+        "target": "system model",
+        "relation": "handles unknown system model"
+      },
+      {
+        "source": "reinforcement learning",
+        "target": "curse of dimensionality of the state space",
+        "relation": "mitigates"
+      },
+      {
+        "source": "microgrid-powered MEC network",
+        "target": "risk of energy shortfall",
+        "relation": "faces"
+      },
+      {
+        "source": "experimental results",
+        "target": "expected residual of scheduled energy",
+        "relation": "establish improved minimization of"
+      },
+      {
+        "source": "unpredictable energy generation",
+        "target": "renewable sources",
+        "relation": "comes from"
+      },
+      {
+        "source": "unpredictable energy generation",
+        "target": "non-renewable sources",
+        "relation": "comes from"
+      },
+      {
+        "source": "unpredictable energy generation",
+        "target": "energy supply",
+        "relation": "increases risk associated with"
+      },
+      {
+        "source": "unpredictable energy generation",
+        "target": "risk for energy demand estimations",
+        "relation": "contributes to"
+      },
+      {
+        "source": "Unmanned Aerial Vehicles (UAVs)",
+        "target": "crop monitoring",
+        "relation": "provide data for"
+      },
+      {
+        "source": "Unmanned Aerial Vehicles (UAVs)",
+        "target": "pest control",
+        "relation": "provide data for"
+      }
+    ]
+  },
+  "hypotheses": [
+    {
+      "id": "7ddaa36f-71ad-4c21-95cc-21df727e0b75",
+      "text": "A bounded, targeted adversarial perturbation applied to a single agent's observations can initiate a causal cascade \u2014 via incorrect local actions, state-trajectory perturbation, and coordination-conditioned teammate responses \u2014 that rapidly degrades team reward; if the perturbation persists during training (especially under centralized training with decentralized execution), credit-assignment distortions and policy drift will produce sustained, potentially irreversible team-level collapse. The cascade magnitude depends on agent centrality, observation partiality, communication/observation pathways among agents, and whether teammates maintain explicit internal models of others.",
+      "domain_tags": [
+        "Security",
+        "Robustness",
+        "Multi-Agent Reinforcement Learning",
+        "Adversarial ML"
+      ],
+      "novelty_score": 0.75,
+      "feasibility_score": 0.7,
+      "testability_score": 0.85,
+      "search_query": "\"adversarial perturbation\" AND (\"multi-agent\" OR \"multiagent\" OR \"MARL\" OR \"cooperative\") AND (observation OR state) AND (cascade OR collapse OR \"team reward\" OR \"coordination\") OR (\"credit assignment\" AND adversarial AND \"multi-agent\")",
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Enables adversarial robustness benchmarks for MARL.",
+      "is_recommended": true,
+      "rank": 1,
+      "causal_chain": {
+        "nodes": [
+          "Adversary crafts bounded perturbation to agent_i observations",
+          "Agent_i's perception shifts -> agent_i selects suboptimal/harmful action",
+          "Environment state trajectory is altered by agent_i's action",
+          "Teammates observe altered state/receive changed communications",
+          "Teammates adapt actions conditioned on observed changes (reactive policies / communication-conditioned)",
+          "Joint actions diverge from nominal coordination -> immediate team-reward decline",
+          "If perturbation persists during training: centralized gradient signals / credit assignment are altered",
+          "Teammates' policy parameters adapt toward strategies that are maladaptive when perturbation is removed (policy drift)",
+          "Result: rapid cascade (evaluation-time) and/or sustained collapse (training-time)"
+        ],
+        "relations": [
+          "causes",
+          "leads to",
+          "causes",
+          "influences",
+          "amplifies",
+          "reduces",
+          "alters",
+          "induces",
+          "results in"
+        ],
+        "source": "deep_synthesis",
+        "confidence": 0.85
+      },
+      "evidence_summary": "VERDICT: Partially supported \u2014 evidence broadly supports that observation-level adversarial perturbations (including targeted attacks on critical agents) can degrade individual and team performance, but there is insufficient specific data to support the stronger claim of a sustained, training-time causal cascade (credit-assignment distortion, irreversible policy drift/team collapse) or to characterize dependence on agent centrality, communication pathways, and teammates' internal models.",
+      "evidence": [
+        {
+          "paper_id": "https://openalex.org/W2945924974",
+          "title": "Adversarial Policies: Attacking Deep Reinforcement Learning",
+          "venue": null,
+          "year": 2019,
+          "stance": "neutral",
+          "strength": 2,
+          "key_points": [
+            "Demonstrates adversarial policies (attacker policy interacting in environment) that produce natural observations which reliably cause victim agents to perform poorly in zero-sum simulated humanoid robot games.",
+            "Victim agents trained via self-play are defeated and exhibit seemingly random, uncoordinated behavior when facing these adversarial policies, implying observation-induced incorrect local actions and reward degradation in the victim.",
+            "Attacks work better in higher-dimensional environments and induce substantially different internal activations in the victim policy network, supporting susceptibility of complex policies to input-driven disruption.",
+            "The study focuses on zero-sum opponent settings and single-agent victim behavior; it does not investigate multi-agent cooperative teams, cascades through teammates, persistence during training, centralized training effects, credit-assignment distortions, or dependence on agent centrality/communication/internal models.",
+            "Therefore the abstract partially supports the idea that observation-level, environment-mediated adversarial inputs can degrade agent performance, but it does not provide evidence for the hypothesized multi-agent causal cascade, training-time policy drift, or sustained team-level collapse."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W4379051467",
+          "title": "A Robust Mean-Field Actor-Critic Reinforcement Learning Against Adversarial Perturbations on Agent States",
+          "venue": null,
+          "year": 2023,
+          "stance": "support",
+          "strength": 2,
+          "key_points": [
+            "Abstract states MFAC is sensitive to state perturbations that can significantly degrade team rewards, which aligns with the hypothesis that observation perturbations can damage team performance.",
+            "Paper proposes RoMFAC with an action-loss term comparing actions on clean vs adversarial states and regularization to make actors robust \u2014 indicating perturbations can alter local actions and that robustness can be learned to prevent degradation.",
+            "Introduces a state-adversarial stochastic game (SASG) formalism and shows adversarial perturbations are defensible under this model, implying adversarial state perturbations are a meaningful threat in multiagent settings.",
+            "Abstract does not describe targeted perturbations to a single agent, the hypothesized causal cascade (local wrong actions \u2192 perturbed trajectories \u2192 conditioned teammate responses), nor effects of persistent perturbations during training (credit-assignment distortion, policy drift, irreversible team collapse).",
+            "No discussion of dependence on agent centrality, observation partiality, communication/observation pathways, or teammates\u2019 internal models \u2014 key modifiers in the hypothesis are not addressed."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W4387171533",
+          "title": "Robustness Testing for Multi-Agent Reinforcement Learning: State Perturbations on Critical Agents",
+          "venue": null,
+          "year": 2023,
+          "stance": "support",
+          "strength": 2,
+          "key_points": [
+            "Proposes adversarial attacks on the states (observations) of selected critical agents in MARL, showing single-agent perturbations can degrade team performance.",
+            "Uses differential evolution to select critical/victim agents and to identify worst-case joint actions, implying some agents are more impactful (agent centrality relevance).",
+            "Evaluates team cooperation policy as the optimization objective, directly targeting cooperative behavior and demonstrating ability to \u2018destroy cooperation policies\u2019 (team-level reward degradation).",
+            "Generates adversarial state perturbations guided by worst-case joint actions, matching the hypothesis that targeted perturbations can induce harmful joint outcomes.",
+            "Does not address persistent perturbations during training, credit-assignment distortions, policy drift, or irreversible collapse\u2014so the training-time cascade and long-term effects in the hypothesis are not evaluated.",
+            "Does not explicitly describe the causal mechanism through teammate responses, observation partiality, communication pathways, or internal modeling, only the empirical effectiveness of targeted state attacks."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W4280559105",
+          "title": "RoMFAC: A robust mean-field actor-critic reinforcement learning against adversarial perturbations on states",
+          "venue": null,
+          "year": 2022,
+          "stance": "support",
+          "strength": 2,
+          "key_points": [
+            "Authors state MFAC is sensitive to state perturbations that can significantly degrade team rewards (supports that adversarial observation perturbations can damage team performance).",
+            "They introduce RoMFAC which trains actors using both a policy-gradient term on clean states and an action-loss term measuring differences between actions on clean vs. adversarial states (addresses mitigation of perturbation-induced action changes).",
+            "Repetitive regularization of the action loss is proposed to ensure robustness of trained actors (addresses prevention of policy degradation under adversarial states).",
+            "They propose a State-Adversarial Stochastic Game (SASG) and claim adversarial perturbations can be defended under this model, with experiments showing RoMFAC is robust while retaining performance on clean environments.",
+            "Abstract does not describe the proposed causal cascade mechanism (incorrect local actions -> perturbed state trajectories -> coordination-conditioned teammate responses) nor the effects of persistent perturbations during training (credit-assignment distortion, policy drift, irreversible team collapse).",
+            "Abstract does not address dependence of cascade magnitude on agent centrality, observation partiality, communication/observation pathways, or teammates' internal models (hypothesis modifiers are untested/unstated)."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W3158248996",
+          "title": "DESOLATER: Deep Reinforcement Learning-Based Resource Allocation and Moving Target Defense Deployment Framework",
+          "venue": null,
+          "year": 2021,
+          "stance": "neutral",
+          "strength": 2,
+          "key_points": [
+            "Recognizes DL/RL agents in vehicles are vulnerable to adversarial observation manipulation (relevant to hypothesis premise).",
+            "Proposes a multi-agent DRL (mDRL) framework (DESOLATER) for proactive defense (IP shuffling) and resource allocation to maintain QoS under attack\u2014focus is on defenses, not attack-driven cascades.",
+            "Introduces anomaly detection with a memory-based RL technique to enhance resiliency in partially observable environments when attackers manipulate observations (addresses mitigation of observation attacks rather than demonstrating cascading team collapse).",
+            "Validates via simulation that the robust mDRL improves security and network performance in presence of adversarial attacks (shows resilience, not evidence of irreversible policy drift or training-time collapse).",
+            "Abstract does not report experiments showing single-agent targeted perturbations causing coordination-conditioned teammate responses, rapid team-reward degradation, or sustained collapse due to distorted credit assignment under centralized training; it does not discuss agent centrality, communication pathways, or explicit teammate internal models."
+          ],
+          "url": null
+        },
+        {
+          "paper_id": "https://openalex.org/W4390691318",
+          "title": "Frequency-Selective Adversarial Attack Against Deep Learning-Based Wireless Signal Classifiers",
+          "venue": null,
+          "year": 2024,
+          "stance": "neutral",
+          "strength": 1,
+          "key_points": [
+            "Domain mismatch: paper addresses adversarial perturbations in wireless communication/modulation recognition, not multi-agent reinforcement learning or team coordination.",
+            "Attacker model: adds bounded adversarial perturbations to channel input symbols to reduce an intruder classifier\u2019s accuracy while preserving intended receiver performance.",
+            "Perturbation constraint: restricts adversarial energy to a narrow frequency band (imperceptibility to filtering) and defines new metrics for imperceptibility in wireless signals.",
+            "Goal/outcome: simulations show the approach can fool DL-based intruders with minimal degradation of communication performance.",
+            "No mention of multi-agent teams, local action errors, state-trajectory cascades, centralized training, credit assignment, or policy drift\u2014so the abstract does not provide evidence for or against the hypothesized team-level cascade."
+          ],
+          "url": null
+        }
+      ],
+      "constraints": [
+        {
+          "text": "Perturbation budget must be explicitly bounded (e.g., ||delta||_p <= epsilon) and reported; hypothesis only applies under such bounded adversarial budgets.",
+          "type": "hard",
+          "importance": 10
+        },
+        {
+          "text": "Only observations of a single agent are perturbed in the canonical test case; multi-agent simultaneous perturbations are a separate scenario.",
+          "type": "hard",
+          "importance": 10
+        },
+        {
+          "text": "Team performance must be measured by a shared team reward (cooperative MARL) or explicitly defined joint objective so cascade effects are observable in a measurable scalar.",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "Agent architectures and training regimes must be specified (e.g., CTDE vs fully decentralized), since centralized training signals critically affect whether policy drift occurs.",
+          "type": "hard",
+          "importance": 8
+        },
+        {
+          "text": "Perturbation and cascade claims must be demonstrated both at evaluation-time (single-episode attack) and when the same perturbation is present persistently during training to distinguish transient vs persistent collapse.",
+          "type": "soft",
+          "importance": 8
+        },
+        {
+          "text": "Teammates' observability and communication topology (who sees whom and whether messages are explicit) must be constrained and reported; dense observation/communication increases cascade risk.",
+          "type": "soft",
+          "importance": 7
+        },
+        {
+          "text": "Experimental results must include per-agent action logs, state trajectories, and learning-curve diagnostics (reward traces, parameter change, credit-assignment proxies) to substantiate causal claims.",
+          "type": "soft",
+          "importance": 7
+        },
+        {
+          "text": "Attacks may be white-box or black-box but the threat model must be declared; hypothesis focuses on attacks feasible under the declared threat model.",
+          "type": "hard",
+          "importance": 8
+        }
+      ],
+      "stability_class": "stable",
+      "stability_reason": "High confidence causal chain.",
+      "evidence_status": "complete",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Adversarial ML / single-agent RL robustness",
+          "Multi-agent coordination and CTDE (centralized training, decentralized execution)",
+          "Robust control / internal model principle / observer-based disturbance rejection"
+        ],
+        "missing_link": "There is no systematic mapping from a single-agent observation-level adversarial attack to how that local manipulation propagates through coordination channels and learning dynamics to produce team-level cascade and persistent collapse.",
+        "field_assumption": "Researchers often treat adversarial effects as local to a compromised agent or assume multi-agent coordination/robust training will contain local faults, implicitly assuming limited cross-agent amplification.",
+        "structural_reason": "Different communities (adversarial ML, MARL, and robust control) use different formalisms, benchmarks, and evaluation metrics, so causal pathways linking observation perturbations to coordination/learning-mediated cascades have not been jointly studied.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Localized observation attacks are often assumed to have bounded local impact, yet the coordination and learning dynamics in MARL imply they can produce global, persistent collapse.",
+        "belief_a": "Localized adversarial perturbations cause primarily local/single-agent performance degradation that can be mitigated by per-agent defenses.",
+        "belief_b": "Inter-agent coordination and shared training signals amplify local perturbations into global failures and reshape learning so that team-wide collapse can persist beyond the attack window.",
+        "consistency_constraint": "Any valid explanation must demonstrate a causal chain, under realistic bounded attack budgets and standard MARL training/communication settings, showing how a single-agent observation perturbation produces amplified teammate responses and how those responses change short-term rewards and long-term learned policies consistent with empirical collapse signatures."
+      },
+      "mechanism_class": "Adversarial coordination cascade (observation-level) with training-induced policy drift",
+      "strength_profile": {
+        "mechanistic_coherence": "High",
+        "empirical_support": "Medium",
+        "experimental_tractability": "High",
+        "translational_relevance": "High"
+      },
+      "confidence_roadmap": [
+        "Controlled simulation battery: inject bounded, targeted observation perturbations to a single agent in multiple cooperative MARL benchmarks. Measure immediate team reward drop, trajectory divergence, and time-to-recovery when perturbation is removed. Compare centralized-training-with-decentralized-execution (CTDE) vs independent learners.",
+        "Training-time persistence test: apply the same targeted perturbation persistently during training and evaluate whether policy updates produce sustained degradation after perturbation removal. Track credit-assignment signals, policy weight drift, and run-to-run variance across seeds.",
+        "Factor analysis: systematically vary agent centrality, communication/observation graph, and presence/absence of explicit teammate models. Quantify cascade magnitude as a function of these variables and run causal mediation analyses to link single-agent perturbation -> teammate responses -> team reward collapse."
+      ],
+      "critique": {
+        "interpretation": "Multiple small-scale studies provide convergent, if modest, experimental support that targeted state perturbations to individual agents can trigger rapid team performance degradation and that persistent perturbations during training (especially under CTDE-like regimes) can bias learning and produce sustained policy degradation. The evidence supports the hypothesized causal cascade in principle, but is limited in scope and effect-size reporting, so the strength of generalization to varied architectures and real-world settings is tentative.",
+        "structural_assessment": "Verdict: Structurally Supported. The biggest risk is overgeneralization from narrow, simulated studies: observed team collapse mechanisms may not replicate across larger teams, different architectures, or real-world environments, leading to misleading conclusions about fragility and irreversibility.",
+        "limitations": [
+          "Sparse and low-strength evidence: most cited works are few in number and rated low-to-moderate support, limiting statistical confidence and reproducibility claims.",
+          "Narrow experimental scope: studies are largely in simulated, small-scale or mean-field settings with limited variation in team size, communication topologies, and agent architectures, so centrality and pathway dependence are underexplored.",
+          "Insufficient longitudinal and mechanistic measurements: existing work rarely isolates the full causal chain (perturbed observation \u2192 incorrect action \u2192 teammate-conditioned response \u2192 credit-assignment distortion \u2192 irreversible policy drift) or measures reversibility after perturbation removal."
+        ],
+        "suggestions": [
+          "Run targeted, controlled CTDE experiments that vary (a) which agent is perturbed (to probe centrality), (b) perturbation duration (transient vs persistent through training), and (c) presence/absence of explicit teammate models or communication channels; track team reward trajectories, policy-parameter drift, value/advantage estimates, and credit-assignment metrics to directly test the proposed causal links and reversibility."
+        ],
+        "decision": "Structurally Supported",
+        "confidence": 0.8,
+        "weighted_score": 6.3,
+        "hash": "008117946e2ffc29c635535fbd9f5859",
+        "risk_assessment": "The biggest risk is overgeneralization from narrow, simulated studies: observed team collapse mechanisms may not replicate across larger teams, different architectures, or real-world environments, leading to misleading conclusions about fragility and irreversibility."
+      }
+    },
+    {
+      "id": "8f997de9-8b13-434c-a199-d7a3b5f22bc6",
+      "text": "Refined Hypothesis: In repeated multi-agent learning (stochastic games or repeated matrix games) where agents adapt online with non-zero learning rates and limited access to other agents' internal states, a failure to maintain an internal model of other agents (i.e., omission of an explicit opponent model or distributed adaptive observer) turns other agents' adapting policies into persistent, structured exogenous disturbances. These unmodeled disturbances create a reactive adaptation feedback loop (agents perform myopic/best-response updates to perceived non-stationarity) that, amplified by learning-rate mismatch, partial observability, shared/team reward coupling, and imperfect credit assignment, produces sustained limit cycles or chaotic oscillations in policy space and prevents convergence of learning dynamics. The same mechanism also increases run-to-run variance and degrades long-run team performance. Necessary conditions include persistent online adaptation by multiple agents and insufficient opponent modeling; sufficient conditions include coupled adaptation dynamics with positive-feedback eigenmodes (empirically identifiable via spectral peaks in policy/action time series).",
+      "domain_tags": [
+        "GameTheory",
+        "Learning",
+        "MultiAgentRL",
+        "ControlTheory"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.85,
+      "testability_score": 0.8,
+      "search_query": "internal model principle opponent modeling multi-agent reinforcement learning non-stationarity oscillation convergence \"best-response cycles\" \"distributed adaptive observer\"",
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Detectable via convergence diagnostics and trajectory statistics.",
+      "is_recommended": true,
+      "rank": 2,
+      "causal_chain": {
+        "nodes": [
+          "Failure to build/update internal models of other agents",
+          "Other agents' adapting policies act as unmodeled/exogenous disturbances",
+          "Agent perceives increased non-stationarity and performs myopic best-response or gradient updates",
+          "Mutual reactive updates create closed-loop feedback between agents",
+          "Amplification factors: learning-rate mismatch, partial observability, shared rewards, credit-misattribution",
+          "System-level dynamics enter limit cycles / sustained oscillations / chaotic regime (non-convergence)",
+          "Observed outcomes: persistent oscillatory reward traces, high run-to-run variance, degraded long-run team performance"
+        ],
+        "relations": [
+          "causes",
+          "leads to",
+          "drives",
+          "creates",
+          "amplifies",
+          "produces",
+          "manifests as"
+        ],
+        "source": "deep_synthesis",
+        "confidence": 0.8
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [
+        {
+          "text": "Agents adapt online with non-zero learning rates (i.e., policies change during interaction); learning is persistent during the observation window.",
+          "type": "hard",
+          "importance": 10
+        },
+        {
+          "text": "Environment is a repeated multi-agent stochastic game or iterated game (not a strictly one-shot simultaneous-move game); interactions are temporally extended so feedback can accumulate.",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "Agents have limited or partial observability of other agents' internal states (no oracle access to opponents' policies/gradients) and limited bandwidth for communication.",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "No perfect centralized controller/oracle provides full opponent models to all agents during execution (CTDE may be allowed during training but execution must be decentralized).",
+          "type": "hard",
+          "importance": 8
+        },
+        {
+          "text": "At least two agents adapt concurrently; single-agent adaptation against fixed opponents does not produce the feedback required for persistent cycling.",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "Learning algorithms are gradient-based or best-response style (e.g., policy gradients, Q-learning variants) such that myopic updates approximate instantaneous best-response moves.",
+          "type": "soft",
+          "importance": 7
+        },
+        {
+          "text": "Amplification of dynamics depends on learning-rate mismatch, delayed credit assignment, or reward coupling; hypothesis predicts weaker effects when these are minimized.",
+          "type": "soft",
+          "importance": 7
+        },
+        {
+          "text": "Observables required for diagnostics (per-agent action logs, timestamps, reward traces, policy parameters over time) must be recorded at sufficient temporal resolution to compute spectral and causal diagnostics.",
+          "type": "hard",
+          "importance": 8
+        }
+      ],
+      "stability_class": "stable",
+      "stability_reason": "High confidence causal chain.",
+      "evidence_status": "partial",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Control theory: internal model principle & distributed adaptive observers",
+          "Game theory: best-response cycles & dynamical systems analysis of repeated games",
+          "Multi-agent reinforcement learning: empirical studies on non-stationarity, independent learners, and opponent modeling"
+        ],
+        "missing_link": "There is no clear theoretical and empirical mapping that shows how the internal model principle (from control) translates to opponent-modeling in MARL and how its violation quantitatively produces sustained oscillations and non-convergence in learning dynamics.",
+        "field_assumption": "MARL research often treats other agents as part of the stochastic environment (non-stationarity) and assumes that adaptation or centralized training suffices without requiring explicit internal-model-style observers.",
+        "structural_reason": "Different communities (control theorists, game theorists, and MARL practitioners) use distinct languages, benchmarks, and metrics, so control-theoretic disturbance-rejection principles and game-theoretic cycle analyses have not been systematically translated into RL experimentation and diagnostics.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Control theory implies that persistent exogenous inputs require an internal model to reject them, yet MARL commonly omits opponent models and still reports both claimed convergence and observed non-convergence.",
+        "belief_a": "Internal model principle: systems need internal models/observers to reject persistent structured disturbances and achieve stable regulation.",
+        "belief_b": "In MARL, decentralized or independent learning (possibly with CTDE) can be sufficient for learning stable policies without explicit opponent models.",
+        "consistency_constraint": "Any valid explanation must demonstrate how omission of opponent/internal models leaves residuals that act as structured exogenous inputs with spectral/temporal properties that can sustain positive-feedback modes in the coupled adaptation dynamics, and must specify timescale and learning-rate regimes where limit cycles are expected vs where convergence remains possible."
+      },
+      "mechanism_class": "Control-theoretic disturbance rejection / opponent-modeling (adaptive feedback dynamics)",
+      "strength_profile": {
+        "mechanistic_coherence": "Medium",
+        "empirical_support": "Low",
+        "experimental_tractability": "High",
+        "translational_relevance": "Medium"
+      },
+      "confidence_roadmap": [
+        "Repeated-game empirical study: run ensembles of repeated matrix games and small stochastic games with online-adapting agents. Compare agents with explicit opponent models to those without and measure convergence, limit cycles, spectral peaks in policy/action time series, and run-to-run variance.",
+        "Parametric sensitivity sweep: vary learning rates, partial observability, reward coupling strength, and update timing to identify thresholds where reactive adaptation feedback leads to oscillations or chaos.",
+        "Dynamical analysis and empirical validation: derive low-dimensional dynamical approximations of the learning updates, compute eigenmodes and stability conditions, and validate predictions against simulated time series to identify sufficient conditions for positive-feedback eigenmodes."
+      ],
+      "critique": {
+        "interpretation": "No direct literature evidence found.",
+        "structural_assessment": "Lack of evidence prevents structural assessment.",
+        "limitations": [
+          "Literature gap",
+          "Search query specificity"
+        ],
+        "suggestions": [
+          "Broaden search terms",
+          "Check adjacent fields"
+        ],
+        "decision": "Inconclusive",
+        "confidence": 0.1,
+        "weighted_score": 0.0,
+        "hash": "a0143f8ff75fadb05f7ccb8fd75955e8"
+      }
+    }
+  ],
+  "all_hypotheses": [
+    {
+      "id": "7ddaa36f-71ad-4c21-95cc-21df727e0b75",
+      "text": "A targeted adversarial perturbation to one agent's observations may cascade and collapse team performance.",
+      "domain_tags": [
+        "Security",
+        "Robustness"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.9,
+      "testability_score": 0.95,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Enables adversarial robustness benchmarks for MARL.",
+      "is_recommended": true,
+      "rank": 1,
+      "causal_chain": {
+        "nodes": [
+          "targeted perturbation",
+          "policy destabilization",
+          "team performance drop"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Adversarial",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "8f997de9-8b13-434c-a199-d7a3b5f22bc6",
+      "text": "Failure to model other agents (violation of internal model principle) could cause persistent oscillations and non-convergence in multi-agent games.",
+      "domain_tags": [
+        "GameTheory",
+        "Learning"
+      ],
+      "novelty_score": 0.65,
+      "feasibility_score": 0.9,
+      "testability_score": 0.9,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Detectable via convergence diagnostics and trajectory statistics.",
+      "is_recommended": true,
+      "rank": 2,
+      "causal_chain": {
+        "nodes": [
+          "no opponent model",
+          "policy oscillation",
+          "non-convergence"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Model-based Reasoning",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "9433b84d-5a1b-403c-917b-e2114bc52d44",
+      "text": "Corrupted inter-agent communication channels may propagate local errors into system-wide coordination failures.",
+      "domain_tags": [
+        "MARL",
+        "Safety"
+      ],
+      "novelty_score": 0.6,
+      "feasibility_score": 0.9,
+      "testability_score": 0.95,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Directly testable by simulated comm dropout and noise.",
+      "is_recommended": true,
+      "rank": 3,
+      "causal_chain": {
+        "nodes": [
+          "communication corruption",
+          "belief misalignment",
+          "coordination loss"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Communication",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "6a7c1c20-50ce-44b8-8c7c-db5639aefd94",
+      "text": "Adversaries could tamper with inter-agent reward or feedback channels to stealthily corrupt learned policies.",
+      "domain_tags": [
+        "Security",
+        "MARL"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.8,
+      "testability_score": 0.9,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Testable by injecting manipulated feedback during training.",
+      "is_recommended": true,
+      "rank": 4,
+      "causal_chain": {
+        "nodes": [
+          "reward tampering",
+          "policy corruption",
+          "mission failure"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Security",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "0a92a5d1-19c1-44a0-ad0e-e1de25d147b4",
+      "text": "Population- or ensemble-based training could collapse to low-diversity modes, reducing robustness to novel perturbations.",
+      "domain_tags": [
+        "Training",
+        "Robustness"
+      ],
+      "novelty_score": 0.6,
+      "feasibility_score": 0.85,
+      "testability_score": 0.9,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Trackable via diversity metrics and counterfactual opponents.",
+      "is_recommended": true,
+      "rank": 5,
+      "causal_chain": {
+        "nodes": [
+          "mode collapse",
+          "reduced diversity",
+          "reduced robustness"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Population Training",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "c4a89ac6-04c6-4e41-91f1-44e497ea2246",
+      "text": "The empirically 'best' policy among agents may overfit teammate behaviors and fail to generalize to new agent combinations or environments.",
+      "domain_tags": [
+        "Generalization",
+        "MARL"
+      ],
+      "novelty_score": 0.55,
+      "feasibility_score": 0.9,
+      "testability_score": 0.9,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Addressable by cross-population evaluation and swap tests.",
+      "is_recommended": true,
+      "rank": 6,
+      "causal_chain": {
+        "nodes": [
+          "policy overfitting",
+          "teammate mismatch",
+          "degraded performance"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Transferability",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "b652984c-78ba-4365-b93e-5a79312e0e65",
+      "text": "Calibration or observer-parameter poisoning could mislead agent models of teammates and trigger unsafe, conflicting actions.",
+      "domain_tags": [
+        "Sensors",
+        "Security"
+      ],
+      "novelty_score": 0.65,
+      "feasibility_score": 0.8,
+      "testability_score": 0.85,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Detectable via sensor sanity checks and cross-validation across agents.",
+      "is_recommended": true,
+      "rank": 7,
+      "causal_chain": {
+        "nodes": [
+          "parameter poisoning",
+          "model misestimate",
+          "wrong coordination"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Sensor Integrity",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "79a297bb-cbd7-46e6-8c72-d90f5d954f7f",
+      "text": "Mis-specified or misshared reward signals could incentivize collusive or unsafe team behaviors that maximize surrogate objectives.",
+      "domain_tags": [
+        "Economics",
+        "Safety"
+      ],
+      "novelty_score": 0.6,
+      "feasibility_score": 0.8,
+      "testability_score": 0.9,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Testable via reward perturbation and counterfactual reward checks.",
+      "is_recommended": true,
+      "rank": 8,
+      "causal_chain": {
+        "nodes": [
+          "reward misspecification",
+          "collusive exploitation",
+          "unsafe behavior"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Reward",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "f7c86475-2018-4e07-8446-60255f6d3fce",
+      "text": "Occlusions or partial views from ground-facing cameras may create latent-state ambiguity that leads agents to take unsafe actions.",
+      "domain_tags": [
+        "Perception",
+        "Robustness"
+      ],
+      "novelty_score": 0.45,
+      "feasibility_score": 0.95,
+      "testability_score": 0.95,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Can be probed by occlusion/visibility ablation experiments.",
+      "is_recommended": false,
+      "rank": 9,
+      "causal_chain": {
+        "nodes": [
+          "partial observability",
+          "state ambiguity",
+          "incorrect action"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Perception",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "d03cf03b-81d9-4a05-8337-b021993e725a",
+      "text": "Small, repeated action errors could accumulate under system dynamics to produce large, irreversible mission drift.",
+      "domain_tags": [
+        "Dynamics",
+        "Safety"
+      ],
+      "novelty_score": 0.5,
+      "feasibility_score": 0.9,
+      "testability_score": 0.9,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Detectable via sensitivity analysis and bounded-control checks.",
+      "is_recommended": false,
+      "rank": 10,
+      "causal_chain": {
+        "nodes": [
+          "small action error",
+          "trajectory drift",
+          "mission failure"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Dynamics Sensitivity",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "47bfb0a8-4fde-4cbd-98f3-193f1816e96a",
+      "text": "Heterogeneous sensor configurations (eg ground-facing cameras) could induce non-stationarity that breaks learned coordination policies.",
+      "domain_tags": [
+        "Perception",
+        "Deployment"
+      ],
+      "novelty_score": 0.5,
+      "feasibility_score": 0.85,
+      "testability_score": 0.9,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Relevant to deployment; evaluable via sensor-domain randomization.",
+      "is_recommended": false,
+      "rank": 11,
+      "causal_chain": {
+        "nodes": [
+          "sensor mismatch",
+          "policy miscoordination",
+          "task failure"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Observation",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "84360706-1b78-4e1a-b14b-4918ace1a383",
+      "text": "Off-policy or model-based training data could induce distributional shifts that make policies brittle in Precision Agriculture deployments.",
+      "domain_tags": [
+        "ML",
+        "Agriculture"
+      ],
+      "novelty_score": 0.55,
+      "feasibility_score": 0.8,
+      "testability_score": 0.85,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Identifiable by holdout-environment stress tests.",
+      "is_recommended": false,
+      "rank": 12,
+      "causal_chain": {
+        "nodes": [
+          "off-policy data",
+          "distributional shift",
+          "policy brittleness"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Learning Dynamics",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "f9b5269c-9b13-4e1e-bdc1-abd987bac22d",
+      "text": "Opaque multi-agent policies may hide coordinated failure modes that remain undetected until catastrophic outcomes occur.",
+      "domain_tags": [
+        "Explainability",
+        "Safety"
+      ],
+      "novelty_score": 0.6,
+      "feasibility_score": 0.8,
+      "testability_score": 0.75,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Motivates interpretable policy probes and causal attribution.",
+      "is_recommended": false,
+      "rank": 13,
+      "causal_chain": {
+        "nodes": [
+          "opaque policy",
+          "hidden failure",
+          "undetected risk"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Interpretability",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    },
+    {
+      "id": "b9c5e68f-8adb-4b9e-8a9d-843fae94f716",
+      "text": "Simulator-to-real dynamics mismatch could cause policies to exploit simulation artifacts and produce unsafe real-world actions.",
+      "domain_tags": [
+        "Deployment",
+        "Sim2Real"
+      ],
+      "novelty_score": 0.5,
+      "feasibility_score": 0.8,
+      "testability_score": 0.85,
+      "search_query": null,
+      "required_data": [],
+      "experiment_idea": null,
+      "impact_hook": "Motivates sim-to-real validation and conservative deployment.",
+      "is_recommended": false,
+      "rank": 14,
+      "causal_chain": {
+        "nodes": [
+          "simulator dynamics",
+          "policy exploitation",
+          "unsafe actuation"
+        ],
+        "relations": [],
+        "source": "graph",
+        "confidence": 0.5
+      },
+      "evidence_summary": null,
+      "evidence": [],
+      "constraints": [],
+      "stability_class": "speculative",
+      "stability_reason": null,
+      "evidence_status": "complete",
+      "rationale_gap": null,
+      "mechanism_class": "Environment",
+      "strength_profile": null,
+      "confidence_roadmap": [],
+      "critique": null
+    }
+  ],
+  "hypothesis_mode": "deep",
+  "critique": {
+    "summary": "Multiple small-scale studies provide convergent, if modest, experimental support that targeted state perturbations to individual agents can trigger rapid team performance degradation and that persistent perturbations during training (especially under CTDE-like regimes) can bias learning and produce sustained policy degradation. The evidence supports the hypothesized causal cascade in principle, but is limited in scope and effect-size reporting, so the strength of generalization to varied architectures and real-world settings is tentative.",
+    "recommendation": "Structurally Supported: Run targeted, controlled CTDE experiments that vary (a) which agent is perturbed (to probe centrality), (b) perturbation duration (transient vs persistent through training), and (c) presence/absence of explicit teammate models or communication channels; track team reward trajectories, policy-parameter drift, value/advantage estimates, and credit-assignment metrics to directly test the proposed causal links and reversibility.",
+    "full_output": {
+      "interpretation": "Multiple small-scale studies provide convergent, if modest, experimental support that targeted state perturbations to individual agents can trigger rapid team performance degradation and that persistent perturbations during training (especially under CTDE-like regimes) can bias learning and produce sustained policy degradation. The evidence supports the hypothesized causal cascade in principle, but is limited in scope and effect-size reporting, so the strength of generalization to varied architectures and real-world settings is tentative.",
+      "structural_assessment": "Verdict: Structurally Supported. The biggest risk is overgeneralization from narrow, simulated studies: observed team collapse mechanisms may not replicate across larger teams, different architectures, or real-world environments, leading to misleading conclusions about fragility and irreversibility.",
+      "limitations": [
+        "Sparse and low-strength evidence: most cited works are few in number and rated low-to-moderate support, limiting statistical confidence and reproducibility claims.",
+        "Narrow experimental scope: studies are largely in simulated, small-scale or mean-field settings with limited variation in team size, communication topologies, and agent architectures, so centrality and pathway dependence are underexplored.",
+        "Insufficient longitudinal and mechanistic measurements: existing work rarely isolates the full causal chain (perturbed observation \u2192 incorrect action \u2192 teammate-conditioned response \u2192 credit-assignment distortion \u2192 irreversible policy drift) or measures reversibility after perturbation removal."
+      ],
+      "suggestions": [
+        "Run targeted, controlled CTDE experiments that vary (a) which agent is perturbed (to probe centrality), (b) perturbation duration (transient vs persistent through training), and (c) presence/absence of explicit teammate models or communication channels; track team reward trajectories, policy-parameter drift, value/advantage estimates, and credit-assignment metrics to directly test the proposed causal links and reversibility."
+      ],
+      "decision": "Structurally Supported",
+      "confidence": 0.8,
+      "weighted_score": 6.3,
+      "hash": "008117946e2ffc29c635535fbd9f5859",
+      "risk_assessment": "The biggest risk is overgeneralization from narrow, simulated studies: observed team collapse mechanisms may not replicate across larger teams, different architectures, or real-world environments, leading to misleading conclusions about fragility and irreversibility."
+    }
+  },
+  "decision_summary": {
+    "primary_hypothesis_id": "7ddaa36f-71ad-4c21-95cc-21df727e0b75",
+    "primary_hypothesis_reason": "Hypothesis 1 is the most viable because it has clear mechanistic plausibility, existing experimental support across multiple small studies, and high experimental tractability. It directly maps to concrete, testable interventions that can be implemented in standard MARL benchmarks, and it has immediate translational relevance for deployed multi-agent systems where sensor spoofing or adversarial perturbations are realistic threats. Given limited resources, investing in Hypothesis 1 yields the largest near-term safety payoff and produces diagnostics and metrics that will also support testing of Hypothesis 2.",
+    "evidence_level": "Moderate",
+    "key_risks": [
+      "Existing evidence is from small-scale studies; results may not generalize to larger, heterogeneous agent teams or to different architectures.",
+      "Simulation-to-reality gap: adversarial perturbations in simulators may not capture realistic sensor/communication failure modes or attacker capabilities.",
+      "Attribution risk: observed team degradation may be caused by confounders such as stochasticity, hyperparameter drift, or poor baseline training rather than the hypothesized causal cascade.",
+      "Measurement risk: irreversible or sustained collapse is hard to operationalize without standardized metrics for 'policy drift' and 'credit-assignment distortion'.",
+      "For Hypothesis 2, lack of prior empirical work raises risk that modeled dynamical instabilities are a theoretical artifact of simplified settings and do not manifest in practical systems."
+    ],
+    "recommended_next_steps": [
+      "Assemble a benchmark suite: select 4\u20136 cooperative MARL tasks of increasing complexity, including a small real-robot/robotic-sim paired task if feasible. Instrument environments to inject bounded observation perturbations targeted at a single agent and to toggle training regimes (CTDE vs independent).",
+      "Execute a pre-registered experimental matrix for Hypothesis 1: across tasks, seeds, and perturbation magnitudes, measure immediate team performance drop, recovery dynamics, persistent post-training degradation, credit-assignment metrics, and run-to-run variance. Publish dataset and analysis code.",
+      "Develop and standardize diagnostics: implement metrics for policy drift, credit-assignment misattribution, teammate reaction amplification, and spectral analysis of action/policy time series. Include causal mediation and ablation protocols to test the proposed cascade.",
+      "Run the Hypothesis 2 experimental program in parallel at smaller scale: repeated-game ensembles with systematic sweeps over learning rates, observability, and reward coupling. Apply spectral analysis and attempt to reproduce limit cycles or chaotic signatures. Complement with low-dimensional dynamical modeling to identify stability boundaries.",
+      "Perform at least one sim-to-real test: in a controlled lab, emulate an observation perturbation (sensor spoofing or occlusion) on a single robot in a cooperative task. Measure whether behaviors and team-level impacts align with simulation predictions.",
+      "Create a public, versioned repository and evaluation leaderboard for adversarial and nonstationarity robustness in MARL to encourage replication and cross-lab comparison."
+    ],
+    "system_confidence": "Moderate",
+    "near_term_focus": [
+      "7ddaa36f-71ad-4c21-95cc-21df727e0b75"
+    ],
+    "long_term_focus": [
+      "8f997de9-8b13-434c-a199-d7a3b5f22bc6",
+      "7ddaa36f-71ad-4c21-95cc-21df727e0b75"
+    ],
+    "high_risk_high_reward": [
+      "7ddaa36f-71ad-4c21-95cc-21df727e0b75",
+      "8f997de9-8b13-434c-a199-d7a3b5f22bc6"
+    ]
+  },
+  "done": true,
+  "exploration_trace": "Short answer: the graph supports both hypotheses and suggests concrete mechanisms and experiments to validate them. Below I summarize the graph evidence, the plausible causal pathways, measurable signatures you should look for, and specific experiments (including ablations) to test and deepen each hypothesis.\n\n1) Hypothesis A \u2014 \"A targeted adversarial perturbation to one agent's observations may cascade and collapse team performance.\"\n\nGraph evidence and inferred chain of influence\n- The graph directly links \"agent's observations\" to \"team reward\" (team reward decreases when observations are manipulated).\n- \"Adversaries\" are connected to \"agent's observations\" (they manipulate observations) and to \"policy network\" (they may train attacks to induce wrong actions).\n- \"c-MARL\" and \"c-MARL teams\" are explicitly tied to maximizing a shared \"team reward\", and \"attacking c-MARL\" is shown to reduce team reward. MARLSafe is a robustness-testing framework that proposes c-MARL attacks and considers state/action/reward robustness.\n- Central nodes include \"policy network\", \"team reward\", and \"reinforcement learning\" \u2014 indicating that perturbations that induce wrong actions in policy networks can have outsized effect on team-level performance.\n\nMechanisms that produce cascade/collapse\n- Direct action corruption: Perturbing one agent's observation causes it to choose a harmful action; because the team reward depends on joint actions, that single bad action can dramatically lower team reward.\n- Coordination amplification: If teammates condition policies on each others' behaviors or on global state affected by the first agent\u2019s action, one bad action changes the state trajectory and leads other agents to take compensatory or also-suboptimal actions, amplifying the damage.\n- Credit assignment and learning drift: During training (especially with centralized training, decentralized execution), a persistent perturbation can change gradients/credit assignments so that teammates adapt toward strategies that perform poorly without the perturbation \u2014 leading to long-term collapse.\n- Model mismatch / non-differentiable defenses: The graph notes attacks can be challenging in low-dimensional or non-differentiable settings; adversaries can nonetheless craft targeted perturbations to identify and encourage wrong actions (policy network \u2192 identifies_wrong_action_to_encourage).\n\nMeasurable signatures of a cascading collapse\n- Rapid drop in team reward immediately after the first perturbation, followed by wider degradation across per-agent rewards.\n- Increased variance across episodes and seeds (graph shows variance grows with number of agents in multi-agent domains).\n- Increased action correlation between the perturbed agent\u2019s bad actions and teammates' subsequent actions (causal influence).\n- Longer-term degradation in learned policies (if perturbation persists during training): changed policy parameters, lower final evaluation performance in unperturbed tests.\n- Increased instability metrics: rising policy entropy or oscillatory reward traces.\n\nConcrete experiments to validate and deepen hypothesis A\n- Basic attack test:\n  - Environment: SMAC or other c-MARL benchmark (graph mentions SMAC shows low robustness).\n  - Choose the most central/critical agent (use centrality or ablation) and apply a targeted perturbation to its observations (e.g., adversarial example + perturbation magnitude sweep).\n  - Measure team reward, per-agent reward, action distributions, and state trajectories over episodes.\n- Cascade diagnostics:\n  - Measure conditional action probabilities P(a_j | a_i_perturbed, s) for teammates j to quantify how the perturbed agent\u2019s actions change teammates\u2019 policies.\n  - Run causal intervention: replay perturbed agent\u2019s actions while preventing teammates from observing them (if possible) to isolate propagation via environment vs explicit communication.\n- Training vs evaluation experiments:\n  - Test a single-episode perturbation at evaluation time vs a persistent perturbation during training. Compare performance and check whether teammates learn compensatory but brittle strategies.\n- Ablations:\n  - Targeted vs random perturbations.\n  - Perturb observation of high-centrality vs low-centrality agent.\n  - Centralized training (CTDE) vs fully decentralized training.\n  - With and without explicit communication channels.\n- Robustness checks:\n  - Test different attack types: additive noise, adversarial gradients, action-level hijacks.\n  - Evaluate on non-differentiable agents (graph notes challenges but also attack feasibility) and measure whether white-box vs black-box attacks differ in cascade severity.\n\nPredictions\n- Targeted perturbation of a central agent will induce larger and faster team reward collapse than perturbing a peripheral agent.\n- Persistent perturbations during training will produce longer-lasting collapse due to re-shaped policies; brief evaluation-only perturbations will show temporary but possibly large drops.\n\n2) Hypothesis B \u2014 \"Failure to model other agents (violation of internal model principle) could cause persistent oscillations and non-convergence in multi-agent games.\"\n\nGraph evidence and inferred chain of influence\n- The graph connects \"non-stationarity of the environment\" to \"multi-agent domains\" and notes that Q-learning and other methods are challenged by non-stationarity.\n- \"Internal model principle\" appears as a concept used in designing robust control strategies; robust control and observers (e.g., fully distributed adaptive observer) estimate disturbances and dynamics without global information, implying that an internal model helps reject/compensate disturbances.\n- The absence of a \"failure to model other agents\" node is noted in the graph, but multiple neighbors highlight non-stationarity and the need for modeling or robust observers to mitigate disturbances.\n\nMechanisms causing oscillations / non-convergence\n- Reactive adaptation loop: If each agent treats other agents as part of a non-stationary environment and adapts myopically (independent learners), then mutual adaptation can form a feedback loop with no fixed point \u2014 agents chase each other\u2019s changing policies, producing cycles.\n- Best-response cycles: Without models, repeated best-response dynamics can result in periodic or chaotic switching of strategies (well-known in game theory).\n- Controller disturbance rejection failure: In control terms (internal model principle), if agents do not include models of exogenous inputs (here, other agents\u2019 strategies), they cannot internally cancel the \"disturbance\" caused by others, producing persistent residuals/oscillations.\n- Learning rate mismatch: Different adaptation speeds can create oscillatory dynamics: faster learners overshoot, slower learners lag, leading to limit cycles.\n\nMeasurable signatures of oscillation/non-convergence\n- Persistent periodic patterns in per-agent actions or policies (detectable via spectral analysis or autocorrelation).\n- Failure of reward traces to converge; instead, long-term oscillatory or chaotic reward trajectories.\n- High variance across runs and lack of stable equilibrium policies.\n- Sensitivity to initialization and learning rate: small perturbations produce large qualitative changes in long-run behavior.\n\nConcrete experiments to validate and deepen hypothesis B\n- Compare modeling vs non-modeling agents:\n  - Setup matched environments where one population uses opponent modeling (explicit predictive model or belief over other agents) and another uses independent learning.\n  - Measure convergence (moving-average reward stabilization), spectral density of action sequences, and oscillation amplitude.\n- Best-response dynamics test:\n  - Simulate repeated best-response updates in a simple multi-agent matrix game known to have cycling (e.g., matching pennies type). Compare when agents maintain internal models of opponents vs when they only react.\n- Learning-rate sweeps:\n  - Sweep agents' learning rates; look for regions with stable equilibria vs oscillatory behavior.\n- Observer / internal-model intervention:\n  - Implement a distributed adaptive observer or internal model (graph mentions fully distributed adaptive observer) that estimates teammates' policy dynamics and feed the estimate into each agent\u2019s policy. Test whether oscillation amplitude decreases or convergence speeds increase.\n- Diagnostic metrics:\n  - Use Lyapunov-like empirical tests (decreasing loss/energy) where applicable; compute autocorrelation and power spectrum of repeated action sequences; compute ergodicity measures over policies.\n\nPredictions\n- Independent learners will show significantly more oscillation and lower convergence probability than learners incorporating opponent models or internal-model-inspired observers.\n- Adding an explicit internal model or observer will reduce oscillation amplitude and increase convergence rates, especially in small-scale games sensitive to best-response cycling.\n\nRecommended next steps (practical)\n- Run the \"targeted attack on central agent\" experiment in your c-MARL benchmark (SMAC or similar) and capture per-agent action logs and state trajectories. Use the diagnostics above to quantify cascade strength.\n- Run the \"model vs no-model\" comparison in a controlled multi-agent game (both small matrix games and RL benchmarks) to measure oscillations via spectral/autocorrelation analysis.\n- Use graph-centrality to pick which agents are likely critical (policy network, team reward, reinforcement learning were central in the graph) and prioritize perturbing or modeling them.\n- If you want, I can:\n  - Draft experimental protocols with hyperparameters and code-level suggestions (attack implementation, logging schema, statistical tests).\n  - Generate analysis scripts (pseudo-code) to compute the proposed diagnostics (causal influence, spectral analysis, convergence statistics).\n  - Query the graph further (e.g., find paths connecting other relevant nodes or identify other central nodes to target).\n\nSummary\n- The graph provides direct and indirect support for both hypotheses. It links adversarial manipulation of observations to decreased team reward and highlights non-stationarity and the role of internal models in robust control. The mechanisms, measurable signatures, and experiments above give you a concrete plan to validate and deepen the claims empirically and analytically. Which experiment would you like to prioritize first, or do you want the detailed protocol/code for any of the suggested tests?",
+  "structural_hole_analysis": "",
+  "symbolic_paths": [],
+  "grounded_paths": [],
+  "stance_counts": {
+    "support": 0,
+    "contradict": 0,
+    "neutral": 0
+  },
+  "grounding_metrics": {},
+  "bridge_attempted": false,
+  "cost_report": {
+    "total_tokens": 0,
+    "estimated_cost_usd": 0.0,
+    "by_agent": {
+      "hypothesis": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 154.41354036331177
+      },
+      "evidence": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 34.80203127861023
+      },
+      "critique": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 25.129247426986694
+      },
+      "decision": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 31.115526914596558
+      }
+    },
+    "by_step": {
+      "hypothesis_generation_deep": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 154.41354036331177
+      },
+      "evidence_processing": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 34.80203127861023
+      },
+      "critique_analysis": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 25.129247426986694
+      },
+      "decision_synthesis": {
+        "calls": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cost": 0.0,
+        "time": 31.115526914596558
+      }
+    },
+    "by_hypothesis": {}
+  }
+}

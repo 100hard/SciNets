@@ -8,6 +8,7 @@ export interface ClarificationAnswers {
   goal: string;
   depth: string;
   guidance?: string;
+  numHypotheses: number;
 }
 
 interface DiscoveryClarificationStepProps {
@@ -37,7 +38,8 @@ export const DiscoveryClarificationStep = ({
     timeline: "recent",
     goal: "discover",
     depth: "standard",
-    guidance: ""
+    guidance: "",
+    numHypotheses: 6
   });
 
 
@@ -71,26 +73,53 @@ export const DiscoveryClarificationStep = ({
 
       <form onSubmit={handleSubmit} className="space-y-8">
 
-        {/* 1. Research Guidance (Restored) */}
+        {/* 1. Research Angle (Priority Intent) */}
         <div>
           <label className="flex items-center gap-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
-            Optional: Research Guidance
+            <Target className="w-3 h-3" /> Research Angle
+          </label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { id: 'novelty', label: 'Novelty', desc: 'Prioritize unexpected links' },
+              { id: 'clinical', label: 'Clinical', desc: 'Focus on therapeutic potential' },
+              { id: 'mechanism', label: 'Mechanism', desc: 'Detailed pathway constraints' },
+              { id: 'exploratory', label: 'Exploratory', desc: 'Broad, diverse search' },
+            ].map((angle) => (
+              <button
+                key={angle.id}
+                type="button"
+                onClick={() => setAnswers({ ...answers, guidance: `Prioritize ${angle.label} Angle` })}
+                className={cn(
+                  "p-3 rounded-lg border text-left transition-all",
+                  answers.guidance?.includes(angle.label)
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-border hover:border-foreground/30 text-muted-foreground"
+                )}
+              >
+                <div className="text-xs font-semibold">{angle.label}</div>
+                <div className="text-[10px] opacity-70 leading-tight mt-1">{angle.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Additional Context (Restored) */}
+        <div>
+          <label className="flex items-center gap-2 text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-3">
+            Additional Context (Optional)
           </label>
           <div className="relative">
             <textarea
               value={answers.guidance}
               onChange={(e) => setAnswers({ ...answers, guidance: e.target.value })}
-              placeholder="Share any constraints, focus areas, or context you want SciNets to consider before starting..."
+              placeholder="Share any constraints, focus areas, or context you want SciNets to consider..."
               className={cn(
-                "w-full h-32 px-4 py-3 rounded-lg bg-background border border-border",
+                "w-full h-24 px-4 py-3 rounded-lg bg-background border border-border",
                 "text-sm text-foreground placeholder:text-foreground-muted/50",
                 "focus:ring-1 focus:ring-foreground/20 focus:border-foreground/30 outline-none transition-all",
                 "resize-none"
               )}
             />
-            <p className="absolute bottom-3 right-4 text-[10px] text-foreground-muted pointer-events-none">
-              Leave blank for default exploration
-            </p>
           </div>
         </div>
 
@@ -103,6 +132,7 @@ export const DiscoveryClarificationStep = ({
           >
             Back
           </button>
+
           <button
             type="submit"
             className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-all shadow-lg hover:shadow-xl active:scale-[0.99]"

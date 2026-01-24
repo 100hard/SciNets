@@ -32,9 +32,16 @@ export const DiscoveryQueryStep = ({ onSubmit }: DiscoveryQueryStepProps) => {
   };
 
   const suggestions = [
-    "Find mechanism connecting sleep deprivation to Alzheimer's",
-    "Map CRISPR delivery methods for neurological targets",
-    "Identify biomarkers linking gut microbiome to depression",
+    // Biomed (Humanized)
+    { text: "How does lack of sleep connect to Alzheimer's?", type: "demo" },
+    // AI / ML (Technical)
+    { text: "Identify safety gaps in multi-agent Reinforcement Learning", type: "search" },
+    // Climate (Technical)
+    { text: "Propose carbon capture mechanisms using basalt weathering", type: "search" },
+    // Social / Econ (Humanized)
+    { text: "Why do Universal Basic Income pilots often fail?", type: "demo" },
+    // Materials (Technical)
+    { text: "Discover perovskite candidates for stable solar cells", type: "search" },
   ];
 
   return (
@@ -80,22 +87,20 @@ export const DiscoveryQueryStep = ({ onSubmit }: DiscoveryQueryStepProps) => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-wrap gap-2"
+            className="flex flex-wrap gap-2 justify-center"
           >
-            {suggestions.map((suggestion) => (
+            {suggestions.map((s) => (
               <button
-                key={suggestion}
+                key={s.text}
                 type="button"
-                onClick={() => setQuery(suggestion)}
+                onClick={() => setQuery(s.text)}
                 className={cn(
-                  "px-3 py-1.5 rounded-full",
-                  "text-xs text-foreground-muted",
-                  "border border-border",
-                  "hover:border-foreground/20 hover:text-foreground",
-                  "transition-colors"
+                  "px-4 py-2 rounded-full text-xs transition-all border",
+                  "bg-background-elevated border-border text-foreground-muted",
+                  "hover:border-foreground/20 hover:text-foreground hover:bg-foreground/5 shadow-sm"
                 )}
               >
-                {suggestion}
+                {s.text}
               </button>
             ))}
           </motion.div>
@@ -115,7 +120,7 @@ export const DiscoveryQueryStep = ({ onSubmit }: DiscoveryQueryStepProps) => {
               "w-3 h-3 transition-transform",
               showPaperInput && "rotate-45"
             )} />
-            {showPaperInput ? "Hide paper input" : "Add specific papers to analyze (optional)"}
+            {showPaperInput ? "Hide abstract input" : "Add paper abstract to analyze (optional)"}
           </button>
 
           {showPaperInput && (
@@ -130,17 +135,23 @@ export const DiscoveryQueryStep = ({ onSubmit }: DiscoveryQueryStepProps) => {
                   "border border-border bg-background",
                   "focus-within:border-foreground/20 transition-colors"
                 )}>
-                  <FileText className="w-3.5 h-3.5 text-foreground-muted" />
-                  <input
-                    type="text"
+                  <FileText className="w-3.5 h-3.5 text-foreground-muted self-start mt-2" />
+                  <textarea
                     value={paperInput}
                     onChange={(e) => setPaperInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addPaper())}
-                    placeholder="Paper title, DOI, or URL..."
+                    onKeyDown={(e) => {
+                      // Allow Shift+Enter for newlines, Enter for submit
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        addPaper();
+                      }
+                    }}
+                    placeholder="Paste abstract of the paper you want to analyze..."
+                    rows={3}
                     className={cn(
-                      "flex-1 bg-transparent",
+                      "flex-1 bg-transparent resize-none",
                       "text-xs text-foreground placeholder:text-foreground-muted",
-                      "outline-none"
+                      "outline-none py-1"
                     )}
                   />
                 </div>
@@ -171,7 +182,7 @@ export const DiscoveryQueryStep = ({ onSubmit }: DiscoveryQueryStepProps) => {
                       )}
                     >
                       <FileText className="w-3 h-3 text-foreground-muted" />
-                      <span className="max-w-[200px] truncate">{paper}</span>
+                      <span className="max-w-[400px] truncate" title={paper}>{paper.substring(0, 50)}...</span>
                       <button
                         type="button"
                         onClick={() => removePaper(paper)}

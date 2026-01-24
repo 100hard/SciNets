@@ -15,6 +15,7 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
     params = {
         "search": query,
+        "filter": "has_abstract:true",
         "per-page": limit,
         "sort": "relevance_score:desc"
     }
@@ -75,7 +76,7 @@ async def get_paper_citations(paper_id: str, limit: int = 5) -> List[Dict[str, A
         paper_id = paper_id.split("/")[-1]
     
     params = {
-        "filter": f"cites:{paper_id}",
+        "filter": f"cites:{paper_id},has_abstract:true",
         "per-page": limit,
         "sort": "cited_by_count:desc"  # High-impact citations first
     }

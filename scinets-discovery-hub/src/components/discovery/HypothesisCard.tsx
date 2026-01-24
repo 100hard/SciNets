@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown, ChevronUp, CheckCircle, AlertCircle,
-  Minus, ArrowRight, Link2, FlaskConical, Target, X
+  Minus, ArrowRight, Link2, Lock, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -533,7 +533,7 @@ export const HypothesisCard = ({
                 {hypothesis.confidence_roadmap && hypothesis.confidence_roadmap.length > 0 && (
                   <div className="p-3 bg-purple-500/5 border border-purple-500/10 rounded">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400 mb-2 flex items-center gap-2">
-                      <Target className="w-3.5 h-3.5" /> What would increase confidence?
+                      What would increase confidence?
                     </h4>
                     <ul className="space-y-1.5">
                       {hypothesis.confidence_roadmap.map((item, i) => (
@@ -581,15 +581,15 @@ export const HypothesisCard = ({
                 {/* E. Explore Computationally Button */}
                 <div className="pt-2 border-t border-border">
                   <button
-                    onClick={() => setShowExperimentModal(true)}
+                    onClick={() => alert("Computational exploration is disabled due to high compute costs.")}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2.5 rounded-lg",
-                      "bg-purple-500/10 border border-purple-500/20",
-                      "text-xs font-medium text-purple-400",
-                      "hover:bg-purple-500/20 hover:border-purple-500/30 transition-colors"
+                      "bg-foreground/5 border border-foreground/10",
+                      "text-xs font-medium text-foreground-muted",
+                      "cursor-not-allowed opacity-75"
                     )}
                   >
-                    <FlaskConical className="w-3.5 h-3.5" />
+                    <Lock className="w-3.5 h-3.5" />
                     Explore computationally
                   </button>
                 </div>
