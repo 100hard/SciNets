@@ -15,19 +15,7 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
     Search for papers on OpenAlex with retry logic.
     """
-    if config.DEMO_MODE:
-        return [
-            {
-                "id": f"https://openalex.org/W{i}",
-                "title": f"Demo Paper {i}: {query}",
-                "publication_year": 2024,
-                "abstract": {"demo": [1], "abstract": [2]}, # Minimal inverted index
-                "host_venue": "Journal of Demo Science",
-                "cited_by_count": 100 - i,
-                "landing_page_url": f"https://example.com/demo/{i}"
-            }
-            for i in range(1, min(limit, 5) + 1)
-        ]
+    # if config.DEMO_MODE: ... (Removed to allow real search)
 
     params = {
         "search": query,

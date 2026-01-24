@@ -11,6 +11,8 @@ import { AuthProvider } from "@/context/AuthContext";
 
 const queryClient = new QueryClient();
 
+import ProtectedRoute from "@/components/ProtectedRoute";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -20,7 +22,14 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/discovery" element={<Discovery />} />
+            <Route
+              path="/discovery"
+              element={
+                <ProtectedRoute>
+                  <Discovery />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/login" element={<Login />} />
             <Route path="/verify" element={<Login />} /> {/* Map verify to Login for token handling */}
 
