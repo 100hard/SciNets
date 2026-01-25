@@ -8,10 +8,15 @@ class MemoryManager:
     def __init__(self):
         # Default to localhost for host-based execution (Windows/Mac)
         self._available = False
+        
+        qdrant_url = os.getenv("QDRANT_URL")
+        if not qdrant_url:
+            print("[Memory] Vector Database disabled (optimization mode).")
+            self.client = None
+            return
+
         try:
-            self.client = QdrantClient(
-                url=os.getenv("QDRANT_URL", "http://127.0.0.1:6333")
-            )
+            self.client = QdrantClient(url=qdrant_url)
             self.collection_name = "scinets_insights"
             self._init_collection()
             self._available = True

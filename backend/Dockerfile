@@ -7,6 +7,9 @@ WORKDIR /app
 # Install system dependencies (needed for some python packages like psycopg2-binary if used later)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache

@@ -27,3 +27,4 @@ psycopg2-binary
 pyjwt
 markdown
 
+weasyprint

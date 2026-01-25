@@ -282,7 +282,6 @@ export const DiscoveryExecutionStep = ({
 
             {/* Stats */}
             <div className="flex items-center gap-2">
-              <Activity className="w-3 h-3" />
               <span>{activities.length} steps</span>
             </div>
             <button
@@ -427,7 +426,6 @@ export const DiscoveryExecutionStep = ({
         <div className="w-80 flex flex-col border border-border rounded-lg bg-background/30 overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Activity className="w-3.5 h-3.5 text-foreground-muted" />
               <span className="text-xs font-medium text-foreground">Exploration Status</span>
             </div>
           </div>

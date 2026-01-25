@@ -1028,10 +1028,10 @@ def get_sessions():
 @app.get("/api/discovery/{thread_id}/export/pdf")
 async def export_pdf(thread_id: str):
     """
-    Exports a completed discovery run as a Report (HTML for Print-to-PDF).
+    Exports a completed discovery run as a PDF report.
     """
     from app.storage import get_run_result
-    from app.reporting import generate_markdown_report, render_html_report
+    from app.reporting import generate_markdown_report, render_pdf
     from io import BytesIO
     
     state = get_run_result(thread_id)
@@ -1040,12 +1040,12 @@ async def export_pdf(thread_id: str):
         
     try:
         md = generate_markdown_report(state)
-        html_bytes = render_html_report(md)
+        pdf_bytes = render_pdf(md)
         
         headers = {
-            "Content-Disposition": f"attachment; filename=scinets_report_{thread_id}.html"
+            "Content-Disposition": f"attachment; filename=scinets_report_{thread_id}.pdf"
         }
-        return StreamingResponse(BytesIO(html_bytes), media_type="text/html", headers=headers)
+        return StreamingResponse(BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
     except Exception as e:
         import traceback
         traceback.print_exc()

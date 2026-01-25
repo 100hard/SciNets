@@ -1,5 +1,4 @@
 import markdown
-from xhtml2pdf import pisa
 from io import BytesIO
 import datetime
 
@@ -195,13 +194,15 @@ def generate_markdown_report(state: dict) -> str:
 
     return "\n".join(md)
 
-def render_html_report(markdown_content: str) -> bytes:
+def render_pdf(markdown_content: str) -> bytes:
     """
-    Renders Markdown content to a standalone HTML report.
-    Fallback for PDF generation issues on slim containers.
+    Renders Markdown content to PDF bytes using WeasyPrint.
+    Requires system dependencies (libpango, libcairo) in Docker.
     """
+    from weasyprint import HTML, CSS
+    
     # 1. Convert Markdown to HTML
-    html_content = markdown.markdown(markdown_content)
+    html_content = markdown.markdown(markdown_content, extensions=['tables'])
     
     # 2. Wrap in simple CSS (Print optimized)
     full_html = f"""
@@ -220,13 +221,10 @@ def render_html_report(markdown_content: str) -> bytes:
                 font-size: 11pt;
                 line-height: 1.6;
                 color: #333;
-                max-width: 800px;
-                margin: 0 auto;
-                padding: 40px 20px;
             }}
             h1 {{ color: #1a1a1a; border-bottom: 2px solid #ddd; padding-bottom: 10px; }}
-            h2 {{ color: #2c3e50; margin-top: 30px; border-bottom: 1px solid #eee; }}
-            h3 {{ color: #16a085; margin-top: 25px; }}
+            h2 {{ color: #2c3e50; margin-top: 30px; border-bottom: 1px solid #eee; break-after: avoid; }}
+            h3 {{ color: #16a085; margin-top: 25px; break-after: avoid; }}
             blockquote {{
                 background: #f9f9f9;
                 border-left: 5px solid #ccc;
@@ -236,21 +234,20 @@ def render_html_report(markdown_content: str) -> bytes:
             table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
             th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
             th {{ background-color: #f2f2f2; }}
-            /* Print Specifics */
-            @media print {{
-                body {{ max-width: 100%; padding: 0; }}
-                a {{ text-decoration: none; color: #000; }}
-            }}
+            
+            /* Print Specifics for WeasyPrint */
+            img {{ max-width: 100%; }}
+            pre {{ white-space: pre-wrap; word-wrap: break-word; background: #f5f5f5; padding: 10px; }}
         </style>
     </head>
     <body>
         {html_content}
-        <script>
-            // Auto-trigger print dialog for convenience
-            // window.print();
-        </script>
     </body>
     </html>
     """
     
-    return full_html.encode('utf-8')
+    # 3. Generate PDF
+    buffer = BytesIO()
+    HTML(string=full_html).write_pdf(target=buffer)
+    
+    return buffer.getvalue()
