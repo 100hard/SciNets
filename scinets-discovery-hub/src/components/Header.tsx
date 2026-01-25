@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { cn } from "../lib/utils";
+import { cn } from "../lib/utils.ts";
 import { ContactModal } from "./ContactModal";
 
 import { useAuth } from "@/context/AuthContext";

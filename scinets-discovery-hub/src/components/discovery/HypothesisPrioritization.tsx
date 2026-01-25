@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowUpRight, Clock, Target, Rocket, HelpCircle } from "lucide-react";
 import { DecisionSummary } from "@/lib/types";
 import { Hypothesis as UIHypothesis } from "./HypothesisCard";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.ts";
 
 interface HypothesisPrioritizationProps {
     summary: DecisionSummary;

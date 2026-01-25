@@ -3,7 +3,7 @@ import {
   AlertTriangle, CheckCircle2, HelpCircle,
   Compass, MessageSquare
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.ts";
 
 interface ReflectionData {
   stronglySupported: string[];

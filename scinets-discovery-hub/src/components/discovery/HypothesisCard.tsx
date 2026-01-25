@@ -4,7 +4,7 @@ import {
   ChevronDown, ChevronUp, CheckCircle, AlertCircle,
   Minus, ArrowRight, Link2, Lock, X
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.ts";
 import {
   ExperimentConfigModal,
   ExperimentInlineDisplay,

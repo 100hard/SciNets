@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn } from "../lib/utils.ts";
 
 interface ResearchInputProps {
   onSubmit?: (query: string) => void;

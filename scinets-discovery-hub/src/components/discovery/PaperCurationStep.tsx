@@ -4,7 +4,7 @@ import {
   ArrowLeft, ArrowRight, Check, Lock, Unlock,
   Upload, Plus, X, FileText, Calendar, Info
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.ts";
 import { Button } from "@/components/ui/button";
 
 interface CandidatePaper {

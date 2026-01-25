@@ -6,7 +6,7 @@ import {
   Activity, Layers, Route, Sparkles, FlaskConical,
   MessageSquare, ChevronRight
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils.ts";
 import type { GraphNode, GraphEdge, AgentActivity } from "@/pages/Discovery";
 import type { ClarificationAnswers } from "./DiscoveryClarificationStep";
 import type { CandidatePaper } from "./PaperCurationStep";
