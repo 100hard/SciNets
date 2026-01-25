@@ -1056,6 +1056,13 @@ async def export_pdf(thread_id: str):
 def health_check():
     return {"status": "ok", "version": "2.0"}
 
+from app.database import init_db
+
+@app.on_event("startup")
+async def startup_event():
+    print("Startup: Initializing Database Tables...")
+    init_db()
+
 if __name__ == "__main__":
     from app.database import engine, Base
     # Models are already imported at top level, which registers them with Base
@@ -1063,5 +1070,6 @@ if __name__ == "__main__":
     print("Creating database tables...")
     Base.metadata.create_all(bind=engine)
     
-    print("Starting SciNets Server on Port 8005...")
-    uvicorn.run(app, host="0.0.0.0", port=8005, log_level="info")
+    port = int(os.getenv("PORT", 8005))
+    print(f"Starting SciNets Server on Port {port}...")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

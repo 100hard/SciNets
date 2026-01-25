@@ -26,3 +26,8 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def init_db():
+    """Create all tables defined in models."""
+    # Ensure models are imported before calling this!
+    Base.metadata.create_all(bind=engine)

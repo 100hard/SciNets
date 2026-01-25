@@ -35,4 +35,4 @@ ENV PYTHONPATH=/app
 RUN ls -R /app
 
 # Run the server
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8005"]
+CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8005}
