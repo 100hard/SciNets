@@ -40,3 +40,9 @@ out/
 .vscode/
 .idea/
 *.swp
+
+# Production artifacts
+data/
+logs/
+*.db
+*.pdf
