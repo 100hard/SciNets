@@ -20,8 +20,9 @@ class AgentConfig(BaseSettings):
     MAGIC_LINK_EXPIRE_MINUTES: int = 15
     
     # Deployment
-    DATABASE_URL: str
-    FRONTEND_URL: str
+    DATABASE_URL: str = ""
+    FRONTEND_URL: str = "http://localhost:8080"
+
 
     # =============================================================================
     # Feature Flags
