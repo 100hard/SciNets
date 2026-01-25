@@ -4,10 +4,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ContactModal } from "./ContactModal";
 
+import { useAuth } from "@/context/AuthContext";
+
 export const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showContact, setShowContact] = useState(false);
+  const { user, logout } = useAuth();
   const isDiscovery = location.pathname === "/discovery";
 
   const handleHomeClick = (e: React.MouseEvent) => {
@@ -59,15 +62,17 @@ export const Header = () => {
               >
                 Home
               </Link>
-              <Link
-                to="/discovery"
-                className={cn(
-                  "text-sm transition-colors",
-                  isDiscovery ? "text-foreground" : "text-foreground-muted hover:text-foreground"
-                )}
-              >
-                Discovery
-              </Link>
+              {user && (
+                <Link
+                  to="/discovery"
+                  className={cn(
+                    "text-sm transition-colors",
+                    isDiscovery ? "text-foreground" : "text-foreground-muted hover:text-foreground"
+                  )}
+                >
+                  Discovery
+                </Link>
+              )}
               <a
                 href="#agents"
                 onClick={handleAgentsClick}
@@ -84,16 +89,34 @@ export const Header = () => {
             </nav>
 
             {/* CTA */}
-            <Link
-              to="/login"
-              className={cn(
-                "px-3 py-1.5 rounded text-sm",
-                "bg-foreground text-background",
-                "hover:bg-foreground/90 transition-colors"
-              )}
-            >
-              Login
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-foreground-muted hidden sm:inline-block">
+                  {user.email}
+                </span>
+                <button
+                  onClick={() => logout()}
+                  className={cn(
+                    "px-3 py-1.5 rounded text-sm transition-colors",
+                    "text-foreground-muted hover:text-foreground",
+                    "border border-border hover:border-foreground/30"
+                  )}
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className={cn(
+                  "px-3 py-1.5 rounded text-sm",
+                  "bg-foreground text-background",
+                  "hover:bg-foreground/90 transition-colors"
+                )}
+              >
+                Login
+              </Link>
+            )}
           </div>
         </div>
       </motion.header>

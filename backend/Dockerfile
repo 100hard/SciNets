@@ -15,6 +15,9 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Force cache bust
+ENV CACHE_DATE=2026-01-25_0150
+
 # Copy the rest of the application code
 COPY . .
 

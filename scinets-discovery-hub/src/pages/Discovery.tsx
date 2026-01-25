@@ -9,7 +9,9 @@ import { startDiscoveryStream, resumeDiscoveryStream, SSECallback } from "@/lib/
 import type { Hypothesis, DiscoveryResult, ActivityEvent, ConceptGraph, DecisionSummary } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 import { SearchOverlay } from "@/components/discovery/SearchOverlay";
-import { HypothesisSelection } from "@/components/HypothesisSelection"; // Added Import
+import { HypothesisSelection } from "@/components/HypothesisSelection";
+import { useToast } from "@/hooks/use-toast";
+import type { QuotaInfo } from "@/lib/types";
 
 export interface GraphNode {
   id: string;
@@ -39,6 +41,7 @@ export interface AgentActivity {
 type DiscoveryStep = "query" | "clarification" | "searching" | "curation" | "execution" | "selection"; // Added 'selection'
 
 const Discovery = () => {
+  const { toast } = useToast();
   const [step, setStep] = useState<DiscoveryStep>("query");
   const [query, setQuery] = useState("");
   const [papers, setPapers] = useState<string[]>([]);
@@ -62,96 +65,8 @@ const Discovery = () => {
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [isSearching, setIsSearching] = useState(false); // New searching state
 
-  // Persistence Key
-  const STORAGE_KEY = "scinets_discovery_state";
-
-  // Load state on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Only restore if valid data exists
-        if (parsed.step) setStep(parsed.step);
-        if (parsed.query) setQuery(parsed.query);
-        if (parsed.papers) setPapers(parsed.papers);
-        if (parsed.answers) setAnswers(parsed.answers);
-        if (parsed.curatedPapers) setCuratedPapers(parsed.curatedPapers);
-        if (parsed.nodes) setNodes(parsed.nodes);
-        if (parsed.edges) setEdges(parsed.edges);
-
-        let restoredActivities: AgentActivity[] = [];
-        // Fix dates in activities and Sanitize status
-        if (parsed.activities) {
-          restoredActivities = parsed.activities.map((a: any) => ({
-            ...a,
-            timestamp: new Date(a.timestamp)
-          }));
-
-          // CHECK: If last activity was left "running", mark it as failed/interrupted
-          if (restoredActivities.length > 0) {
-            const last = restoredActivities[restoredActivities.length - 1];
-            const runningStatuses = ["reading", "thinking", "building", "running"];
-
-            if (runningStatuses.includes(last.status)) {
-              // Modify the last activity in the restored array
-              restoredActivities[restoredActivities.length - 1] = {
-                ...last,
-                status: "failed", // Mark as failed so UI stops spinning
-                action: last.action + " (Interrupted)"
-              };
-              // Also indicate in logs
-              if (parsed.logs) {
-                parsed.logs.push("Session interrupted by reload or termination.");
-              }
-            }
-          }
-          setActivities(restoredActivities);
-        }
-
-        if (parsed.isComplete) setIsComplete(parsed.isComplete);
-        if (parsed.threadId) setThreadId(parsed.threadId);
-        if (parsed.hypotheses) setHypotheses(parsed.hypotheses);
-        if (parsed.conceptGraph) setConceptGraph(parsed.conceptGraph);
-        if (parsed.decisionSummary) setDecisionSummary(parsed.decisionSummary);
-        if (parsed.literatureCount) setLiteratureCount(parsed.literatureCount);
-        if (parsed.logs) setLogs(parsed.logs);
-
-        // Reset active flags safely
-        setIsDiscovering(false);
-        setIsSearching(false);
-
-        console.log("Restored discovery state from storage");
-      } catch (e) {
-        console.error("Failed to restore state", e);
-      }
-    }
-  }, []);
-
-  // Save state on change
-  useEffect(() => {
-    // Only save if we have some minimal state
-    if (step !== "query" || query.length > 0) {
-      const state = {
-        step,
-        query,
-        papers,
-        answers,
-        curatedPapers,
-        nodes,
-        edges,
-        activities,
-        isComplete,
-        threadId,
-        hypotheses,
-        conceptGraph,
-        decisionSummary,
-        literatureCount,
-        logs
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-  }, [step, query, papers, answers, curatedPapers, nodes, edges, activities, isComplete, threadId, hypotheses, conceptGraph, decisionSummary, literatureCount, logs]);
+  // Persistence Key - Force refresh v3
+  const STORAGE_KEY = "scinets_discovery_state_v3_clean";
 
   const handleReset = () => {
     // Clear storage
@@ -237,15 +152,17 @@ const Discovery = () => {
 
       const data = await response.json();
 
-      const fetchedPapers: CandidatePaper[] = data.papers.map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        year: p.year,
-        venue: p.venue,
-        rationale: p.abstract?.substring(0, 100) + '...' || p.rationale,
-        selected: true,
-        locked: false
-      }));
+      const fetchedPapers: CandidatePaper[] = data.papers
+        .filter((p: any) => !p.title.includes("Demo Paper")) // Hard block on demo data
+        .map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          year: p.year,
+          venue: p.venue,
+          rationale: p.abstract?.substring(0, 100) + '...' || p.rationale,
+          selected: true,
+          locked: false
+        }));
 
       // Create candidate papers from manual abstracts
       const manualCandidates: CandidatePaper[] = papers.map((abstract, index) => ({
@@ -378,6 +295,13 @@ const Discovery = () => {
       onDone: () => {
         setIsComplete(true);
         setIsDiscovering(false);
+      },
+      onQuota: (info: QuotaInfo) => {
+        toast({
+          title: "Weekly Quota Update",
+          description: `You have used ${info.used} of ${info.limit} runs. ${info.remaining} runs remaining.`,
+          duration: 5000,
+        });
       }
     };
   };

@@ -36,6 +36,14 @@ class CostTracker:
         self.total = {"calls": 0, "prompt": 0, "completion": 0, "tokens": 0, "cost": 0.0}
         self.active_steps = {} # { "agent:step": start_time }
 
+    @property
+    def total_tokens(self) -> int:
+        return self.total["tokens"]
+
+    @property
+    def estimated_cost(self) -> float:
+        return self.total["cost"]
+
     @staticmethod
     def get_instance():
         """

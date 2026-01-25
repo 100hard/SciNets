@@ -15,6 +15,11 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
     Search for papers on OpenAlex with retry logic.
     """
+    # GUARD: Block empty or garbage queries (Fix #2 from User)
+    if not query or len(query.strip()) < 5:
+        print(f"[OpenAlex] Aborting search for empty/short query: '{query}'")
+        return []
+
     # if config.DEMO_MODE: ... (Removed to allow real search)
 
     params = {
@@ -44,7 +49,7 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
                 results.append(paper)
             return results
         except httpx.HTTPError as e:
-            print(f"Error fetching from OpenAlex: {e}")
+            print(f"Error fetching from OpenAlex (Query: {query[:20]}...): {e}")
             raise  # Re-raise to trigger retry
 
 def reconstruct_abstract(inverted_index: Dict[str, List[int]]) -> str:

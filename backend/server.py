@@ -26,7 +26,7 @@ if current_dir not in sys.path:
 from app.logging_config import setup_logging, get_logger
 import structlog
 from app.database import SessionLocal, get_db
-from app.models import User, Session as DbSession, MagicLink
+from app.models import User, Session as DbSession, MagicLink, DiscoveryRun
 from app.auth_utils import create_magic_link_token, verify_magic_link_token, send_magic_link_email, hash_token
 from app.config import config as app_config
 from fastapi import Response, Request, Depends, Cookie, status
@@ -34,6 +34,15 @@ from sqlalchemy.orm import Session
 import datetime
 import datetime
 from app.telemetry.cost_tracker import CostTracker
+
+def custom_serializer(obj):
+    if hasattr(obj, "isoformat"):
+        return obj.isoformat()
+    if hasattr(obj, "dict"):
+        return obj.dict()
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    return str(obj)
 
 # Hardening
 class RateLimiter:
@@ -83,6 +92,17 @@ log = get_logger(__name__)
 app = FastAPI(title="SciNets V2 API")
 
 log.info("scinets_startup", version="2.0", log_level=log_level, json_mode=json_logs)
+
+# Initialize Global Graph
+app_graph = None
+
+@app.on_event("startup")
+async def startup_event():
+    global app_graph
+    from app.graph import create_graph, global_memory
+    log.info("initializing_graph")
+    app_graph = create_graph(memory=global_memory)
+    log.info("graph_initialized")
 
 
 # CORS
@@ -405,18 +425,46 @@ class SearchRequest(BaseModel):
 async def search_papers_endpoint(request: SearchRequest):
     """
     Stand-alone endpoint for the 'Curation' step in frontend.
-    Fetches papers from OpenAlex based on the query.
+    Fetches papers from OpenAlex with LLM-refined query to match Backend Graph quality.
     """
     log.info("paper_search_request", query=request.query)
     try:
         from app.tools.openalex import search_papers
+        from app.llm import get_cheap_llm
+        from langchain_core.prompts import ChatPromptTemplate
         
-        # Search OpenAlex
+        # FIX #1: Bind UI to Graph Quality (Refine Query first)
+        llm = get_cheap_llm()
+        refine_prompt = ChatPromptTemplate.from_template(
+            """Convert the following user research query into a specific keyword-based search query for OpenAlex.
+            Use AND/OR operators. Focus on domain-specific terms.
+            Expected Output: A single line string.
+            
+            User Query: {query}
+            Refined Query:"""
+        )
+        chain = refine_prompt | llm
+        refined_query_res = await chain.ainvoke({"query": request.query})
+        refined_query = refined_query_res.content.replace('"', '').strip()
+        
+        # Guard against LLM failure/hallucination
+        if len(refined_query) < 5 or "search query" in refined_query.lower():
+            refined_query = request.query            
+            
+        log.info("paper_search_refined", original=request.query, refined=refined_query)
+
+        # Search OpenAlex with REFINED query
         # Fetch extra to account for filtering (3x buffer)
-        results = await search_papers(request.query, limit=request.max_papers * 3)
-        log.info("paper_search_results", count=len(results), query=request.query)
+        try:
+             results = await search_papers(refined_query, limit=request.max_papers * 3)
+        except Exception as e:
+             log.warning("paper_search_refined_failed", error=str(e))
+             # Fallback to original
+             results = await search_papers(request.query, limit=request.max_papers * 3)
+             
+        log.info("paper_search_results", count=len(results), query=refined_query)
         
-        # FALLBACK LOGIC (copied from main.py)
+        # FALLBACK LOGIC (Simple Keywords)
         if len(results) == 0:
             log.info("paper_search_fallback", original_query=request.query)
             stopwords = ["find", "mechanism", "connecting", "to", "the", "a", "an", "and", "or", "of", "in", "for", "with"]
@@ -484,11 +532,13 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
     request_log = log.bind(request_id=request_id, query=request.query[:50])
     
     # 1. Auth & Quota Check
+    print(f"DEBUG: Cookies received: {http_request.cookies}")
     session_id = http_request.cookies.get("session_id")
     user_id = None
     
     if session_id:
         session = db.query(DbSession).filter(DbSession.id == session_id).first()
+        print(f"DEBUG: Session Query: {session_id}, Result: {session}, Expires: {session.expires_at if session else 'N/A'}")
         if session and session.expires_at > datetime.datetime.utcnow():
              user_id = session.user_id
     
@@ -498,37 +548,69 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
 
     # QUOTA LOGIC
     if user_id:
-        user = db.query(User).filter(User.id == user_id).first()
-        if user:
-            now = datetime.datetime.utcnow()
-            # 1. Reset Window if needed (Weekly)
-            if not user.window_start_at or (now - user.window_start_at).days >= 7:
-                user.window_start_at = now
-                user.discoveries_in_window = 0
+        # FIX: Only apply Quota Limits to NEW runs (not Resumes/Deep Dives)
+        # If thread_id is provided, it's a continuation -> specific Logic Skip.
+        if not request.thread_id:
+            user = db.query(User).filter(User.id == user_id).first()
+            if user:
+                now = datetime.datetime.utcnow()
+                # 1. Reset Window if needed (Weekly)
+                if not user.window_start_at or (now - user.window_start_at).days >= 7:
+                    user.window_start_at = now
+                    user.discoveries_in_window = 0
+                    db.commit()
+                
+                # 2. Check Limit
+                user_limit = user.custom_quota_limit if user.custom_quota_limit is not None else app_config.MAX_RUNS_PER_USER_PER_WEEK
+                
+                if user.discoveries_in_window >= user_limit:
+                    log.warning("quota_exceeded", user_id=user_id, count=user.discoveries_in_window, limit=user_limit)
+                    
+                    # Calculate reset time
+                    reset_date = user.window_start_at + datetime.timedelta(days=7)
+                    hours_remaining = int((reset_date - now).total_seconds() / 3600)
+                    if hours_remaining < 1: hours_remaining = 1 # Avoid 0 hours confusion
+                    
+                    detail = {
+                        "error": "quota_exceeded",
+                        "message": f"You've used your {user_limit} SciNets discoveries for this week. (Resets in {hours_remaining} hours)",
+                        "resets_in_hours": hours_remaining
+                    }
+                    raise HTTPException(status_code=429, detail=detail)
+                
+                # 3. Increment (Optimistic)
+                user.discoveries_in_window += 1
+                user.last_discovery_at = now
                 db.commit()
-            
-            # 2. Check Limit
-            if user.discoveries_in_window >= app_config.MAX_RUNS_PER_USER_PER_WEEK:
-                log.warning("quota_exceeded", user_id=user_id, count=user.discoveries_in_window)
                 
-                # Calculate reset time
-                reset_date = user.window_start_at + datetime.timedelta(days=7)
-                hours_remaining = int((reset_date - now).total_seconds() / 3600)
-                if hours_remaining < 1: hours_remaining = 1 # Avoid 0 hours confusion
-                
-                detail = {
-                    "error": "quota_exceeded",
-                    "message": f"You've used your {app_config.MAX_RUNS_PER_USER_PER_WEEK} SciNets discoveries for this week.",
-                    "resets_in_hours": hours_remaining
+                # Quota Info for Frontend
+                quota_info = {
+                    "used": user.discoveries_in_window,
+                    "limit": user_limit,
+                    "remaining": max(0, user_limit - user.discoveries_in_window)
                 }
-                # Raise as JSON response via HTTPException detail or custom response
-                # FastAPI HTTPException detail can be a dict/object
-                raise HTTPException(status_code=429, detail=detail)
-            
-            # 3. Increment (Optimistic - we count it even if it fails later to prevent free retries)
-            user.discoveries_in_window += 1
-            user.last_discovery_at = now
-            db.commit()
+                
+                # 4. Record Run History
+                try:
+                    run_record = DiscoveryRun(
+                        id=thread_id,
+                        user_id=user_id,
+                        query=request.query,
+                        status="started",
+                        is_demo=False
+                    )
+                    db.add(run_record)
+                    db.commit()
+                except Exception as e:
+                    log.error("run_recording_failed", error=str(e))
+        else:
+             # Resume/Deep Dive - No Quota Cost
+             quota_info = None 
+
+
+    else:
+        # User not logged in or disabled auth
+        quota_info = None
 
     # Check concurrency
     thread_id = request.thread_id or str(uuid.uuid4())
@@ -548,7 +630,7 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
     try:
         from app.state import DiscoveryState
         
-        config = {"configurable": {"thread_id": thread_id}}
+        config = {"configurable": {"thread_id": thread_id}, "recursion_limit": app_config.MAX_AGENT_STEPS}
 
         request_log.info(
             "discovery_request_started",
@@ -651,11 +733,35 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
         step_count = 0
         start_time_glob = time.time()
         
+        # Helper to update run status
+        def update_run_status(status_val, cost=0.0, tokens=0, duration=0.0, result_path=None):
+             try:
+                 # Use fresh session for async update
+                 db_local = SessionLocal()
+                 run = db_local.query(DiscoveryRun).filter(DiscoveryRun.id == thread_id).first()
+                 if run:
+                     run.status = status_val
+                     if status_val in ["completed", "failed", "interrupted"]:
+                         run.completed_at = datetime.datetime.utcnow()
+                         run.duration = duration
+                         run.cost_usd = cost
+                         run.tokens = tokens
+                         if result_path:
+                             run.result_path = result_path
+                     db_local.commit()
+                 db_local.close()
+             except Exception as ex:
+                 print(f"Failed to update run status: {ex}")
+
         try:
             try:
                 # Emit initial thinking event
                 data = {'agent': 'orchestrator', 'action': f'Starting discovery for: {request.query}', 'status': 'thinking'}
                 yield f"data: {json.dumps({'type': 'activity', 'data': data, 'thread_id': thread_id})}\n\n"
+                
+                if quota_info:
+                     yield f"data: {json.dumps({'type': 'quota', 'data': quota_info})}\n\n"
+
                 await asyncio.sleep(0.1) 
             
                 accumulated_state = {}
@@ -663,22 +769,33 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
                 
                 # Stream events
                 async for event in graph.astream_events(initial_state, config=config, version="v2"):
-                    # 1. ENFORCE LIMITS
-                    step_count += 1
+                    kind = event["event"]
+                    name = event.get("name", "")
+                    
+                    # 1. ENFORCE LIMITS (Smarter Counting)
+                    # Only count major state changes or tool calls as "steps" to avoid counting token stream events
+                    if kind == "on_chain_start" and name in ["plan", "literature", "hypothesis", "hypothesis_preview", "hypothesis_deep", "evidence", "critique", "decision", "experiment"]:
+                         step_count += 1
+                    elif kind == "on_tool_start":
+                         step_count += 1
+                    
                     elapsed = time.time() - start_time_glob
                     current_tokens = cost_tracker.total_tokens
                     
-                    if step_count > app_config.MAX_AGENT_STEPS * 10: # Rough multiplier for events vs steps
+                    if step_count > app_config.MAX_AGENT_STEPS:
+                        update_run_status("failed")
                         yield f"data: {json.dumps({'type': 'error', 'data': 'Max steps exceeded.'})}\n\n"
                         request_log.warning("limit_hit_steps", steps=step_count)
                         break
                         
                     if elapsed > app_config.MAX_RUN_TIME_SECONDS:
+                        update_run_status("failed")
                         yield f"data: {json.dumps({'type': 'error', 'data': 'Max run time exceeded.'})}\n\n"
                         request_log.warning("limit_hit_time", elapsed=elapsed)
                         break
                         
                     if current_tokens > app_config.MAX_TOTAL_TOKENS:
+                         update_run_status("failed")
                          yield f"data: {json.dumps({'type': 'error', 'data': 'Max token limit exceeded.'})}\n\n"
                          request_log.warning("limit_hit_tokens", tokens=current_tokens)
                          break
@@ -706,7 +823,7 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
                             "plan": "Structuring research plan...",
                             "literature": "Searching and reading literature...",
                             "hypothesis": "Generating and refining hypotheses...",
-                            "evidence": "Verifying evidence and facts...",
+                            "evidence": "Verifying evidence & facts...",
                             "experiment": "Designing and running experiments...",
                             "critique": "Critiquing and validating findings...",
                             "decision": "Synthesizing final decision..."
@@ -718,7 +835,7 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
                                 "status": "thinking" if name in ["plan", "critique", "evidence", "decision"] else "reading" if name == "literature" else "building"
                             }
                             yield f"data: {json.dumps({'type': 'activity', 'data': activity})}\n\n"
-                            await asyncio.sleep(0) # Yield control
+                            await asyncio.sleep(0)
     
                     # 2. TOOL & LOG UPDATES (In-Depth)
                     elif kind == "on_tool_start":
@@ -794,9 +911,11 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
                             # await asyncio.sleep(0)
     
             except Exception as e:
+                update_run_status("failed")
                 request_log.error("stream_loop_error", error=str(e), thread_id=thread_id)
                 yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
             except BaseException as e:
+                update_run_status("failed")
                 request_log.error("stream_loop_critical_failure", error=str(e), type=type(e).__name__, thread_id=thread_id)
                 print(f"DEBUG: Critical failure for {thread_id}: {type(e).__name__} - {e}")
                 raise e
@@ -823,6 +942,15 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
                                  duration=time.time() - start_time_glob,
                                  status="finished" if not snapshot.next else "interrupted")
                 
+                # Update Status to Completed (or Interrupted)
+                update_run_status(
+                    "completed" if not snapshot.next else "interrupted",
+                    cost=cost_report['estimated_cost_usd'],
+                    tokens=cost_report['total_tokens'],
+                    duration=time.time() - start_time_glob,
+                    result_path=f"data/runs/{thread_id}.json" # Standard path
+                )
+
                 # 2. Save JSON to disk
                 try:
                     os.makedirs("data/runs", exist_ok=True)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Boolean, Float
 from sqlalchemy.orm import relationship
 import uuid
 import datetime
@@ -18,6 +18,7 @@ class User(Base):
     last_discovery_at = Column(DateTime, nullable=True)
     discoveries_in_window = Column(Integer, default=0)
     window_start_at = Column(DateTime, default=datetime.datetime.utcnow)
+    custom_quota_limit = Column(Integer, nullable=True)
 
     sessions = relationship("Session", back_populates="user")
 
@@ -44,6 +45,14 @@ class DiscoveryRun(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     status = Column(String, default="started") # started, completed, failed
     is_demo = Column(Boolean, default=False)
+    
+    # Enhanced Stats
+    thread_id = Column(String, nullable=True) # Explicit alias for ID or separate
+    completed_at = Column(DateTime, nullable=True)
+    duration = Column(Float, default=0.0)
+    cost_usd = Column(Float, default=0.0)
+    tokens = Column(Integer, default=0)
+    result_path = Column(String, nullable=True)
     
     user = relationship("User", back_populates="discovery_runs")
 

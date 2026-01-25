@@ -78,6 +78,21 @@ async def gather_evidence_for_hypothesis(
         
         # 1. Search OpenAlex with refined query
         query = hypothesis.search_query or hypothesis.text
+        
+        # FIX #3: Harden Evidence Retrieval (Domain Constraints)
+        # If the hypothesis is about specific domains, FORCE those keywords in the search
+        domain_keywords = []
+        lower_text = hypothesis.text.lower()
+        if "multi-agent" in lower_text or "marl" in lower_text or "multiagent" in lower_text:
+            domain_keywords.append('(multi-agent OR multiagent OR MARL)')
+        if "reinforcement learning" in lower_text or "rl " in lower_text:
+             domain_keywords.append('("reinforcement learning" OR RL)')
+             
+        # Append constraints if they exist and aren't already in the query
+        for k in domain_keywords:
+            if k.split('(')[0].strip() not in query: # fast heuristic check
+                 query += f" AND {k}"
+
         if len(query.split()) < 3:
             query += " scientific papers"
         

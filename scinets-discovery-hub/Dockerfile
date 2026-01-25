@@ -26,6 +26,13 @@ RUN echo 'server { \
     listen 80; \
     root /usr/share/nginx/html; \
     include /etc/nginx/mime.types; \
+    \
+    # Increase timeouts for long-running Deep Dives \
+    proxy_read_timeout 600s; \
+    proxy_connect_timeout 600s; \
+    proxy_send_timeout 600s; \
+    fastcgi_read_timeout 600s; \
+    \
     location / { \
         try_files $uri $uri/ /index.html; \
     } \

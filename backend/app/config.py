@@ -67,10 +67,11 @@ class AgentConfig(BaseSettings):
     DEMO_MODE: bool = True
     
     # Run Limits (Public Demo V1)
-    MAX_AGENT_STEPS: int = 10      # Was 50 - Reduced to prevent runaway chains
-    MAX_TOOL_CALLS: int = 5        # Was 20 - interactions are expensive
-    MAX_TOTAL_TOKENS: int = 10000  # Was 100k - Strict budget per run
-    MAX_RUN_TIME_SECONDS: int = 120 # Was 300 - 2 mins max per run
+    # Run Limits (Production / Deep Dive)
+    MAX_AGENT_STEPS: int = 100      # Increased from 10/20 to allow deep loops
+    MAX_TOOL_CALLS: int = 50        # Increased to allow extensive searching
+    MAX_TOTAL_TOKENS: int = 100000  # Increased to 100k for full paper context
+    MAX_RUN_TIME_SECONDS: int = 600 # Increased to 10 mins
 
     # Requests
     MAX_INPUT_CHARS: int = 2000
