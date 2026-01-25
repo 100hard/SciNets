@@ -5,9 +5,10 @@ import { cn } from "@/lib/utils";
 
 interface DiscoveryQueryStepProps {
   onSubmit: (query: string, papers: string[]) => void;
+  isQuotaExceeded?: boolean;
 }
 
-export const DiscoveryQueryStep = ({ onSubmit }: DiscoveryQueryStepProps) => {
+export const DiscoveryQueryStep = ({ onSubmit, isQuotaExceeded }: DiscoveryQueryStepProps) => {
   const [query, setQuery] = useState("");
   const [papers, setPapers] = useState<string[]>([]);
   const [paperInput, setPaperInput] = useState("");
@@ -15,7 +16,7 @@ export const DiscoveryQueryStep = ({ onSubmit }: DiscoveryQueryStepProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
+    if (query.trim() && !isQuotaExceeded) {
       onSubmit(query, papers);
     }
   };
@@ -201,18 +202,18 @@ export const DiscoveryQueryStep = ({ onSubmit }: DiscoveryQueryStepProps) => {
         {/* Submit */}
         <button
           type="submit"
-          disabled={!query.trim()}
+          disabled={!query.trim() || isQuotaExceeded}
           className={cn(
             "w-full flex items-center justify-center gap-2",
             "px-4 py-3 rounded-lg",
             "bg-foreground text-background",
             "text-sm font-medium",
             "hover:bg-foreground/90 transition-colors",
-            "disabled:opacity-30"
+            "disabled:opacity-30 disabled:cursor-not-allowed"
           )}
         >
-          Start Discovery
-          <ArrowRight className="w-4 h-4" />
+          {isQuotaExceeded ? "Quota Limit Reached" : "Start Discovery"}
+          {!isQuotaExceeded && <ArrowRight className="w-4 h-4" />}
         </button>
       </form>
     </motion.div>

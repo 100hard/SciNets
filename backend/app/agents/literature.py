@@ -1,5 +1,5 @@
 from app.state import DiscoveryState
-from app.tools.openalex import search_papers, reconstruct_abstract, get_paper_citations
+from app.tools.openalex import search_papers, reconstruct_abstract, get_paper_citations, get_paper_details
 from app.llm import get_cheap_llm, get_llm
 from langchain_core.prompts import ChatPromptTemplate
 # DDGS import removed
@@ -107,28 +107,46 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
         # Invoke tool to trigger stream events
         papers = []
         
-        # 0.5 Process User-Provided Documents (Abstracts) FIRST
+        # 0.5 Process User-Provided Documents (Abstracts OR IDs) FIRST
         if state.documents:
-            # Filter out OpenAlex IDs (URLs) which are passed for the search context but aren't manual abstracts
-            manual_abstracts = [d for d in state.documents if not d.strip().startswith("http")]
+            print(f"[Literature] Processing {len(state.documents)} user-provided documents...")
+            import asyncio
+            import uuid
             
-            if manual_abstracts:
-                print(f"[Literature] Processing {len(manual_abstracts)} user-provided abstracts...")
-                import uuid
-                for i, doc_text in enumerate(manual_abstracts):
-                    # heuristic title from first sentence
-                    title_candidate = doc_text.split('.')[0][:100] + "..."
-                    pid = f"USER-{str(uuid.uuid4())[:8]}"
-                    
-                    papers.append({
+            async def fetch_or_parse(doc_input):
+                 # Case A: URL / OpenAlex ID
+                 if doc_input.strip().startswith("http") or doc_input.strip().upper().startswith("W"):
+                     try:
+                         # Attempt to fetch details
+                         print(f"[Literature] Fetching details for ID: {doc_input[:20]}...")
+                         details = await get_paper_details(doc_input)
+                         if details:
+                             return details
+                     except Exception as e:
+                         print(f"[Literature] Failed to fetch ID {doc_input}: {e}")
+                         return None
+                 
+                 # Case B: Manual Text Abstract
+                 else:
+                     title_candidate = doc_input.split('.')[0][:100] + "..."
+                     pid = f"USER-{str(uuid.uuid4())[:8]}"
+                     return {
                         "id": pid,
                         "title": f"[User Input] {title_candidate}",
                         "publication_year": 2024,
-                        "abstract": doc_text,
+                        "abstract": doc_input, # Text is abstract
                         "host_venue": "User Provided",
                         "landing_page_url": None,
                         "abstract_inverted_index": None
-                    })
+                     }
+            
+            # Run fetches in parallel
+            fetched_results = await asyncio.gather(*[fetch_or_parse(d) for d in state.documents])
+            valid_docs = [d for d in fetched_results if d]
+            
+            if valid_docs:
+                print(f"[Literature] Successfully processed {len(valid_docs)} user documents.")
+                papers.extend(valid_docs)
         
         # MIXED MODE: If we have enough user docs, skip fresh search.
         if len(papers) >= 3:

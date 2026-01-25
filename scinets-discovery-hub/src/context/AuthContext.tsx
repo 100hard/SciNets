@@ -8,10 +8,7 @@ import { useNavigate } from "react-router-dom";
 // Ideally, use a relative path /api and configured proxy.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
 
-interface User {
-    id: string;
-    email: string;
-}
+import { User } from "../lib/types";
 
 interface AuthContextType {
     user: User | null;

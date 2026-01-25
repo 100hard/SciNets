@@ -195,17 +195,21 @@ def generate_markdown_report(state: dict) -> str:
 
     return "\n".join(md)
 
-def render_pdf(markdown_content: str) -> bytes:
+def render_html_report(markdown_content: str) -> bytes:
     """
-    Renders Markdown content to PDF bytes using xhtml2pdf.
+    Renders Markdown content to a standalone HTML report.
+    Fallback for PDF generation issues on slim containers.
     """
     # 1. Convert Markdown to HTML
     html_content = markdown.markdown(markdown_content)
     
-    # 2. Wrap in simple CSS for better PDF look
+    # 2. Wrap in simple CSS (Print optimized)
     full_html = f"""
+    <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="utf-8">
+        <title>SciNets Discovery Report</title>
         <style>
             @page {{
                 size: A4;
@@ -214,33 +218,39 @@ def render_pdf(markdown_content: str) -> bytes:
             body {{
                 font-family: Helvetica, Arial, sans-serif;
                 font-size: 11pt;
-                line-height: 1.5;
+                line-height: 1.6;
                 color: #333;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 40px 20px;
             }}
-            h1 {{ color: #1a1a1a; font-size: 24pt; border-bottom: 2px solid #ddd; padding-bottom: 10px; }}
-            h2 {{ color: #2c3e50; font-size: 18pt; margin-top: 20px; border-bottom: 1px solid #eee; }}
-            h3 {{ color: #16a085; font-size: 14pt; margin-top: 15px; }}
+            h1 {{ color: #1a1a1a; border-bottom: 2px solid #ddd; padding-bottom: 10px; }}
+            h2 {{ color: #2c3e50; margin-top: 30px; border-bottom: 1px solid #eee; }}
+            h3 {{ color: #16a085; margin-top: 25px; }}
             blockquote {{
                 background: #f9f9f9;
                 border-left: 5px solid #ccc;
                 margin: 1.5em 10px;
                 padding: 0.5em 10px;
             }}
-            ul {{ margin-bottom: 15px; }}
-            li {{ margin-bottom: 5px; }}
+            table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
+            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+            th {{ background-color: #f2f2f2; }}
+            /* Print Specifics */
+            @media print {{
+                body {{ max-width: 100%; padding: 0; }}
+                a {{ text-decoration: none; color: #000; }}
+            }}
         </style>
     </head>
     <body>
         {html_content}
+        <script>
+            // Auto-trigger print dialog for convenience
+            // window.print();
+        </script>
     </body>
     </html>
     """
     
-    # 3. Convert to PDF
-    buffer = BytesIO()
-    pisa_status = pisa.CreatePDF(full_html, dest=buffer)
-    
-    if pisa_status.err:
-        raise Exception("PDF generation failed")
-        
-    return buffer.getvalue()
+    return full_html.encode('utf-8')

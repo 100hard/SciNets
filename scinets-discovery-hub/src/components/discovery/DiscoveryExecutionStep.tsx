@@ -309,12 +309,11 @@ export const DiscoveryExecutionStep = ({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex gap-4 min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
         {/* Activity List - Minimal with Enhanced Active State */}
-        <div className="flex-1 flex flex-col border border-border rounded-lg bg-background/30 overflow-hidden">
+        <div className="flex-1 flex flex-col border border-border rounded-lg bg-background/30 overflow-hidden min-h-[300px] lg:min-h-0">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MessageSquare className="w-3.5 h-3.5 text-foreground-muted" />
               <span className="text-xs font-medium text-foreground">Agent Activity</span>
             </div>
           </div>

@@ -135,6 +135,45 @@ async def gather_evidence_for_hypothesis(
             hypothesis.evidence_status = "partial" # No evidence found, but not an error
             return hypothesis
         
+        # 1.5 SEMANTIC FILTER (Fix #3 from User - Quality Tier)
+        # Filter papers that are domain-irrelevant using lightweight overlap check
+        # (Jaccard Similarity) to avoid wasting LLM calls on junk.
+        def jaccard_similarity(text1, text2):
+            if not text1 or not text2: return 0.0
+            stop = {"the", "a", "an", "and", "or", "of", "in", "for", "with", "to", "is", "are", "on", "at", "by", "from", "be", "this", "that"}
+            s1 = set(w.lower() for w in text1.split() if w.lower() not in stop and len(w)>2)
+            s2 = set(w.lower() for w in text2.split() if w.lower() not in stop and len(w)>2)
+            if not s1 or not s2: return 0.0
+            return len(s1.intersection(s2)) / len(s1.union(s2))
+
+        if papers:
+            original_count = len(papers)
+            scored_papers = []
+            hyp_text = hypothesis.text + " " + (hypothesis.search_query or "")
+            
+            for p in papers:
+                abstract = reconstruct_abstract(p.get("abstract"))
+                title = p.get("title", "")
+                content = f"{title} {abstract}"
+                score = jaccard_similarity(hyp_text, content)
+                p["_rel_score"] = score
+                scored_papers.append(p)
+            
+            # Sort by score
+            scored_papers.sort(key=lambda x: x["_rel_score"], reverse=True)
+            
+            # Filter: Keep top 5, but drop any with extremely low score (< 0.03) unless list becomes empty
+            filtered_papers = [p for p in scored_papers if p["_rel_score"] > 0.03]
+            
+            # If aggressive filtering killed everything, keep top 2 regardless
+            if not filtered_papers and scored_papers:
+                 filtered_papers = scored_papers[:2]
+            elif len(filtered_papers) > 5:
+                 filtered_papers = filtered_papers[:5]
+                 
+            print(f"[Evidence] Semantic Filter: Kept {len(filtered_papers)}/{original_count} papers (Top Score: {scored_papers[0]['_rel_score']:.3f})")
+            papers = filtered_papers
+        
         # 2. Classify each paper
         from langchain_core.messages import SystemMessage, HumanMessage
         

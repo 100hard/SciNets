@@ -234,7 +234,29 @@ async def get_current_user(request: Request, session_id: str | None = Cookie(def
     
     user = db.query(User).filter(User.id == session.user_id).first()
     if not user: raise HTTPException(status_code=401, detail="User not found")
-    return {"id": user.id, "email": user.email}
+    
+    # Calculate Quota Info for UI
+    now = datetime.datetime.utcnow()
+    # Auto-reset if window expired (48 hours)
+    if not user.window_start_at or (now - user.window_start_at).total_seconds() >= 48 * 3600:
+        user.window_start_at = now
+        user.discoveries_in_window = 0
+        db.commit()
+        
+    user_limit = user.custom_quota_limit if user.custom_quota_limit is not None else app_config.MAX_RUNS_PER_USER_PER_WEEK
+    reset_date = user.window_start_at + datetime.timedelta(hours=48)
+    hours_remaining = int((reset_date - now).total_seconds() / 3600)
+    if hours_remaining < 0: hours_remaining = 0
+    
+    return {
+        "id": user.id, 
+        "email": user.email,
+        "quota": {
+            "used": user.discoveries_in_window,
+            "limit": user_limit,
+            "resets_in_hours": hours_remaining
+        }
+    }
 
 @app.post("/api/auth/logout")
 async def logout(response: Response, session_id: str | None = Cookie(default=None), db: Session = Depends(get_db)):
@@ -546,6 +568,21 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
          # For public demo, strictly require auth
          raise HTTPException(status_code=401, detail="Authentication required for discovery.")
 
+    # Check concurrency
+    thread_id = request.thread_id or str(uuid.uuid4())
+    if thread_id in active_threads:
+        log.warning("concurrency_blocked", thread_id=thread_id)
+        raise HTTPException(status_code=409, detail="Pipeline already running for this thread. Please wait.")
+    
+    # Acquire Lock via User/Thread
+    lock_key = f"{user_id}:{thread_id}" if user_id else thread_id
+    if lock_key in active_runs.values():
+         log.warning("concurrency_blocked", user_id=user_id, thread_id=thread_id)
+         raise HTTPException(status_code=429, detail="You already have an active search running.")
+    
+    active_runs[user_id or thread_id] = lock_key
+    active_threads.add(thread_id)
+
     # QUOTA LOGIC
     if user_id:
         # FIX: Only apply Quota Limits to NEW runs (not Resumes/Deep Dives)
@@ -554,8 +591,8 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
             user = db.query(User).filter(User.id == user_id).first()
             if user:
                 now = datetime.datetime.utcnow()
-                # 1. Reset Window if needed (Weekly)
-                if not user.window_start_at or (now - user.window_start_at).days >= 7:
+                # 1. Reset Window if needed (48h)
+                if not user.window_start_at or (now - user.window_start_at).total_seconds() >= 48 * 3600:
                     user.window_start_at = now
                     user.discoveries_in_window = 0
                     db.commit()
@@ -567,13 +604,13 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
                     log.warning("quota_exceeded", user_id=user_id, count=user.discoveries_in_window, limit=user_limit)
                     
                     # Calculate reset time
-                    reset_date = user.window_start_at + datetime.timedelta(days=7)
+                    reset_date = user.window_start_at + datetime.timedelta(hours=48)
                     hours_remaining = int((reset_date - now).total_seconds() / 3600)
                     if hours_remaining < 1: hours_remaining = 1 # Avoid 0 hours confusion
                     
                     detail = {
                         "error": "quota_exceeded",
-                        "message": f"You've used your {user_limit} SciNets discoveries for this week. (Resets in {hours_remaining} hours)",
+                        "message": f"You've used your {user_limit} SciNets discoveries for this 48h period. (Resets in {hours_remaining} hours)",
                         "resets_in_hours": hours_remaining
                     }
                     raise HTTPException(status_code=429, detail=detail)
@@ -612,20 +649,8 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
         # User not logged in or disabled auth
         quota_info = None
 
-    # Check concurrency
-    thread_id = request.thread_id or str(uuid.uuid4())
-    if thread_id in active_threads:
-        log.warning("concurrency_blocked", thread_id=thread_id)
-        raise HTTPException(status_code=409, detail="Pipeline already running for this thread. Please wait.")
-    
-    # Acquire Lock via User/Thread
-    lock_key = f"{user_id}:{thread_id}" if user_id else thread_id
-    if lock_key in active_runs.values():
-         log.warning("concurrency_blocked", user_id=user_id, thread_id=thread_id)
-         raise HTTPException(status_code=429, detail="You already have an active search running.")
-    
-    active_runs[user_id or thread_id] = lock_key
-    active_threads.add(thread_id)
+    # Concurrency check already done above.
+    # Proceed to Graph Init
     
     try:
         from app.state import DiscoveryState
@@ -1003,10 +1028,10 @@ def get_sessions():
 @app.get("/api/discovery/{thread_id}/export/pdf")
 async def export_pdf(thread_id: str):
     """
-    Exports a completed discovery run as a PDF report.
+    Exports a completed discovery run as a Report (HTML for Print-to-PDF).
     """
     from app.storage import get_run_result
-    from app.reporting import generate_markdown_report, render_pdf
+    from app.reporting import generate_markdown_report, render_html_report
     from io import BytesIO
     
     state = get_run_result(thread_id)
@@ -1015,12 +1040,12 @@ async def export_pdf(thread_id: str):
         
     try:
         md = generate_markdown_report(state)
-        pdf_bytes = render_pdf(md)
+        html_bytes = render_html_report(md)
         
         headers = {
-            "Content-Disposition": f"attachment; filename=scinets_report_{thread_id}.pdf"
+            "Content-Disposition": f"attachment; filename=scinets_report_{thread_id}.html"
         }
-        return StreamingResponse(BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+        return StreamingResponse(BytesIO(html_bytes), media_type="text/html", headers=headers)
     except Exception as e:
         import traceback
         traceback.print_exc()

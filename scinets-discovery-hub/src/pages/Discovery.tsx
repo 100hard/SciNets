@@ -5,13 +5,15 @@ import { DiscoveryQueryStep } from "@/components/discovery/DiscoveryQueryStep";
 import { DiscoveryClarificationStep, ClarificationAnswers } from "@/components/discovery/DiscoveryClarificationStep";
 import { PaperCurationStep, CandidatePaper } from "@/components/discovery/PaperCurationStep";
 import { DiscoveryExecutionStep } from "@/components/discovery/DiscoveryExecutionStep";
-import { startDiscoveryStream, resumeDiscoveryStream, SSECallback } from "@/lib/api"; // Added resumeDiscoveryStream
+import { startDiscoveryStream, resumeDiscoveryStream, SSECallback } from "@/lib/api";
 import type { Hypothesis, DiscoveryResult, ActivityEvent, ConceptGraph, DecisionSummary } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 import { SearchOverlay } from "@/components/discovery/SearchOverlay";
 import { HypothesisSelection } from "@/components/HypothesisSelection";
 import { useToast } from "@/hooks/use-toast";
 import type { QuotaInfo } from "@/lib/types";
+import { useAuth } from "@/context/AuthContext";
+import { cn } from "@/lib/utils";
 
 export interface GraphNode {
   id: string;
@@ -38,10 +40,12 @@ export interface AgentActivity {
   nodeId?: string;
 }
 
-type DiscoveryStep = "query" | "clarification" | "searching" | "curation" | "execution" | "selection"; // Added 'selection'
+type DiscoveryStep = "query" | "clarification" | "searching" | "curation" | "execution" | "selection";
 
 const Discovery = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
+
   const [step, setStep] = useState<DiscoveryStep>("query");
   const [query, setQuery] = useState("");
   const [papers, setPapers] = useState<string[]>([]);
@@ -63,10 +67,14 @@ const Discovery = () => {
 
   // Prevent double execution
   const [isDiscovering, setIsDiscovering] = useState(false);
-  const [isSearching, setIsSearching] = useState(false); // New searching state
+  const [isSearching, setIsSearching] = useState(false);
 
   // Persistence Key - Force refresh v3
   const STORAGE_KEY = "scinets_discovery_state_v3_clean";
+
+  // Quota Check
+  const isQuotaExceeded = user?.quota && user.quota.used >= user.quota.limit;
+  const quotaResetHours = user?.quota?.resets_in_hours || 0;
 
   const handleReset = () => {
     // Clear storage
@@ -102,6 +110,73 @@ const Discovery = () => {
       abortControllerRef.current?.abort();
     };
   }, []);
+
+  // 1. Load State on Mount
+  useEffect(() => {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        // Only restore if valid
+        if (parsed.step) setStep(parsed.step);
+        if (parsed.query) setQuery(parsed.query);
+        if (parsed.papers) setPapers(parsed.papers);
+        if (parsed.answers) setAnswers(parsed.answers);
+        if (parsed.curatedPapers) setCuratedPapers(parsed.curatedPapers);
+        if (parsed.nodes) setNodes(parsed.nodes);
+        if (parsed.edges) setEdges(parsed.edges);
+        if (parsed.activities) {
+          // Fix Date parsing
+          const restoredActivities = parsed.activities.map((a: any) => ({
+            ...a,
+            timestamp: new Date(a.timestamp)
+          }));
+          setActivities(restoredActivities);
+        }
+        if (parsed.isComplete) setIsComplete(parsed.isComplete);
+        if (parsed.threadId) setThreadId(parsed.threadId);
+        if (parsed.hypotheses) setHypotheses(parsed.hypotheses);
+        if (parsed.conceptGraph) setConceptGraph(parsed.conceptGraph);
+        if (parsed.decisionSummary) setDecisionSummary(parsed.decisionSummary);
+        if (parsed.literatureCount) setLiteratureCount(parsed.literatureCount);
+        if (parsed.logs) setLogs(parsed.logs);
+        // Don't restore isDiscovering/isSearching to avoid stuck loading states
+      } catch (e) {
+        console.error("Failed to parse saved state", e);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  // 2. Save State on Change
+  useEffect(() => {
+    // Debounce slightly or just save on every change (React batches updates)
+    // Only save if we have some meaningful state
+    if (step === "query" && !query) return;
+
+    const stateToSave = {
+      step,
+      query,
+      papers,
+      answers,
+      curatedPapers,
+      nodes,
+      edges,
+      activities,
+      isComplete,
+      threadId,
+      hypotheses,
+      conceptGraph,
+      decisionSummary,
+      literatureCount,
+      logs
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+  }, [
+    step, query, papers, answers, curatedPapers, nodes, edges,
+    activities, isComplete, threadId, hypotheses, conceptGraph,
+    decisionSummary, literatureCount, logs
+  ]);
 
   // New State for config
   const [numHypotheses, setNumHypotheses] = useState(3);
@@ -242,19 +317,9 @@ const Discovery = () => {
       onResult: (result: Partial<DiscoveryResult>) => {
         if (result.hypotheses && result.hypotheses.length > 0) {
           setHypotheses(result.hypotheses);
-
-          // NEW TRIGGER: If we get hypotheses in "execution" step (start), 
-          // it means preview generation is done.
-          // We check if "interrupt" happens via onInterrupt callback, 
-          // OR we can infer it if we are in initial start mode and get hypotheses.
-
-          // In this architecture, let's rely on onInterrupt, 
-          // or manual check if we are in 'execution' and see hypotheses appearing.
         }
         if (result.concept_graph) {
           setConceptGraph(result.concept_graph);
-          // Graph update logic (nodes/edges setup) omitted for brevity to keep clean,
-          // assumes graph updates happen same as before.
 
           const graphNodes: GraphNode[] = result.concept_graph.nodes.map((node, i) => ({
             id: node.id,
@@ -351,7 +416,7 @@ const Discovery = () => {
 
     setStep("execution"); // Go back to graph view
     setIsDiscovering(true); // Re-enable loading
-    setIsComplete(false); // <--- FIX: Ensure we don't show results immediately
+    setIsComplete(false);
 
     // Add activity log for resume
     setActivities(prev => [...prev, {
@@ -386,10 +451,27 @@ const Discovery = () => {
       <Header />
       <NetworkBackground />
 
-      <div className="relative z-10 pt-24 px-6 pb-6 h-screen flex flex-col">
+      <div className={cn(
+        "relative z-10 pt-24 px-6 pb-6 min-h-[100dvh] flex flex-col",
+        (step === "execution" || step === "searching") && !isComplete && "lg:h-screen lg:overflow-hidden"
+      )}>
+
+        {/* QUOTA BANNER */}
+        {isQuotaExceeded && step === "query" && (
+          <div className="max-w-4xl mx-auto w-full mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-center gap-4 text-red-200">
+            <div className="p-2 bg-red-500/20 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+            </div>
+            <div>
+              <h3 className="font-semibold">Quota Limit Exceeded</h3>
+              <p className="text-sm opacity-90">You have used {user?.quota?.used} of {user?.quota?.limit} discoveries. Resets in {quotaResetHours} hours.</p>
+            </div>
+          </div>
+        )}
+
         {step === "query" && !isSearching && (
-          <div className="flex-1 flex items-center justify-center">
-            <DiscoveryQueryStep onSubmit={handleQuerySubmit} />
+          <div className="flex-1 flex items-center justify-center relative">
+            <DiscoveryQueryStep onSubmit={handleQuerySubmit} isQuotaExceeded={isQuotaExceeded || false} />
           </div>
         )}
 
@@ -447,8 +529,6 @@ const Discovery = () => {
             />
           </div>
         )}
-
-
       </div>
     </div>
   );
