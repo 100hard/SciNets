@@ -6,7 +6,7 @@ import {
     ChevronDown, ChevronUp, CheckCircle2
 } from "lucide-react";
 import { DecisionSummary as IDecisionSummary } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 
 interface DecisionSummaryProps {
     summary: IDecisionSummary;

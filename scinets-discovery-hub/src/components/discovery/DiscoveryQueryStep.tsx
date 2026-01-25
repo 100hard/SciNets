@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Plus, X, FileText, ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 
 interface DiscoveryQueryStepProps {
   onSubmit: (query: string, papers: string[]) => void;

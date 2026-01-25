@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { FileText, Network, ExternalLink, Star, Beaker, BookOpen, Lightbulb, Download } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 import type { GraphNode, GraphEdge } from "@/pages/Discovery";
 import type { ClarificationAnswers } from "./DiscoveryClarificationStep";
 import type { CandidatePaper } from "./PaperCurationStep";

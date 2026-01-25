@@ -13,7 +13,7 @@ import { HypothesisSelection } from "@/components/HypothesisSelection";
 import { useToast } from "@/hooks/use-toast";
 import type { QuotaInfo } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 export interface GraphNode {
   id: string;

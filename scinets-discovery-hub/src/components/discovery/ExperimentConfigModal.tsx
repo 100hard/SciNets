@@ -4,7 +4,7 @@ import {
     Beaker, X, Loader2, Play, FlaskConical,
     TrendingUp, AlertTriangle, Settings, ChevronRight
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 
 interface ExperimentConfigModalProps {
     isOpen: boolean;
