@@ -10,7 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ (Removed to allow frontend src/lib)
 lib64/
 parts/
 sdist/
