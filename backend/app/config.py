@@ -15,13 +15,13 @@ class AgentConfig(BaseSettings):
     # =============================================================================
     # Auth & Security
     # =============================================================================
-    SECRET_KEY: str = "dev-secret-key-change-in-prod"
+    SECRET_KEY: str
     SESSION_EXPIRE_DAYS: int = 7
     MAGIC_LINK_EXPIRE_MINUTES: int = 15
     
     # Deployment
-    DATABASE_URL: str = "sqlite:///./scinets.db"
-    FRONTEND_URL: str = "http://localhost:8080"
+    DATABASE_URL: str
+    FRONTEND_URL: str
 
     # =============================================================================
     # Feature Flags

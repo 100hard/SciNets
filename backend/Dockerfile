@@ -18,8 +18,7 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Force cache bust
-ENV CACHE_DATE=2026-01-25_0150
+# Cache bust removed for production stability
 
 # Copy the rest of the application code
 COPY . .
@@ -36,4 +35,4 @@ ENV PYTHONPATH=/app
 RUN ls -R /app
 
 # Run the server
-CMD ["python", "server.py"]
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8005"]
