@@ -259,10 +259,9 @@ async def get_current_user(request: Request, session_id: str | None = Cookie(def
         ip_parts = current_ip.split('.')
         current_prefix = ".".join(ip_parts[:3]) if len(ip_parts) == 4 else current_ip
         if current_prefix != session.ip_prefix and not app_config.DEMO_MODE:
-             # In Demo Mode, IP might change if behind load balancers/proxies oddly, strict check might be annoying
-             # But for public deployment, this is good.
-             log.warning("session_hijack_attempt_ip", stored=session.ip_prefix, current=current_prefix)
-             raise HTTPException(status_code=401, detail="Session expired (IP change)")
+             # RELAXED SECURITY: Log warning but allow session to continue (IP Drift common in Prod)
+             log.warning("session_ip_mismatch_detected", stored=session.ip_prefix, current=current_prefix)
+             # raise HTTPException(status_code=401, detail="Session expired (IP change)") # DISABLED for stability
 
     # UA Check
     if session.user_agent and session.user_agent != current_ua:

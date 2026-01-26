@@ -65,6 +65,10 @@ async def google_login(request: Request, response: Response, db: Session = Depen
             db.commit()
             db.refresh(user)
 
+        # CLEANUP: Remove old sessions for this user to prevent "Ghost" sessions
+        db.query(DbSession).filter(DbSession.user_id == user.id).delete()
+        db.commit()
+
         # Create Session
         session_id = str(uuid.uuid4())
         expires = datetime.datetime.utcnow() + datetime.timedelta(days=7) # 7 Day Session
