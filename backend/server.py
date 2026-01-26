@@ -117,13 +117,12 @@ app.add_middleware(
         app_config.FRONTEND_URL,
         "https://scinets.in",
         "https://www.scinets.in",
+        "https://scinets-backend.onrender.com", # Added Backend URL itself just in case
         "http://localhost:8080",
-        "http://127.0.0.1:8080",
         "http://localhost:5173",
-        "http://127.0.0.1:5173",
         "http://localhost:3000",
     ],
-    allow_credentials=True,
+    allow_credentials=True, # REQUIRED for cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -233,7 +232,15 @@ async def verify_magic_link(req: VerifyRequest, response: Response, request: Req
     db.add(db_session)
     db.commit()
     
-    response.set_cookie(key="session_id", value=session_id, httponly=True, max_age=7*24*60*60, samesite="lax")
+    # FIX: Cross-Site Cookie Settings
+    response.set_cookie(
+        key="session_id", 
+        value=session_id, 
+        httponly=True, 
+        secure=True,          # REQUIRED for SameSite=None
+        samesite="none",      # REQUIRED for Cross-Site
+        max_age=7*24*60*60
+    )
     return {"message": "Logged in", "user": {"id": user.id, "email": user.email}}
 
 @app.get("/api/auth/me")

@@ -33,7 +33,7 @@ export async function startDiscoveryStream(
             },
             body: JSON.stringify(request),
             signal: controller.signal,
-            credentials: "include"
+            credentials: "include" // REQUIRED: Send cookies cross-origin
         });
 
         if (!response.ok) {

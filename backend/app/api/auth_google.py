@@ -90,13 +90,14 @@ async def google_login(request: Request, response: Response, db: Session = Depen
         db.commit()
 
         # Set Session Cookie
+        # FIX: Cross-Site Cookie Settings for Production
         response.set_cookie(
             key="session_id", 
             value=session_id, 
             httponly=True, 
             max_age=7*24*60*60, 
-            samesite="lax",
-            secure=not config.DEMO_MODE 
+            samesite="none",      # REQUIRED for Cross-Site
+            secure=True           # REQUIRED for SameSite=None
         )
 
         return {
