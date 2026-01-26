@@ -28,10 +28,26 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         import re
         # Remove operators and parens
         clean = re.sub(r'[()"\']', '', query)
-        # Split and take distinct significant words
-        words = [w for w in clean.split() if w.lower() not in ["and", "or", "not"] and len(w) > 3]
-        # Limit to top 8 keywords to stay safe
-        query = " AND ".join(words[:8])
+        # Split and take distinct significant words (DEDUPLICATED via dict.fromkeys)
+        # Fix: Previously "A OR B" became "A AND B" which is too restrictive if synonyms.
+        # Ideally, we want the ORIGINAL query, but we don't have it here. 
+        # Best effort: Take unique long words.
+        all_words = [w for w in clean.split() if w.lower() not in ["and", "or", "not"] and len(w) > 3]
+        
+        # SEMANTIC PRESERVATION (Fix #3 from User - Quality)
+        # Keep core topic anchors if present
+        anchors = []
+        # Common scientific/AI alignment terms to preserve
+        for key in ["safety", "robust", "align", "multi", "agent", "reinforce", "learning", "alzheimer", "sleep", "cancer", "climate", "energy", "quantum"]:
+            for w in all_words:
+                if key in w.lower():
+                    anchors.append(w)
+        
+        # Combine anchors + unique words, prioritizing anchors
+        unique_words = list(dict.fromkeys(anchors + all_words))
+        
+        # Limit to top 7 keywords (slightly higher than 5 to allow semantic breadth)
+        query = " ".join(unique_words[:7]) 
         print(f"[OpenAlex] Simplified Query: {query}")
 
     # if config.DEMO_MODE: ... (Removed to allow real search)
@@ -43,9 +59,13 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         "sort": "relevance_score:desc"
     }
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    headers = {
+        "User-Agent": "SciNets/2.0 (mailto:scinets.auth@gmail.com)"
+    }
+    
+    async with httpx.AsyncClient(timeout=60.0) as client:
         try:
-            response = await client.get(OPENALEX_API_URL, params=params)
+            response = await client.get(OPENALEX_API_URL, params=params, headers=headers)
             response.raise_for_status()
             data = response.json()
             
@@ -55,7 +75,7 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
                     "id": item.get("id"),
                     "title": item.get("title"),
                     "publication_year": item.get("publication_year"),
-                    "abstract": item.get("abstract_inverted_index"), # OpenAlex returns inverted index, need to reconstruct or fetch text
+                    "abstract": reconstruct_abstract(item.get("abstract_inverted_index")), # FIX: Reconstruct text
                     "host_venue": (item.get("host_venue") or {}).get("display_name"),
                     "cited_by_count": item.get("cited_by_count"),
                     "landing_page_url": item.get("landing_page_url")
@@ -116,7 +136,7 @@ async def get_paper_citations(paper_id: str, limit: int = 5) -> List[Dict[str, A
                     "id": item.get("id"),
                     "title": item.get("title"),
                     "publication_year": item.get("publication_year"),
-                    "abstract": item.get("abstract_inverted_index"),
+                    "abstract": reconstruct_abstract(item.get("abstract_inverted_index")),
                     "host_venue": (item.get("host_venue") or {}).get("display_name"),
                     "cited_by_count": item.get("cited_by_count"),
                     "landing_page_url": item.get("landing_page_url"),
@@ -158,7 +178,7 @@ async def get_paper_details(paper_id: str) -> Optional[Dict[str, Any]]:
                 "id": item.get("id"),
                 "title": item.get("title"),
                 "publication_year": item.get("publication_year"),
-                "abstract": item.get("abstract_inverted_index"), 
+                "abstract": reconstruct_abstract(item.get("abstract_inverted_index")), 
                 "host_venue": (item.get("host_venue") or {}).get("display_name"),
                 "cited_by_count": item.get("cited_by_count"),
                 "landing_page_url": item.get("landing_page_url")
