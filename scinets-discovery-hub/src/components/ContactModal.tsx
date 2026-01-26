@@ -1,6 +1,6 @@
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { config } from "../config";
 import { X, Send, Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "../lib/utils.ts";
 
@@ -26,7 +26,7 @@ export const ContactModal = ({ isOpen, onClose }: ContactModalProps) => {
         setError(null);
 
         try {
-            const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8005";
+            const API_URL = config.API_URL;
             const response = await fetch(`${API_URL}/api/contact`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

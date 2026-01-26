@@ -4,7 +4,9 @@ import "./index.css";
 
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
-const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "119137837974-4so3iqha7hm13na8uq0mcbpj3qolharv.apps.googleusercontent.com"; // Fallback just in case
+import { config } from "./config";
+
+const clientId = config.GOOGLE_CLIENT_ID;
 
 createRoot(document.getElementById("root")!).render(
     <GoogleOAuthProvider clientId={clientId}>

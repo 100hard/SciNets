@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { QuotaInfo } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "../lib/utils.ts";
+import { config } from "../config";
 
 export interface GraphNode {
   id: string;
@@ -213,7 +214,11 @@ const Discovery = () => {
 
     // Fetch real papers from backend
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+      // import { config } from "../config"; // Removed invalid import
+
+      // ... inside component
+      // const API_URL = config.API_URL; // Actually the lines below use it directly
+      const API_URL = config.API_URL;
       const response = await fetch(`${API_URL}/search_papers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

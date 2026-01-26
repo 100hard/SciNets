@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { config } from "../../config";
 import { FileText, Network, ExternalLink, Star, Beaker, BookOpen, Lightbulb, Download } from "lucide-react";
 import { cn } from "../../lib/utils.ts";
 import type { GraphNode, GraphEdge } from "@/pages/Discovery";
@@ -169,7 +170,7 @@ export const DiscoveryResults = ({
             <span title="Connections Explored" className="flex items-center gap-1.5">{edgeCount} Connections</span>
             {threadId && (
               <button
-                onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:8005'}/api/discovery/${threadId}/export/pdf`, '_blank')}
+                onClick={() => window.open(`${config.API_URL}/api/discovery/${threadId}/export/pdf`, '_blank')}
                 className="ml-2 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors text-xs font-medium flex items-center gap-2 border border-border"
               >
                 <Download className="w-3 h-3" />

@@ -6,7 +6,8 @@ import { useNavigate } from "react-router-dom";
 // Backend is likely on 8000. Frontend on 5173/8080.
 // Ideally, use a relative path /api and configured proxy.
 // Ideally, use a relative path /api and configured proxy.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8005';
+import { config } from "../config";
+const API_URL = config.API_URL;
 
 import { User } from "../lib/types";
 

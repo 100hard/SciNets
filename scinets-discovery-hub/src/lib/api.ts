@@ -1,6 +1,7 @@
 import type { RunRequest, ExperimentRequest, SSEEvent, ActivityEvent, DiscoveryResult, QuotaInfo } from './types';
+import { config } from "../config";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = config.API_URL;
 
 export type SSECallback = {
     onActivity?: (activity: ActivityEvent) => void;
