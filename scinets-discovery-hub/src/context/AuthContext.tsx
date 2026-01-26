@@ -14,6 +14,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     login: (email: string) => Promise<void>;
+    loginGoogle: (credential: string) => Promise<void>;
     verify: (token: string) => Promise<void>;
     logout: () => Promise<void>;
 }
@@ -60,6 +61,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const loginGoogle = async (credential: string) => {
+        const res = await fetch(`${API_URL}/api/auth/google`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ credential }),
+            credentials: "include"
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error("[Auth] Google Login failed:", res.status, errText);
+            throw new Error(`Google Login failed: ${errText}`);
+        }
+
+        const data = await res.json();
+        setUser({ id: data.id || "google-user", email: data.email });
+        navigate("/discovery");
+    };
+
     const verify = async (token: string) => {
         const res = await fetch(`${API_URL}/api/auth/verify-link`, {
             method: "POST",
@@ -80,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, verify, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, loginGoogle, verify, logout }}>
             {children}
         </AuthContext.Provider>
     );

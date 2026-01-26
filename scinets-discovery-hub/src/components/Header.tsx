@@ -41,7 +41,7 @@ export const Header = () => {
         className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border/50"
       >
         <div className="w-full px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between relative">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2" onClick={handleHomeClick}>
               <div className="w-2 h-2 rounded-full bg-foreground" />
@@ -51,7 +51,7 @@ export const Header = () => {
             </Link>
 
             {/* Navigation */}
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
               <Link
                 to="/"
                 onClick={handleHomeClick}
@@ -90,7 +90,7 @@ export const Header = () => {
 
             {/* CTA */}
             {user ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 ml-auto">
                 <span className="text-xs text-foreground-muted hidden sm:inline-block">
                   {user.email}
                 </span>
@@ -111,7 +111,8 @@ export const Header = () => {
                 className={cn(
                   "px-3 py-1.5 rounded text-sm",
                   "bg-foreground text-background",
-                  "hover:bg-foreground/90 transition-colors"
+                  "hover:bg-foreground/90 transition-colors",
+                  "ml-auto"
                 )}
               >
                 Login

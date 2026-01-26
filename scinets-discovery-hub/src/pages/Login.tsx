@@ -2,20 +2,16 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { NetworkBackground } from "@/components/NetworkBackground";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [isSent, setIsSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, verify } = useAuth();
+  const { loginGoogle, verify } = useAuth();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const token = searchParams.get("token"); // Keep token logic just in case verify link is clicked later?
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,24 +27,25 @@ const Login = () => {
       toast.success("Successfully logged in");
     } catch (e) {
       toast.error("Invalid or expired login link");
-      navigate("/login"); // Clear param
+      navigate("/login");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    if (!credentialResponse.credential) {
+      toast.error("Google login failed: No credential");
+      return;
+    }
 
     setIsLoading(true);
     try {
-      await login(email);
-      setIsSent(true);
-      toast.success("Magic link sent to your email");
+      await loginGoogle(credentialResponse.credential);
+      toast.success("Logged in with Google");
     } catch (e) {
-      console.error("[Login] Submit error:", e);
-      toast.error("Failed to send magic link");
+      console.error("[Login] Google error:", e);
+      toast.error("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -76,68 +73,32 @@ const Login = () => {
           className="w-full max-w-sm"
         >
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 mb-8">
+          <Link to="/" className="flex items-center gap-2 mb-8 justify-center">
             <div className="w-2 h-2 rounded-full bg-foreground" />
             <span className="text-sm font-medium tracking-tight text-foreground">
               SciNets
             </span>
           </Link>
 
-          {!isSent ? (
-            <>
-              <h1 className="text-xl font-medium text-foreground mb-2">
-                Research Preview Login
-              </h1>
-              <p className="text-sm text-foreground-muted mb-8">
-                Login is required due to limited compute resources.
-              </p>
+          <h1 className="text-xl font-medium text-foreground mb-2 text-center">
+            SciNets Research Access
+          </h1>
+          <p className="text-sm text-foreground-muted mb-8 text-center">
+            Sign in with Google to continue
+          </p>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm text-foreground-muted">
-                    Email address
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-background border-border/50 focus:border-foreground/50"
-                    placeholder="researcher@university.edu"
-                    disabled={isLoading}
-                    autoFocus
-                  />
-                </div>
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => toast.error("Google Login Failed")}
+              theme="filled_black"
+              shape="pill"
+            />
+          </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-foreground text-background hover:bg-foreground/90"
-                  disabled={isLoading}
-                >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Send Magic Link
-                </Button>
-              </form>
-            </>
-          ) : (
-            <div className="text-center space-y-4">
-              <div className="p-4 bg-muted/50 rounded-lg border border-border/50">
-                <p className="text-sm text-foreground">
-                  We've sent a secure login link to <br />
-                  <span className="font-medium">{email}</span>
-                </p>
-              </div>
-              <p className="text-sm text-foreground-muted">
-                Click the link in the email to sign in. <br />
-                The link expires in 15 minutes.
-              </p>
-              <Button
-                variant="link"
-                onClick={() => setIsSent(false)}
-                className="text-foreground-muted hover:text-foreground"
-              >
-                Use a different email
-              </Button>
+          {isLoading && (
+            <div className="mt-4 flex justify-center text-sm text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
             </div>
           )}
 

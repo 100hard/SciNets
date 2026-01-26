@@ -98,6 +98,9 @@ log.info("scinets_startup", version="2.0", log_level=log_level, json_mode=json_l
 # Initialize Global Graph
 app_graph = None
 
+from app.api.auth_google import router as google_auth_router
+app.include_router(google_auth_router)
+
 @app.on_event("startup")
 async def startup_event():
     global app_graph
