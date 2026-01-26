@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { config } from "../../config";
+import { config as appConfig } from "../../config";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown, ChevronUp, CheckCircle, AlertCircle,
@@ -121,7 +121,7 @@ export const HypothesisCard = ({
     setExperimentCritique(null);
 
     try {
-      const API_BASE = config.API_URL;
+      const API_BASE = appConfig.API_URL;
       const activeThreadId = threadId || `local-${Date.now()}`;
       const response = await fetch(`${API_BASE}/run_experiment`, {
         method: 'POST',
