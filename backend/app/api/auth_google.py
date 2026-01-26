@@ -116,3 +116,27 @@ async def google_login(request: Request, response: Response, db: Session = Depen
         # Generic error
         logger.error(f"[Auth] Google Login System Error: {e}")
         return JSONResponse(status_code=400, content={"error": str(e)})
+
+@router.post("/logout")
+async def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    """
+    Terminates the server-side session and clears cookie.
+    """
+    try:
+        session_id = request.cookies.get("session_id")
+        if session_id:
+            # Delete from DB
+            db.query(DbSession).filter(DbSession.id == session_id).delete()
+            db.commit()
+            logger.info(f"[Auth] Session terminated: {session_id}")
+    except Exception as e:
+        logger.error(f"[Auth] Logout DB error: {e}")
+
+    # Always clear cookie
+    response.delete_cookie(
+        key="session_id", 
+        httponly=True, 
+        samesite="none", 
+        secure=True
+    )
+    return {"message": "Logged out"}

@@ -37,6 +37,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (res.ok) {
                 const data = await res.json();
                 setUser(data);
+            } else if (res.status === 401) {
+                // FIXED: Strict Auth Reset on 401
+                console.warn("[Auth] Session invalid (401). Resetting state.");
+                localStorage.removeItem("scinets_discovery_state_v3_clean"); // Wipe old thread state
+                localStorage.removeItem("thread_id"); // Just in case
+                setUser(null);
+                // navigate("/login"); // Optional here, usually UI redirects if user is null
             } else {
                 setUser(null);
             }
@@ -95,9 +102,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        await fetch(`${API_URL}/api/auth/logout`, { method: "POST", credentials: "include" });
+        try {
+            await fetch(`${API_URL}/api/auth/logout`, { method: "POST", credentials: "include" });
+        } catch (e) {
+            console.error("Logout API failed", e);
+        }
+
+        // Clear Local State
+        localStorage.removeItem("scinets_discovery_state_v3_clean");
+        localStorage.removeItem("thread_id");
+        localStorage.clear(); // Nuclear option requested by User
+        sessionStorage.clear();
+
         setUser(null);
         navigate("/login");
+        window.location.reload(); // Force full reset
     };
 
     return (
