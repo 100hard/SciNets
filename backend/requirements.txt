@@ -30,3 +30,4 @@ sendgrid
 
 weasyprint
 requests
+google-auth

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Response, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import os
-import requests
 import uuid
 import datetime
 from sqlalchemy.orm import Session
@@ -9,6 +9,10 @@ from app.database import get_db
 from app.models import User, Session as DbSession
 from app.config import config
 import logging
+
+# Google Auth Libraries
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 # Setup Logger
 logger = logging.getLogger("scinets")
@@ -19,86 +23,83 @@ class GoogleTokenRequest(BaseModel):
     credential: str
 
 @router.post("/google")
-def google_login(data: GoogleTokenRequest, response: Response, request: Request, db: Session = Depends(get_db)):
+async def google_login(data: GoogleTokenRequest, response: Response, request: Request, db: Session = Depends(get_db)):
     google_client_id = os.getenv("GOOGLE_CLIENT_ID")
 
     if not google_client_id:
-        raise HTTPException(status_code=500, detail="Google Client ID not configured")
+        logger.error("[Auth] GOOGLE_CLIENT_ID not set")
+        return JSONResponse(status_code=500, content={"error": "Server configuration error"})
 
-    # Verify token with Google
     try:
-        resp = requests.get(
-            "https://oauth2.googleapis.com/tokeninfo",
-            params={"id_token": data.credential},
-            timeout=10
+        # Verify token with Google Library
+        # This checks signature, expiration, and audience
+        idinfo = id_token.verify_oauth2_token(
+            data.credential,
+            google_requests.Request(),
+            google_client_id
         )
-    except Exception as e:
-        logger.error(f"[Auth] Google verification error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to reach Google Auth")
 
-    if resp.status_code != 200:
-        logger.warning(f"[Auth] Invalid Google Token: {resp.text}")
-        raise HTTPException(status_code=401, detail="Invalid Google token")
-
-    payload = resp.json()
-
-    # Validate Audience
-    if payload["aud"] != google_client_id:
-        logger.warning(f"[Auth] Audience mismatch. Expected {google_client_id}, got {payload['aud']}")
-        raise HTTPException(status_code=401, detail="Token audience mismatch")
-
-    email = payload["email"]
-    name = payload.get("name")
-    
-    logger.info(f"[Auth] Google Login Verified: {email}")
-
-    # Upsert User
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        logger.info(f"[Auth] Creating new user via Google: {email}")
-        user = User(email=email)
-        # Use random quota/defaults
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-    # Create Session
-    session_id = str(uuid.uuid4())
-    expires = datetime.datetime.utcnow() + datetime.timedelta(days=7) # 7 Day Session
-    
-    # Capture IP Prefix (/24)
-    client_ip = request.client.host
-    ip_parts = client_ip.split('.')
-    if len(ip_parts) == 4:
-        ip_prefix = ".".join(ip_parts[:3]) # 192.168.1
-    else:
-        ip_prefix = client_ip 
+        email = idinfo["email"]
+        name = idinfo.get("name")
         
-    user_agent = request.headers.get("User-Agent", "Unknown")
-    
-    db_session = DbSession(
-        id=session_id,
-        user_id=user.id,
-        expires_at=expires,
-        ip_prefix=ip_prefix,
-        user_agent=user_agent
-    )
-    db.add(db_session)
-    db.commit()
+        logger.info(f"[Auth] Google Login Verified: {email}")
 
-    # Set Session Cookie
-    response.set_cookie(
-        key="session_id", 
-        value=session_id, 
-        httponly=True, 
-        max_age=7*24*60*60, 
-        samesite="lax",
-        secure=not config.DEMO_MODE # Secure in Prod
-    )
+        # Upsert User
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            logger.info(f"[Auth] Creating new user via Google: {email}")
+            user = User(email=email)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
 
-    return {
-        "email": email,
-        "name": name,
-        "id": user.id,
-        "message": "Login successful"
-    }
+        # Create Session
+        session_id = str(uuid.uuid4())
+        expires = datetime.datetime.utcnow() + datetime.timedelta(days=7) # 7 Day Session
+        
+        # Capture IP Prefix (/24)
+        client_ip = request.client.host
+        ip_parts = client_ip.split('.')
+        if len(ip_parts) == 4:
+            ip_prefix = ".".join(ip_parts[:3]) 
+        else:
+            ip_prefix = client_ip 
+            
+        user_agent = request.headers.get("User-Agent", "Unknown")
+        
+        db_session = DbSession(
+            id=session_id,
+            user_id=user.id,
+            expires_at=expires,
+            ip_prefix=ip_prefix,
+            user_agent=user_agent
+        )
+        db.add(db_session)
+        db.commit()
+
+        # Set Session Cookie
+        response.set_cookie(
+            key="session_id", 
+            value=session_id, 
+            httponly=True, 
+            max_age=7*24*60*60, 
+            samesite="lax",
+            secure=not config.DEMO_MODE 
+        )
+
+        return {
+            "email": email,
+            "name": name,
+            "id": user.id,
+            "message": "Login successful"
+        }
+
+    except ValueError as e:
+        # Invalid token
+        logger.error(f"[Auth] Google Token Verification Failed: {e}")
+        return JSONResponse(status_code=401, content={"error": "Invalid Google Token", "details": str(e)})
+
+    except Exception as e:
+        # Generic error
+        logger.error(f"[Auth] Google Login System Error: {e}")
+        return JSONResponse(status_code=400, content={"error": str(e)})
