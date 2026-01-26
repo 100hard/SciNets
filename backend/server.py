@@ -6,6 +6,7 @@ from pydantic import BaseModel, field_validator
 import uuid
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
+load_dotenv()
 from fastapi.responses import StreamingResponse
 import json
 import asyncio
@@ -80,7 +81,8 @@ class EmailRequest(BaseModel):
 class VerifyRequest(BaseModel):
     token: str
 
-load_dotenv()
+# Active runs per user
+# ... (Removed load_dotenv from here)
 
 # Setup logging (JSON in production, colored in dev)
 log_level = os.getenv("LOG_LEVEL", "INFO")

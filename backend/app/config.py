@@ -44,6 +44,9 @@ class AgentConfig(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_EMAIL: str = "" # Set via SCINETS_SMTP_EMAIL
     SMTP_PASSWORD: str = "" # Set via SCINETS_SMTP_PASSWORD
+    
+    # SendGrid
+    SENDGRID_API_KEY: str = "" # Set via SCINETS_SENDGRID_API_KEY
 
     # Timeouts
     EXPLORER_TIMEOUT_SECONDS: int = 60
