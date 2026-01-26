@@ -9,7 +9,7 @@ from app.config import config
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type(httpx.HTTPError)
+    retry=retry_if_exception_type(httpx.ReadTimeout)
 )
 async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
@@ -52,12 +52,25 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
 
     # if config.DEMO_MODE: ... (Removed to allow real search)
 
-    params = {
-        "search": query,
-        "filter": "has_abstract:true",
-        "per-page": limit,
-        "sort": "relevance_score:desc"
-    }
+    # PATCH A: Switch to structured filter search for long queries
+    # OpenAlex full-text search is fragile for complex boolean logic.
+    use_structured = len(query) > 120 or "AND" in query or " " in query
+
+    if use_structured:
+        # Use safer 'filter' based search for boolean/complex queries
+        params = {
+            "filter": f"title.search:{query},abstract.search:{query},has_abstract:true",
+            "per-page": limit,
+            "sort": "relevance_score:desc"
+        }
+    else:
+        # Use standard search for simple queries
+        params = {
+            "search": query,
+            "filter": "has_abstract:true",
+            "per-page": limit,
+            "sort": "relevance_score:desc"
+        }
     
     headers = {
         "User-Agent": "SciNets/2.0 (mailto:scinets.auth@gmail.com)"
@@ -67,24 +80,72 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         try:
             response = await client.get(OPENALEX_API_URL, params=params, headers=headers)
             response.raise_for_status()
-            data = response.json()
-            
-            results = []
-            for item in data.get("results", []):
-                paper = {
+        except httpx.HTTPStatusError as e:
+            # PATCH B: Do NOT retry on 503 (Service Unavailable)
+            if e.response.status_code == 503:
+                print("[OpenAlex] Upstream overloaded (503). Skipping retries.")
+                # Proceed to fallback below
+            else:
+                # For other errors (like 429), maybe retry or fall through
+                print(f"[OpenAlex] HTTP Error {e.response.status_code}: {e}")
+                
+        except httpx.HTTPError as e:
+             print(f"[OpenAlex] Primary query failed: {e}")
+        # Proceed to fallback / result processing
+        else:
+             # Success block
+             data = response.json()
+             results = []
+             for item in data.get("results", []):
+                results.append({
                     "id": item.get("id"),
                     "title": item.get("title"),
                     "publication_year": item.get("publication_year"),
-                    "abstract": reconstruct_abstract(item.get("abstract_inverted_index")), # FIX: Reconstruct text
+                    "abstract": reconstruct_abstract(item.get("abstract_inverted_index")), 
                     "host_venue": (item.get("host_venue") or {}).get("display_name"),
                     "cited_by_count": item.get("cited_by_count"),
                     "landing_page_url": item.get("landing_page_url")
-                }
-                results.append(paper)
-            return results
-        except httpx.HTTPError as e:
-            print(f"Error fetching from OpenAlex (Query: {query[:20]}...): {e}")
-            raise  # Re-raise to trigger retry
+                })
+             return results
+
+        # PATCH C: Graceful Fallback
+        # If we reached here, primary request failed or was 503.
+        print("[OpenAlex] Attempting Graceful Fallback with ultra-simple keywords...")
+        
+        # Ultra-simple fallback: top 3 keywords only
+        clean_terms = query.replace("AND", "").replace("OR", "").split()
+        simple_terms = [t for t in clean_terms if len(t) > 3][:3]
+        fallback_query = " ".join(simple_terms)
+
+        print(f"[OpenAlex] Fallback Query: {fallback_query}")
+
+        fallback_params = {
+            "search": fallback_query,
+            "filter": "has_abstract:true",
+            "per-page": limit,
+        }
+        
+        try:
+            response = await client.get(OPENALEX_API_URL, params=fallback_params, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                results = []
+                for item in data.get("results", []):
+                    results.append({
+                        "id": item.get("id"),
+                        "title": item.get("title"),
+                        "publication_year": item.get("publication_year"),
+                        "abstract": reconstruct_abstract(item.get("abstract_inverted_index")),
+                        "host_venue": (item.get("host_venue") or {}).get("display_name"),
+                        "cited_by_count": item.get("cited_by_count"),
+                        "landing_page_url": item.get("landing_page_url")
+                    })
+                return results
+        except Exception as e:
+            print(f"[OpenAlex] Fallback also failed: {e}")
+            
+        # If everything fails, return empty list (don't crash the agent)
+        return []
 
 def reconstruct_abstract(inverted_index: Dict[str, List[int]]) -> str:
     """
