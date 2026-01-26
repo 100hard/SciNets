@@ -481,7 +481,7 @@ async def search_papers_endpoint(request: SearchRequest):
     """
     log.info("paper_search_request", query=request.query)
     try:
-        from app.tools.openalex import search_papers
+        from app.tools.search import search_papers
         from app.llm import get_cheap_llm
         from langchain_core.prompts import ChatPromptTemplate
         
@@ -506,13 +506,13 @@ async def search_papers_endpoint(request: SearchRequest):
         log.info("paper_search_refined", original=request.query, refined=refined_query)
 
         # Search OpenAlex with REFINED query
-        # Fetch extra to account for filtering (3x buffer)
+        # Fetch extra to account for filtering (6x buffer to find Crossref abstracts)
         try:
-             results = await search_papers(refined_query, limit=request.max_papers * 3)
+             results = await search_papers(refined_query, limit=request.max_papers * 6)
         except Exception as e:
              log.warning("paper_search_refined_failed", error=str(e))
              # Fallback to original
-             results = await search_papers(request.query, limit=request.max_papers * 3)
+             results = await search_papers(request.query, limit=request.max_papers * 6)
              
         log.info("paper_search_results", count=len(results), query=refined_query)
         
@@ -523,7 +523,7 @@ async def search_papers_endpoint(request: SearchRequest):
             keywords = [w for w in request.query.lower().split() if w not in stopwords]
             simple_query = " ".join(keywords)
             
-            results = await search_papers(simple_query, limit=request.max_papers * 3)
+            results = await search_papers(simple_query, limit=request.max_papers * 6)
             log.info("paper_search_fallback_results", count=len(results), simple_query=simple_query)
 
         papers = []
@@ -532,10 +532,18 @@ async def search_papers_endpoint(request: SearchRequest):
         
         for p in results:
             # Reconstruct abstract
-            inverted_index = p.get("abstract")
+            # Reconstruct abstract
+            raw_abstract = p.get("abstract")
             abstract_text = ""
-            if inverted_index and isinstance(inverted_index, dict):
+            
+            # CASE A: Already a String (Crossref / Semantic Scholar / Fallback)
+            if raw_abstract and isinstance(raw_abstract, str):
+                abstract_text = raw_abstract
+            
+            # CASE B: OpenAlex Inverted Index (Dict)
+            elif raw_abstract and isinstance(raw_abstract, dict):
                  try:
+                    inverted_index = raw_abstract
                     word_positions = []
                     for word, positions in inverted_index.items():
                         for pos in positions:
@@ -544,6 +552,10 @@ async def search_papers_endpoint(request: SearchRequest):
                     abstract_text = " ".join(w for _, w in word_positions)
                  except: 
                     abstract_text = "Error reconstructing abstract"
+            
+            else:
+                # No abstract or unknown format
+                abstract_text = ""
             
             if not abstract_text or abstract_text == "No abstract available.":
                 continue

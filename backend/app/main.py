@@ -230,7 +230,7 @@ async def search_papers(request: SearchPapersRequest):
     logger.info(f"[SearchPapers] Fetching papers for: {request.query}")
     
     try:
-        from app.tools.openalex import search_papers as openalex_search
+        from app.tools.search import search_papers as openalex_search
         
         # Use query directly - LLM refinement was causing 500 errors
         search_query = request.query

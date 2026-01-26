@@ -3,7 +3,7 @@ from app.state import DiscoveryState, Hypothesis, EvidenceItem
 from langchain_core.runnables import RunnableConfig
 from langchain_core.callbacks import adispatch_custom_event
 from app.llm import get_cheap_llm
-from app.tools.openalex import search_papers, reconstruct_abstract
+from app.tools.search import search_papers, reconstruct_abstract
 from pydantic import BaseModel, Field
 from typing import Literal
 import asyncio

@@ -1,5 +1,5 @@
 from app.state import DiscoveryState
-from app.tools.openalex import search_papers, reconstruct_abstract, get_paper_citations, get_paper_details
+from app.tools.search import search_papers, reconstruct_abstract, get_paper_citations, get_paper_details
 from app.llm import get_cheap_llm, get_llm
 from langchain_core.prompts import ChatPromptTemplate
 # DDGS import removed

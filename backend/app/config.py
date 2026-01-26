@@ -91,7 +91,12 @@ class AgentConfig(BaseSettings):
     # Period Quota (Public Demo) (Window: 48h)
     MAX_RUNS_PER_USER_PER_WEEK: int = 3
     MAX_TOKENS_PER_USER_PER_WEEK: int = 200000 
+    MAX_TOKENS_PER_USER_PER_WEEK: int = 200000 
     MAX_OPENALEX_CALLS_PER_USER_PER_DAY: int = 30
+    
+    # External Services
+    OPENALEX_API_KEY: str = "" # Set via SCINETS_OPENALEX_API_KEY
+    S2_API_KEY: str = "" # Set via SCINETS_S2_API_KEY
     
     # LLM settings
     DEFAULT_TEMPERATURE: float = 0.0

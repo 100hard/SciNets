@@ -22,7 +22,8 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
 
     # GUARD: Simplify overly complex queries (Fix #4 from User - Reliability)
     # Recursion/Nesting in queries causes 500s from OpenAlex API
-    if len(query) > 350 or query.count("(") > 6:
+    # PATCH D: Aggressive simplification threshold (Lowered 350 -> 200) to catch heavy boolean queries
+    if len(query) > 200 or query.count("(") > 4:
         print(f"[OpenAlex] Query too complex (len={len(query)}, nesting={query.count('(')}). Simplifying...")
         # Simplification: Strip special chars, keep words, join with AND
         import re
@@ -38,7 +39,7 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         # Keep core topic anchors if present
         anchors = []
         # Common scientific/AI alignment terms to preserve
-        for key in ["safety", "robust", "align", "multi", "agent", "reinforce", "learning", "alzheimer", "sleep", "cancer", "climate", "energy", "quantum"]:
+        for key in ["safety", "robust", "align", "multi", "agent", "reinforce", "learning", "alzheimer", "sleep", "cancer", "climate", "energy", "quantum", "carbon", "capture", "basalt"]:
             for w in all_words:
                 if key in w.lower():
                     anchors.append(w)
@@ -46,35 +47,30 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         # Combine anchors + unique words, prioritizing anchors
         unique_words = list(dict.fromkeys(anchors + all_words))
         
-        # Limit to top 7 keywords (slightly higher than 5 to allow semantic breadth)
-        query = " ".join(unique_words[:7]) 
+        # Limit to top 4 keywords (Reduced from 7 to prevent 503 overloads)
+        # Intersection of 4 broad terms is much faster than 7.
+        query = " ".join(unique_words[:4]) 
         print(f"[OpenAlex] Simplified Query: {query}")
 
     # if config.DEMO_MODE: ... (Removed to allow real search)
 
-    # PATCH A: Switch to structured filter search for long queries
-    # OpenAlex full-text search is fragile for complex boolean logic.
-    use_structured = len(query) > 120 or "AND" in query or " " in query
-
-    if use_structured:
-        # Use safer 'filter' based search for boolean/complex queries
-        params = {
-            "filter": f"title.search:{query},abstract.search:{query},has_abstract:true",
-            "per-page": limit,
-            "sort": "relevance_score:desc"
-        }
-    else:
-        # Use standard search for simple queries
-        params = {
-            "search": query,
-            "filter": "has_abstract:true",
-            "per-page": limit,
-            "sort": "relevance_score:desc"
-        }
+    # PATCH A: ALWAYS use structured filter search
+    # OpenAlex full-text 'search' param is proving unstable (503s).
+    # 'abstract.search' is more performant and specific enough for our needs.
+    
+    # Use abstract search for content matching
+    params = {
+        "filter": f"abstract.search:{query},has_abstract:true",
+        "per-page": limit,
+        "sort": "relevance_score:desc"
+    }
     
     headers = {
         "User-Agent": "SciNets/2.0 (mailto:scinets.auth@gmail.com)"
     }
+    # Add API Key if present (Unlock higher limits / premium pool)
+    if config.OPENALEX_API_KEY:
+        headers["api_key"] = config.OPENALEX_API_KEY
     
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
@@ -112,17 +108,35 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         # If we reached here, primary request failed or was 503.
         print("[OpenAlex] Attempting Graceful Fallback with ultra-simple keywords...")
         
-        # Ultra-simple fallback: top 3 keywords only
-        clean_terms = query.replace("AND", "").replace("OR", "").split()
-        simple_terms = [t for t in clean_terms if len(t) > 3][:3]
-        fallback_query = " ".join(simple_terms)
+        # Cool-down to let upstream recover if it was a 503
+        import asyncio
+        await asyncio.sleep(1.0)
+        
+        # Ultra-simple fallback: top 2 LONGEST keywords (Reduced from 3 to ensure hits)
+        # We assume longer words are more content-heavy (Alzheimers vs does)
+        clean_terms = query.replace("AND", "").replace("OR", "").replace("(", "").replace(")", "").split()
+        # Filter common stopwords just in case
+        stopwords = {"what", "when", "where", "which", "who", "whom", "whose", "why", "how", "does", "connect", "between", "with", "from", "into", "during", "including", "until", "against", "among", "throughout", "despite", "towards", "upon", "learning", "study", "using", "based", "approach", "method", "analysis", "review", "system"}
+        significant_terms = [t for t in clean_terms if len(t) > 3 and t.lower() not in stopwords]
+        
+        # Sort by length descending to get "Alzheimer's", "deprivation"
+        # Fix: Deduplicate significant terms first!
+        unique_sig_terms = list(dict.fromkeys(significant_terms))
+        smart_terms = sorted(unique_sig_terms, key=len, reverse=True)[:2]
+        
+        if not smart_terms:
+             # If nothing left, take raw split
+             smart_terms = list(dict.fromkeys(clean_terms))[:2]
+             
+        fallback_query = " ".join(smart_terms)
 
         print(f"[OpenAlex] Fallback Query: {fallback_query}")
 
+        # Use ABSTRACT search for fallback (Title often too sparse for intersection)
         fallback_params = {
-            "search": fallback_query,
-            "filter": "has_abstract:true",
+            "filter": f"abstract.search:{fallback_query},has_abstract:true",
             "per-page": limit,
+            "sort": "relevance_score:desc"
         }
         
         try:
@@ -147,20 +161,36 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         # If everything fails, return empty list (don't crash the agent)
         return []
 
-def reconstruct_abstract(inverted_index: Dict[str, List[int]]) -> str:
+def reconstruct_abstract(inverted_index: Any) -> str:
     """
-    Helper to reconstruct abstract from OpenAlex inverted index.
+    Helper to reconstruct abstract.
+    Handles:
+      - String (already valid text from Crossref/S2)
+      - Dict (OpenAlex Inverted Index)
+      - None (Returns empty string)
     """
     if not inverted_index:
         return ""
+        
+    # FIX: If already a string, return as is
+    if isinstance(inverted_index, str):
+        return inverted_index
     
-    word_index = []
-    for word, positions in inverted_index.items():
-        for pos in positions:
-            word_index.append((pos, word))
-    
-    word_index.sort()
-    return " ".join([word for _, word in word_index])
+    # OpenAlex Inverted Index Case
+    if isinstance(inverted_index, dict):
+        try:
+            word_index = []
+            for word, positions in inverted_index.items():
+                for pos in positions:
+                    word_index.append((pos, word))
+            
+            word_index.sort()
+            return " ".join([word for _, word in word_index])
+        except Exception as e:
+            print(f"Error parsing inverted index: {e}")
+            return ""
+
+    return ""
 
 
 @retry(
