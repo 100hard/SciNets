@@ -19,22 +19,34 @@ logger = logging.getLogger("scinets")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-class GoogleTokenRequest(BaseModel):
-    credential: str
-
 @router.post("/google")
-async def google_login(data: GoogleTokenRequest, response: Response, request: Request, db: Session = Depends(get_db)):
+async def google_login(request: Request, response: Response, db: Session = Depends(get_db)):
     google_client_id = os.getenv("GOOGLE_CLIENT_ID")
 
-    if not google_client_id:
-        logger.error("[Auth] GOOGLE_CLIENT_ID not set")
-        return JSONResponse(status_code=500, content={"error": "Server configuration error"})
+    logger.info("[Auth] Google login hit")
 
     try:
+        body = await request.json()
+        logger.info(f"[Auth] Raw body keys: {list(body.keys())}")
+        # logger.info(f"[Auth] Raw body: {body}") # Security risk, usually don't log full body in prod, but fine for debug
+
+        token = body.get("credential") or body.get("token")
+        
+        logger.info(f"[Auth] Token present: {bool(token)}")
+        logger.info(f"[Auth] Token length: {len(token) if token else 'NONE'}")
+        logger.info(f"[Auth] Expected client ID prefix: {google_client_id[:10] if google_client_id else 'NONE'}")
+
+        if not google_client_id:
+            logger.error("[Auth] GOOGLE_CLIENT_ID not set")
+            return JSONResponse(status_code=500, content={"error": "Server configuration error"})
+
+        if not token:
+             return JSONResponse(status_code=400, content={"error": "Missing credential/token in body"})
+
         # Verify token with Google Library
         # This checks signature, expiration, and audience
         idinfo = id_token.verify_oauth2_token(
-            data.credential,
+            token,
             google_requests.Request(),
             google_client_id
         )
