@@ -8,8 +8,12 @@ import { config } from "./config";
 
 const clientId = config.GOOGLE_CLIENT_ID;
 
+import { BrowserRouter } from "react-router-dom";
+
 createRoot(document.getElementById("root")!).render(
     <GoogleOAuthProvider clientId={clientId}>
-        <App />
+        <BrowserRouter>
+            <App />
+        </BrowserRouter>
     </GoogleOAuthProvider>
 );

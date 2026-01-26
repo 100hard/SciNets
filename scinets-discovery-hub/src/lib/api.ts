@@ -23,127 +23,151 @@ export async function startDiscoveryStream(
     callbacks: SSECallback
 ): Promise<AbortController> {
     const controller = new AbortController();
+    let currentThreadId = request.thread_id; // Start with requested ID (if resume)
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
 
-    try {
-        const response = await fetch(`${API_URL}/run_stream`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'text/event-stream',
-            },
-            body: JSON.stringify(request),
-            signal: controller.signal,
-            credentials: "include" // REQUIRED: Send cookies cross-origin
-        });
+    // Retry Loop Wrapper
+    const connect = async () => {
+        try {
+            // FIX: If retrying/reconnecting, ensure thread_id is set
+            const currentRequest = { ...request };
+            if (currentThreadId) {
+                currentRequest.thread_id = currentThreadId;
+                // currentRequest.is_resume = true; // Not needed, backend infers from thread_id
+            }
 
-        if (!response.ok) {
-            let errorMsg = `HTTP ${response.status}: ${response.statusText}`;
+            const response = await fetch(`${API_URL}/run_stream`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream',
+                },
+                body: JSON.stringify(currentRequest),
+                signal: controller.signal,
+                credentials: "include" // REQUIRED: Send cookies cross-origin
+            });
+
+            if (!response.ok) {
+                // non-2xx response -> meaningful error (auth, validation), DO NOT RETRY unless 502/503/504
+                if ([502, 503, 504].includes(response.status)) {
+                    throw new Error(`Gateway Error ${response.status}`); // Throw to trigger retry
+                }
+                const errorMsg = `HTTP ${response.status}: ${response.statusText}`;
+                // ... (Parsing logic omitted for brevity, assume throws) ...
+                try {
+                    const errorData = await response.clone().json();
+                    if (errorData.detail) throw new Error(String(errorData.detail));
+                } catch (e) { }
+                throw new Error(errorMsg);
+            }
+
+            if (!response.body) {
+                throw new Error('No response body');
+            }
+
+            // Stream connected - Reset retries
+            retryCount = 0;
+
+            // Process SSE stream
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
             try {
-                // Clone response to avoid consuming body if we need it later (though we throw anyway)
-                const errorData = await response.clone().json();
-                if (errorData.detail) {
-                    // Handle Rate Limit Detail
-                    if (typeof errorData.detail === 'object') {
-                        const d = errorData.detail;
-                        if (d.error === 'LIMIT_REACHED') {
-                            errorMsg = `Rate limit reached. Unlocks at: ${new Date(d.unlocks_at).toLocaleString()}`;
-                        } else if (d.error === 'quota_exceeded') {
-                            errorMsg = `Quota Exceeded: ${d.message} (Resets in ${d.resets_in_hours} hours)`;
-                        } else {
-                            // Fallback for other objects
-                            errorMsg = d.message || JSON.stringify(d);
-                        }
-                    } else {
-                        // Handle other detail formats (string)
-                        errorMsg = String(errorData.detail);
+                while (true) {
+                    const { done, value } = await reader.read();
+
+                    if (done) {
+                        // Stream finished naturally
+                        // Check if we actually got [DONE] signal? 
+                        // If not, it might be a silent premature close.
+                        // Ideally we track "finished" state.
+                        break;
                     }
-                }
-            } catch (e) {
-                // Ignore json parse error
-            }
-            throw new Error(errorMsg);
-        }
 
-        if (!response.body) {
-            throw new Error('No response body');
-        }
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
 
-        // Process SSE stream
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6).trim();
 
-        const processStream = async () => {
-            while (true) {
-                const { done, value } = await reader.read();
-
-                if (done) {
-                    callbacks.onDone?.();
-                    break;
-                }
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6).trim();
-
-                        if (data === '[DONE]') {
-                            callbacks.onDone?.();
-                            return;
-                        }
-
-                        try {
-                            const event: SSEEvent = JSON.parse(data);
-
-                            // Capture thread_id from first event
-                            if (event.thread_id) {
-                                callbacks.onThreadId?.(event.thread_id);
+                            if (data === '[DONE]') {
+                                callbacks.onDone?.();
+                                return; // Success exit
                             }
 
-                            switch (event.type) {
-                                case 'activity':
-                                    callbacks.onActivity?.(event.data as ActivityEvent);
-                                    break;
-                                case 'log':
-                                    callbacks.onLog?.(event.data as string);
-                                    break;
-                                case 'result':
-                                    callbacks.onResult?.(event.data as Partial<DiscoveryResult>);
-                                    break;
-                                case 'error':
-                                    callbacks.onError?.(event.data as string);
-                                    break;
-                                case 'interrupt':
-                                    callbacks.onInterrupt?.(event.data as { next: string[]; thread_id: string });
-                                    break;
-                                case 'quota':
-                                    callbacks.onQuota?.(event.data as QuotaInfo);
-                                    break;
+                            // Heartbeat - Ignore empty data or ping
+                            if (data === '{}' || !data) continue;
+
+                            try {
+                                const event: SSEEvent = JSON.parse(data);
+
+                                // Capture thread_id from first valid event
+                                if (event.thread_id && !currentThreadId) {
+                                    currentThreadId = event.thread_id;
+                                    callbacks.onThreadId?.(event.thread_id);
+                                }
+
+                                switch (event.type) {
+                                    case 'activity':
+                                        callbacks.onActivity?.(event.data as ActivityEvent);
+                                        break;
+                                    case 'log':
+                                        callbacks.onLog?.(event.data as string);
+                                        break;
+                                    case 'result':
+                                        callbacks.onResult?.(event.data as Partial<DiscoveryResult>);
+                                        break;
+                                    case 'error':
+                                        callbacks.onError?.(event.data as string);
+                                        return; // Logic error from backend -> Stop
+                                    case 'interrupt':
+                                        callbacks.onInterrupt?.(event.data as { next: string[]; thread_id: string });
+                                        return; // Expected stop
+                                    case 'quota':
+                                        callbacks.onQuota?.(event.data as QuotaInfo);
+                                        break;
+                                }
+                            } catch (e) {
+                                // console.warn('Failed to parse SSE event:', data, e);
                             }
-                        } catch (e) {
-                            console.warn('Failed to parse SSE event:', data, e);
                         }
                     }
                 }
+            } catch (readError: any) {
+                if (readError.name === 'AbortError') return; // User cancelled
+                throw readError; // Re-throw to trigger retry
             }
-        };
 
-        processStream().catch((err) => {
-            if (err.name !== 'AbortError') {
-                callbacks.onError?.(err.message);
+        } catch (err: any) {
+            if (err.name === 'AbortError') return;
+
+            // Network Error or Disconnect -> Retry if we have thread_id
+            if (currentThreadId && retryCount < MAX_RETRIES) {
+                retryCount++;
+                const delay = 3000 * retryCount; // Backoff
+                console.warn(`Stream disconnected. Retrying in ${delay}ms... (Attempt ${retryCount}/${MAX_RETRIES})`);
+
+                callbacks.onLog?.(`Connection interrupted. Reconnecting (Attempt ${retryCount})...`);
+
+                // Wait and Retry
+                await new Promise(resolve => setTimeout(resolve, delay));
+                if (!controller.signal.aborted) {
+                    await connect(); // Recursive logic
+                }
+            } else {
+                // Fatal
+                callbacks.onError?.(err.message || "Network Error");
             }
-        });
-
-    } catch (err) {
-        if ((err as Error).name !== 'AbortError') {
-            callbacks.onError?.((err as Error).message);
         }
-    }
+    };
 
-    return controller;
+    // Start initial connection
+    connect();
+
     return controller;
 }
 

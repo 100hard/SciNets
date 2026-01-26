@@ -383,7 +383,14 @@ async def run_experiment_stream(request: ExperimentRequest):
             # Stream events (start fresh from input state)
             # FIX: We must pass 'initial_state' as input to trigger execution, 
             # as 'update_state' + 'None' input on a fresh MemorySaver graph does not trigger the entry point.
+            last_ping = time.time()
             async for event in graph.astream_events(initial_state, config=config, version="v1"):
+                # HEARTBEAT (Priority 1: Keepalive)
+                if time.time() - last_ping > 15.0:
+                    yield "event: ping\ndata: {}\n\n"
+                    last_ping = time.time()
+                    await asyncio.sleep(0)
+
                 kind = event["event"]
                 name = event.get("name", "")
                 data = event.get("data", {})
@@ -842,7 +849,14 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
                 start_times = {} 
                 
                 # Stream events
+                last_ping = time.time()
                 async for event in graph.astream_events(initial_state, config=config, version="v2"):
+                    # HEARTBEAT (Priority 1: Keepalive for Render/Vercel)
+                    if time.time() - last_ping > 15.0:
+                        yield "event: ping\ndata: {}\n\n"
+                        last_ping = time.time()
+                        await asyncio.sleep(0)
+
                     kind = event["event"]
                     name = event.get("name", "")
                     
