@@ -53,7 +53,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             body: JSON.stringify({ email }),
             credentials: "include"
         });
-        if (!res.ok) throw new Error("Login failed");
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error("[Auth] Login request failed:", res.status, errText);
+            throw new Error(`Login failed: ${res.status} ${errText}`);
+        }
     };
 
     const verify = async (token: string) => {

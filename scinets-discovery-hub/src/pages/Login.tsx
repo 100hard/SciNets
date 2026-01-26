@@ -47,6 +47,7 @@ const Login = () => {
       setIsSent(true);
       toast.success("Magic link sent to your email");
     } catch (e) {
+      console.error("[Login] Submit error:", e);
       toast.error("Failed to send magic link");
     } finally {
       setIsLoading(false);

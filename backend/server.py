@@ -127,40 +127,50 @@ app.add_middleware(
 @app.post("/api/auth/request-link")
 async def request_magic_link(req: EmailRequest, request: Request, db: Session = Depends(get_db)):
     """Generates a magic link, stores hash, and sends via SMTP."""
-    # Rate Limit Check (stricter for auth)
-    client_ip = request.client.host
-    if not app_config.DEMO_MODE and not rate_limiter.check(client_ip, limit=5, window=3600):
-        # Silent failure on rate limit to prevent enumeration? Or minimal error?
-        # Let's just return success message to be safe.
-        time.sleep(1) # Fake delay
-        return {"message": "If that email exists, we sent a magic link."}
+    log.info("magic_link_request_received", email=req.email, ip=request.client.host)
+    try:
+        # Rate Limit Check (stricter for auth)
+        client_ip = request.client.host
+        if not app_config.DEMO_MODE and not rate_limiter.check(client_ip, limit=5, window=3600):
+            log.warning("magic_link_rate_limited", ip=client_ip)
+            # Silent failure on rate limit to prevent enumeration? Or minimal error?
+            # Let's just return success message to be safe.
+            time.sleep(1) # Fake delay
+            return {"message": "If that email exists, we sent a magic link."}
 
-    email = req.email.strip().lower()
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        # Silent Success: Don't reveal user existence
-        # But we still want to create users for new signups in this MVP?
-        # If open signup: Create user. If closed: Silent fail.
-        # Assuming OPEN signup for SciNets V2 demo.
-        user = User(email=email)
-        db.add(user)
+        email = req.email.strip().lower()
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            # Silent Success: Don't reveal user existence
+            # But we still want to create users for new signups in this MVP?
+            # If open signup: Create user. If closed: Silent fail.
+            # Assuming OPEN signup for SciNets V2 demo.
+            log.info("magic_link_creating_user", email=email)
+            user = User(email=email)
+            db.add(user)
+            db.commit()
+        
+        token = create_magic_link_token(email)
+        hashed = hash_token(token)
+        expires = datetime.datetime.utcnow() + datetime.timedelta(minutes=app_config.MAGIC_LINK_EXPIRE_MINUTES)
+        
+        db.query(MagicLink).filter(MagicLink.email == email).delete()
+        magic_link_record = MagicLink(token_hash=hashed, email=email, expires_at=expires)
+        db.add(magic_link_record)
         db.commit()
-    
-    token = create_magic_link_token(email)
-    hashed = hash_token(token)
-    expires = datetime.datetime.utcnow() + datetime.timedelta(minutes=app_config.MAGIC_LINK_EXPIRE_MINUTES)
-    
-    db.query(MagicLink).filter(MagicLink.email == email).delete()
-    magic_link_record = MagicLink(token_hash=hashed, email=email, expires_at=expires)
-    db.add(magic_link_record)
-    db.commit()
-    
-    base_url = app_config.FRONTEND_URL 
-    link = f"{base_url}/verify?token={token}"
-    send_magic_link_email(email, link)
-    
-    # Always return same message
-    return {"message": "If that email exists, we sent a magic link."}
+        
+        base_url = app_config.FRONTEND_URL 
+        link = f"{base_url}/verify?token={token}"
+        send_magic_link_email(email, link)
+        
+        log.info("magic_link_process_complete", email=email)
+        
+        # Always return same message
+        return {"message": "If that email exists, we sent a magic link."}
+    except Exception as e:
+        import traceback
+        log.error("magic_link_endpoint_error", error=str(e), traceback=traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/auth/verify-link")
 async def verify_magic_link(req: VerifyRequest, response: Response, request: Request, db: Session = Depends(get_db)):
