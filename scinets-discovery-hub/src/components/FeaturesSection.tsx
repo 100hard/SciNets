@@ -50,7 +50,7 @@ export const FeaturesSection = () => {
               <h3 className="text-sm font-medium text-foreground mb-1">
                 {feature.title}
               </h3>
-              <p className="text-sm text-foreground-muted leading-relaxed">
+              <p className="text-sm text-foreground-muted leading-relaxed text-justify">
                 {feature.description}
               </p>
             </motion.div>
