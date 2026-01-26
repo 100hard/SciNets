@@ -115,6 +115,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         app_config.FRONTEND_URL,
+        "https://scinets.in",
+        "https://www.scinets.in",
         "http://localhost:8080",
         "http://127.0.0.1:8080",
         "http://localhost:5173",
@@ -125,6 +127,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/api/debug/auth")
+async def debug_auth_config():
+    """Helper to verify Prod Env Vars are loaded correctly."""
+    idx = os.getenv("GOOGLE_CLIENT_ID", "")
+    return {
+        "frontend_url": app_config.FRONTEND_URL,
+        "google_client_id_prefix": idx[:15] + "..." if idx else "NOT_SET",
+        "cors_origins": [
+            "https://scinets.in", 
+            app_config.FRONTEND_URL
+        ]
+    }
 
 # Middleware: Per-IP Rate Limit
 @app.post("/api/auth/request-link")
