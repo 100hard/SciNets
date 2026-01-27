@@ -2,6 +2,7 @@
 
 import os
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 
 class AgentConfig(BaseSettings):
@@ -35,7 +36,21 @@ class AgentConfig(BaseSettings):
     # =============================================================================
     MAX_DISCOVERIES_PER_WINDOW: int = 2
     WINDOW_LENGTH_DAYS: int = 7
-    ADMIN_EMAILS: list[str] = [] # Set via env vars as json list or use default
+    ADMIN_EMAILS: list[str] = [] 
+
+    @field_validator("ADMIN_EMAILS", mode="before")
+    @classmethod
+    def parse_admin_emails(cls, v):
+        if isinstance(v, str):
+            if v.strip().startswith("["):
+                import json
+                try:
+                    return json.loads(v)
+                except:
+                    pass
+            # Assume comma separated
+            return [e.strip() for e in v.split(",") if e.strip()]
+        return v
 
     # =============================================================================
     # Email (SMTP)
