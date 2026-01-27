@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 import uuid
 from typing import List, Dict, Any, Optional
+from collections import defaultdict
 from dotenv import load_dotenv
 load_dotenv()
 from fastapi.responses import StreamingResponse
@@ -73,7 +74,9 @@ active_runs: Dict[str, str] = {} # user_id -> thread_id
 from pydantic import BaseModel, field_validator
 
 # Active runs per user
-active_runs: Dict[str, str] = {} # user_id -> thread_id
+# Concurrency Control
+user_locks = defaultdict(asyncio.Lock)
+# active_runs = {} # Deprecated in favor of Locks
 
 class EmailRequest(BaseModel):
     email: str
@@ -627,16 +630,29 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
     thread_id = request.thread_id or str(uuid.uuid4())
     if thread_id in active_threads:
         log.warning("concurrency_blocked", thread_id=thread_id)
-        raise HTTPException(status_code=409, detail="Pipeline already running for this thread. Please wait.")
+    # 1. AUTH & OWNERSHIP CHECK (Priority 1)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required for discovery.")
+
+    if request.thread_id:
+        # RESUME: Verify Ownership
+        existing_run = db.query(DiscoveryRun).filter(DiscoveryRun.id == request.thread_id).first()
+        if not existing_run:
+            raise HTTPException(status_code=404, detail="Discovery session not found.")
+        if existing_run.user_id != user_id:
+            log.warning("unauthorized_resume_attempt", user=user_id, target=request.thread_id)
+            raise HTTPException(status_code=403, detail="You are not authorized to resume this session.")
     
-    # Acquire Lock via User/Thread
-    lock_key = f"{user_id}:{thread_id}" if user_id else thread_id
-    if lock_key in active_runs.values():
-         log.warning("concurrency_blocked", user_id=user_id, thread_id=thread_id)
-         raise HTTPException(status_code=429, detail="You already have an active search running.")
+    # 2. CONCURRENCY LOCK (Priority 3)
+    if user_locks[user_id].locked():
+         log.warning("concurrency_blocked", user_id=user_id)
+         raise HTTPException(status_code=429, detail="You already have an active search running. Please wait.")
     
-    active_runs[user_id or thread_id] = lock_key
-    active_threads.add(thread_id)
+    # We don't acquire the lock here, we check it. 
+    # The lock is acquired inside the generator to hold it during the stream.
+    
+    # thread_id logic
+    thread_id = request.thread_id or str(uuid.uuid4())
 
     # QUOTA LOGIC
     if user_id:
@@ -798,13 +814,14 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
              )
 
     except Exception as e:
-        active_threads.discard(thread_id)
-        if user_id or thread_id in active_runs: del active_runs[user_id or thread_id]
+        # active_threads.discard(thread_id) # Managed by event loop now? No, need to be careful.
+        # Lock not acquired yet in Init phase.
         import traceback
         request_log.error("discovery_init_failed", error=str(e), traceback=traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Init failed: {e}")
 
     async def event_generator():
+      async with user_locks[user_id]: 
         # Register CostTracker
         cost_tracker = CostTracker()
         ct_token = CostTracker.register_context(cost_tracker)
@@ -1010,8 +1027,8 @@ async def run_discovery_stream(request: RunRequest, http_request: Request, db: S
             finally:
                 # RELEASE LOCK
                 active_threads.discard(thread_id)
-                if user_id or thread_id in active_runs: del active_runs[user_id or thread_id]
-                print(f"DEBUG: Released lock for {thread_id}")
+                # if user_id or thread_id in active_runs: del active_runs[user_id or thread_id] # Deprecated
+                print(f"DEBUG: Released active status for {thread_id}")
     
             # Check if we are interrupted or done
             try:
