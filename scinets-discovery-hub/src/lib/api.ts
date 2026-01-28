@@ -48,17 +48,25 @@ export async function startDiscoveryStream(
                 credentials: "include" // REQUIRED: Send cookies cross-origin
             });
 
+
+
+            // ✅ Concurrency lock — NOT an error
+            if (response.status === 409) {
+                callbacks.onLog?.("Already processing this discovery. Please wait…");
+                return;
+            }
+
             if (!response.ok) {
-                // non-2xx response -> meaningful error (auth, validation), DO NOT RETRY unless 502/503/504
                 if ([502, 503, 504].includes(response.status)) {
-                    throw new Error(`Gateway Error ${response.status}`); // Throw to trigger retry
+                    throw new Error(`Gateway Error ${response.status}`);
                 }
+
                 const errorMsg = `HTTP ${response.status}: ${response.statusText}`;
-                // ... (Parsing logic omitted for brevity, assume throws) ...
                 try {
                     const errorData = await response.clone().json();
                     if (errorData.detail) throw new Error(String(errorData.detail));
                 } catch (e) { }
+
                 throw new Error(errorMsg);
             }
 
