@@ -66,7 +66,7 @@ async def search_papers(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     }
     
     headers = {
-        "User-Agent": "SciNets/2.0 (mailto:scinets.auth@gmail.com)"
+        "User-Agent": f"SciNets/2.0 (mailto:{config.CONTACT_EMAIL})"
     }
     # Add API Key if present (Unlock higher limits / premium pool)
     if config.OPENALEX_API_KEY:

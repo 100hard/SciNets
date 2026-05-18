@@ -1,6 +1,0 @@
-query_id,method,symbolic_path_length,grounded_realized_path_length,drop_rate_pct,failure_flag,failure_mode,diversity_score,papers_per_edge
-ML-1,full,6.0,6,0.0,False,Hallucinated Bridge,0.19999999999999996,0.0
-ML-1,random,5.0,4,20.0,True,Hallucinated Bridge,0.19533365185539098,0.0
-ML-2,full,4.0,0,100.0,True,Collapse (Generic Summary),0.16405051339549148,0.0
-ML-2,random,5.0,5,0.0,False,Hallucinated Bridge,0.1855921855921856,0.0
-ML-2,shortest,3.0,3,0.0,False,Hallucinated Bridge,0.21987421383647798,0.0

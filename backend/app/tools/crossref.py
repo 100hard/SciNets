@@ -4,6 +4,8 @@ from typing import List, Dict, Any
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import re
 
+from app.config import config
+
 CROSSREF_API_URL = "https://api.crossref.org/works"
 
 @retry(
@@ -32,7 +34,7 @@ async def search_papers_crossref(query: str, limit: int = 10) -> List[Dict[str, 
 
     # POLITE POOL: Sending email puts us in the faster/reliable pool
     headers = {
-        "User-Agent": "SciNets/2.0 (mailto:scinets.auth@gmail.com)"
+        "User-Agent": f"SciNets/2.0 (mailto:{config.CONTACT_EMAIL})"
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
