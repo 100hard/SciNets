@@ -23,11 +23,13 @@ def generate_markdown_report(state: dict) -> str:
         key_risks = decision.get("key_risks", [])
         next_steps = decision.get("recommended_next_steps", [])
         primary_reason = decision.get("primary_hypothesis_reason", "")
+        layperson_summary = decision.get("layperson_summary", "")
     else:
         system_confidence = getattr(decision, "system_confidence", "Moderate")
         key_risks = getattr(decision, "key_risks", [])
         next_steps = getattr(decision, "recommended_next_steps", [])
         primary_reason = getattr(decision, "primary_hypothesis_reason", "")
+        layperson_summary = getattr(decision, "layperson_summary", "")
 
     md = []
     
@@ -52,6 +54,11 @@ def generate_markdown_report(state: dict) -> str:
     # =========================================================================
     # 2. EXECUTIVE SYNTHESIS
     # =========================================================================
+    if layperson_summary:
+        md.append(f"## TL;DR (The Short Version)")
+        md.append(f"> **{layperson_summary}**")
+        md.append("")
+
     if primary_reason:
         md.append(f"## Executive Synthesis")
         md.append(primary_reason)

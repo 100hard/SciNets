@@ -13,6 +13,7 @@ interface CandidatePaper {
   year: number;
   venue: string;
   rationale: string;
+  url?: string;
   selected: boolean;
   locked: boolean;
 }
@@ -215,7 +216,40 @@ export const PaperCurationStep = ({
 
               {/* Title & Rationale */}
               <div>
-                <p className="text-sm text-foreground mb-1">{paper.title}</p>
+                {(() => {
+                  let href = paper.url;
+
+                  const extractDoi = (value: string | undefined) => {
+                    if (!value) return null;
+                    const match = value.match(/10\.\d{4,9}\/[-._;()/:a-zA-Z0-9]+/);
+                    return match ? match[0] : null;
+                  };
+
+                  const foundDoi = extractDoi(paper.id) || extractDoi(paper.url);
+
+                  if (paper.id && paper.id.startsWith("https://openalex.org/")) {
+                    href = paper.id;
+                  } else if (paper.id && paper.id.match(/^W\d+$/i)) {
+                    href = `https://openalex.org/${paper.id}`;
+                  } else if (foundDoi) {
+                    href = `https://openalex.org/works?filter=doi%3A${encodeURIComponent("https://doi.org/" + foundDoi)}`;
+                  } else if (paper.id && paper.id.startsWith("http")) {
+                    href = paper.id;
+                  }
+
+                  return href ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-foreground mb-1 block hover:underline hover:text-blue-400 transition-colors"
+                    >
+                      {paper.title}
+                    </a>
+                  ) : (
+                    <p className="text-sm text-foreground mb-1">{paper.title}</p>
+                  );
+                })()}
                 <p className="text-xs text-foreground-muted">{paper.rationale}</p>
               </div>
 

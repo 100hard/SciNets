@@ -34,13 +34,14 @@ class PreviewHypothesis(BaseModel):
     feasibility_score: float = Field(ge=0.0, le=1.0)
     testability_score: float = Field(ge=0.0, le=1.0)
     domain_tags: List[str] = Field(description="1-2 domain tags")
+    key_terms: List[str] = Field(description="Identify technical terms or domain-specific concepts a layperson might need to look up on Wikipedia.")
 
 class PreviewHypothesisList(BaseModel):
     hypotheses: List[PreviewHypothesis]
 
 class GeneratedHypothesis(BaseModel):
     """Full structured hypothesis for Deep Mode."""
-    text: str = Field(description="The hypothesis statement")
+    text: str = Field(description="The hypothesis statement. Must be concise, clear, and easy to read (max 3 sentences). Avoid massive blocks of dense academic jargon.")
     domain_tags: List[str] = Field(description="Domain tags e.g. ['bio', 'ml']")
     novelty_score: float = Field(ge=0.0, le=1.0)
     feasibility_score: float = Field(ge=0.0, le=1.0)
@@ -50,6 +51,7 @@ class GeneratedHypothesis(BaseModel):
     mechanism_class: str = Field(description="Short label for the explanatory class (e.g. 'Immune-mediated', 'Metabolic')")
     rationale_gap: HypothesisRationale = Field(description="Structured explanation of the literature gap")
     constraints: List[Constraint] = Field(default=[], description="Constraints derived from literature")
+    key_terms: List[str] = Field(description="Identify technical terms or domain-specific concepts mentioned in the hypothesis text, rationale, and causal chain that a layperson might need to look up on Wikipedia.")
 
 class HypothesisList(BaseModel):
     hypotheses: List[GeneratedHypothesis]
@@ -228,7 +230,8 @@ async def generate_preview_hypotheses(state: DiscoveryState, config: RunnableCon
                 # New Fields
                 impact_hook=ch.impact_hook,
                 is_recommended=is_rec,
-                rank=i+1
+                rank=i+1,
+                key_terms=ch.key_terms
             )
             all_hyp_objects.append(hyp_obj)
         
@@ -403,7 +406,8 @@ async def generate_deep_hypotheses(state: DiscoveryState, config: RunnableConfig
                     # Ensure metadata is preserved or updated if needed
                     impact_hook=hyp.impact_hook,
                     is_recommended=hyp.is_recommended,
-                    rank=hyp.rank
+                    rank=hyp.rank,
+                    key_terms=deep_res.key_terms
                 )
                 updated_hypotheses.append(new_hyp)
                 

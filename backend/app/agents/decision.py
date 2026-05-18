@@ -21,6 +21,7 @@ class DecisionOutput(BaseModel):
     # 2. Decision Summary
     primary_hypothesis_index: int = Field(description="Index of the most actionable hypothesis (0-based)")
     primary_hypothesis_reason: str = Field(description="Why this is the primary choice (e.g. 'Hypothesis 1 is balanced...'). Refer to 'Hypothesis X', NOT 'HX' or 'H0'.")
+    layperson_summary: str = Field(description="A 2-3 sentence simple explanation of the discovery, completely devoid of academic jargon. Write this as if explaining to a smart college freshman.")
     evidence_level: Literal["Strong", "Moderate", "Weak", "Inconclusive"]
     key_risks: List[str] = Field(description="List of critical risks (upstream assumptions, lack of causality)")
     recommended_next_steps: List[str] = Field(description="Specific, actionable next steps (e.g., 'Prospective metabolomics')")
@@ -30,6 +31,7 @@ class DecisionOutput(BaseModel):
     near_term_focus_indices: List[int] = Field(description="Indices of hypotheses best for near-term testing")
     long_term_focus_indices: List[int] = Field(description="Indices of hypotheses best for long-term theory building")
     high_risk_high_reward_indices: List[int] = Field(description="Indices of speculative but high-impact hypotheses")
+    key_terms: List[str] = Field(description="Important technical terms, complex noun phrases, or domain-specific concepts in the summary that a layperson may want to look up.")
 
 from app.telemetry.cost_tracker import CostTracker
 
@@ -80,7 +82,8 @@ async def decision_node(state: DiscoveryState, config: RunnableConfig) -> dict:
     2. ROADMAP: For EACH hypothesis, list 2-3 specific items (experiments/data) that would most increase confidence.
     3. PRIORITIZE: Rank hypotheses for different use cases (Near-term, Long-term, High-risk).
     4. DECIDE: Select ONE primary actionable hypothesis and justify it.
-    5. RECOMMEND: Provide concrete next steps (experiments, assays, studies) for the overall project.
+    5. SIMPLIFY: Write a "Layperson Summary" of the entire finding. Use extremely simple English with minimal academic jargon.
+    6. RECOMMEND: Provide concrete next steps (experiments, assays, studies) for the overall project.
     
     GUIDELINES:
     - "Abstained" or "Neutral" evidence is valuable signal -> Treat as "Inconclusive".
@@ -131,13 +134,15 @@ async def decision_node(state: DiscoveryState, config: RunnableConfig) -> dict:
             decision_summary = DecisionSummary(
                 primary_hypothesis_id=state.hypotheses[output.primary_hypothesis_index].id if state.hypotheses and 0 <= output.primary_hypothesis_index < len(state.hypotheses) else (state.hypotheses[0].id if state.hypotheses else ""),
                 primary_hypothesis_reason=output.primary_hypothesis_reason,
+                layperson_summary=output.layperson_summary,
                 evidence_level=output.evidence_level,
                 key_risks=output.key_risks,
                 recommended_next_steps=output.recommended_next_steps,
                 system_confidence=output.system_confidence,
                 near_term_focus=map_indices(output.near_term_focus_indices),
                 long_term_focus=map_indices(output.long_term_focus_indices),
-                high_risk_high_reward=map_indices(output.high_risk_high_reward_indices)
+                high_risk_high_reward=map_indices(output.high_risk_high_reward_indices),
+                key_terms=output.key_terms
             )
             
             await adispatch_custom_event("log", {"message": f"[Decision Agent] Decision: Primary H{output.primary_hypothesis_index} - {output.evidence_level}"}, config=config)

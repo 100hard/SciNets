@@ -239,6 +239,7 @@ const Discovery = () => {
           title: p.title,
           year: p.year,
           venue: p.venue,
+          url: p.url || p.landing_page_url,
           rationale: p.abstract?.substring(0, 100) + '...' || p.rationale,
           selected: true,
           locked: false

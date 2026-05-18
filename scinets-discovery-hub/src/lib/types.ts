@@ -63,6 +63,7 @@ export interface Hypothesis {
 
     // Legacy support
     mechanisms?: string[];
+    key_terms?: string[];
 }
 
 export interface HypothesisStrengthProfile {
@@ -75,6 +76,7 @@ export interface HypothesisStrengthProfile {
 export interface DecisionSummary {
     primary_hypothesis_id: string;
     primary_hypothesis_reason: string;
+    layperson_summary?: string;
     evidence_level: 'Strong' | 'Moderate' | 'Weak' | 'Inconclusive';
     key_risks: string[];
     recommended_next_steps: string[];
@@ -84,6 +86,7 @@ export interface DecisionSummary {
     near_term_focus: string[];
     long_term_focus: string[];
     high_risk_high_reward: string[];
+    key_terms?: string[];
 }
 
 export interface ExperimentPlan {

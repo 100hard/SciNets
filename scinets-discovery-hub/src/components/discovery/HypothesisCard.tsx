@@ -13,6 +13,7 @@ import {
   ExperimentResult,
   LocalizedCritique
 } from "./ExperimentConfigModal";
+import { ConceptHighlighter } from "../ui/ConceptHighlighter";
 
 interface MechanismNode {
   id: string;
@@ -65,6 +66,7 @@ export interface Hypothesis {
     translational_relevance: 'High' | 'Medium' | 'Low';
   };
   confidence_roadmap?: string[];
+  key_terms?: string[];
 }
 
 interface HypothesisCardProps {
@@ -73,6 +75,7 @@ interface HypothesisCardProps {
   isExpanded: boolean;
   onToggle: () => void;
   threadId?: string | null;
+  concepts?: string[];
 }
 
 const statusConfig = {
@@ -100,6 +103,7 @@ export const HypothesisCard = ({
   isExpanded,
   onToggle,
   threadId,
+  concepts = [],
 }: HypothesisCardProps) => {
   const [showSynthesis, setShowSynthesis] = useState(false);
   const [showExperimentModal, setShowExperimentModal] = useState(false);
@@ -218,7 +222,7 @@ export const HypothesisCard = ({
               )}
             </div>
             <p className="text-sm text-foreground leading-relaxed">
-              {hypothesis.statement}
+              <ConceptHighlighter text={hypothesis.statement} concepts={concepts} />
             </p>
             <div className="flex items-center gap-4 mt-2 text-xs text-foreground-muted">
               <span className="flex items-center gap-1">
@@ -526,7 +530,7 @@ export const HypothesisCard = ({
                 <div>
                   <h4 className="text-xs font-medium text-foreground mb-2">Grounding Status</h4>
                   <p className="text-xs text-foreground-muted leading-relaxed">
-                    {hypothesis.groundingExplanation}
+                    <ConceptHighlighter text={hypothesis.groundingExplanation} concepts={concepts} />
                   </p>
                 </div>
 
@@ -571,7 +575,7 @@ export const HypothesisCard = ({
                       >
                         <div className="mt-3 p-3 border border-border rounded bg-foreground/5">
                           <p className="text-xs text-foreground-muted leading-relaxed italic">
-                            {hypothesis.synthesis}
+                            <ConceptHighlighter text={hypothesis.synthesis} concepts={concepts} />
                           </p>
                         </div>
                       </motion.div>
@@ -622,4 +626,3 @@ export const HypothesisCard = ({
     </>
   );
 };
-

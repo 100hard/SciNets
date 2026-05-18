@@ -88,6 +88,9 @@ class Hypothesis(BaseModel):
 
     # Critique Data (Refactor)
     critique: Optional[dict] = None
+    
+    # Highlighting
+    key_terms: List[str] = []
 
 
 class HypothesisStrengthProfile(BaseModel):
@@ -100,6 +103,7 @@ class HypothesisStrengthProfile(BaseModel):
 class DecisionSummary(BaseModel):
     primary_hypothesis_id: str
     primary_hypothesis_reason: str
+    layperson_summary: str = Field(default="", description="A 2-3 sentence simple explanation of the discovery, devoid of academic jargon.")
     evidence_level: Literal["Strong", "Moderate", "Weak", "Inconclusive"]
     key_risks: List[str]
     recommended_next_steps: List[str]
@@ -109,6 +113,9 @@ class DecisionSummary(BaseModel):
     near_term_focus: List[str]
     long_term_focus: List[str]
     high_risk_high_reward: List[str]
+    
+    # Highlighting
+    key_terms: List[str] = Field(default=[], description="Important technical terms mentioned in the summary for interactive linking.")
 
 
 class ExperimentPlan(BaseModel):

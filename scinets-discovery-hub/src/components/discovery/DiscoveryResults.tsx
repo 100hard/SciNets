@@ -86,6 +86,7 @@ function convertHypothesis(apiHypothesis: APIHypothesis, index: number): UIHypot
     mechanism_class: apiHypothesis.mechanism_class,
     strength_profile: apiHypothesis.strength_profile,
     confidence_roadmap: apiHypothesis.confidence_roadmap,
+    key_terms: apiHypothesis.key_terms,
   };
 }
 
@@ -146,6 +147,15 @@ export const DiscoveryResults = ({
     : nodes.filter(n => n.type === "entity" || n.type === "mechanism").length;
 
   const edgeCount = conceptGraph ? conceptGraph.edges.length : edges.length;
+
+  const concepts = Array.from(new Set([
+    ...(conceptGraph?.nodes.map(n => n.label) || []),
+    ...(nodes?.map(n => n.label) || []),
+    ...(apiHypotheses?.flatMap(h => h.domain_tags) || []),
+    ...(apiHypotheses?.flatMap(h => h.key_terms || []) || []),
+    ...(decision_summary?.key_terms || []),
+    ...query.split(/\s+/).filter(word => word.length > 3)
+  ])).filter(c => c && c.length > 2);
 
   // Use real backend count if available (fixes "0 Papers Analyzed" bug)
   const displayPaperCount = literatureCount > 0 ? literatureCount : curatedPapers.length;
@@ -215,6 +225,7 @@ export const DiscoveryResults = ({
                 isExpanded={expandedHypotheses.includes(hypothesis.id)}
                 onToggle={() => toggleHypothesis(hypothesis.id)}
                 threadId={threadId}
+                concepts={concepts}
               />
             </div>
           ))}
@@ -225,7 +236,7 @@ export const DiscoveryResults = ({
 
       {/* 4. Decision Summary - MOVED TO BOTTOM */}
       {decision_summary && (
-        <DecisionSummary summary={decision_summary} />
+        <DecisionSummary summary={decision_summary} concepts={concepts} />
       )}
 
 

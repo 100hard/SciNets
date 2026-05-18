@@ -7,12 +7,14 @@ import {
 } from "lucide-react";
 import { DecisionSummary as IDecisionSummary } from "@/lib/types";
 import { cn } from "../../lib/utils.ts";
+import { ConceptHighlighter } from "../ui/ConceptHighlighter";
 
 interface DecisionSummaryProps {
     summary: IDecisionSummary;
+    concepts?: string[];
 }
 
-export function DecisionSummary({ summary }: DecisionSummaryProps) {
+export function DecisionSummary({ summary, concepts = [] }: DecisionSummaryProps) {
     const [showPlanning, setShowPlanning] = useState(false);
 
     return (
@@ -21,13 +23,25 @@ export function DecisionSummary({ summary }: DecisionSummaryProps) {
             animate={{ opacity: 1, y: 0 }}
             className="bg-card/50 border border-border rounded-lg p-6 mb-8 backdrop-blur-sm relative overflow-hidden"
         >
+            {summary.layperson_summary && (
+                <div className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20">
+                    <h2 className="text-sm font-bold flex items-center gap-2 mb-2 text-primary">
+                        <CheckCircle2 className="w-4 h-4" />
+                        The Short Version (TL;DR)
+                    </h2>
+                    <p className="text-sm text-foreground/90 leading-relaxed font-medium">
+                        <ConceptHighlighter text={summary.layperson_summary} concepts={concepts} />
+                    </p>
+                </div>
+            )}
+
             {/* 1. Synthesis Paragraph */}
             <div className="mb-6">
                 <h2 className="text-lg font-bold flex items-center gap-2 mb-3 text-foreground">
                     Executive Synthesis
                 </h2>
                 <div className="prose prose-sm text-foreground/90 max-w-none leading-relaxed py-1">
-                    {summary.primary_hypothesis_reason}
+                    <ConceptHighlighter text={summary.primary_hypothesis_reason} concepts={concepts} />
                 </div>
             </div>
 
