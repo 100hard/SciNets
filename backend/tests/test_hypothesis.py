@@ -5,9 +5,9 @@ These tests verify the hypothesis generation logic and graph exploration.
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, MagicMock, AsyncMock, patch
 from app.state import DiscoveryState, Hypothesis
-from app.agents.hypothesis import hypothesis_node
+from app.agents.hypothesis import hypothesis_node, PreviewHypothesis
 from langchain_core.runnables import RunnableConfig
 
 
@@ -39,24 +39,26 @@ def mock_state():
 @pytest.mark.asyncio
 async def test_hypothesis_node_generates_hypotheses(mock_state):
     """Test that hypothesis_node generates hypotheses."""
-    # Mock the LLM to return structured output
-    with patch("app.agents.hypothesis.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.with_structured_output.return_value.ainvoke = AsyncMock(
-            return_value=Mock(
-                hypotheses=[
-                    Hypothesis(
-                        id="h1",
-                        text="Hypothesis 1: Amyloid accumulation triggers tau pathology",
-                        domain_tags=["bio"],
-                        novelty_score=0.8,
-                        feasibility_score=0.7,
-                        testability_score=0.9
-                    )
-                ]
-            )
+    with patch("app.agents.hypothesis.get_llm") as mock_get_llm, \
+         patch("app.agents.hypothesis.adispatch_custom_event", new_callable=AsyncMock):
+        mock_llm = MagicMock()
+        mock_structured = AsyncMock()
+        mock_structured.ainvoke.return_value = Mock(
+            hypotheses=[
+                PreviewHypothesis(
+                    text="Hypothesis 1: Amyloid accumulation triggers tau pathology",
+                    mechanism_class="Neural",
+                    mechanistic_chain=["Amyloid", "Tau", "Pathology"],
+                    impact_hook="Directly testable in vitro",
+                    novelty_score=0.8,
+                    feasibility_score=0.7,
+                    testability_score=0.9,
+                    domain_tags=["bio"],
+                    key_terms=["Amyloid"]
+                )
+            ]
         )
-        mock_llm.ainvoke = AsyncMock(return_value=Mock(content="Bridge analysis complete"))
+        mock_llm.with_structured_output.return_value = mock_structured
         mock_get_llm.return_value = mock_llm
         
         # Create a mock config
@@ -67,7 +69,7 @@ async def test_hypothesis_node_generates_hypotheses(mock_state):
         assert "hypotheses" in result
         assert len(result["hypotheses"]) > 0
         assert result["hypotheses"][0].text is not None
-        assert "selected_hypothesis_id" in result
+        assert result.get("hypothesis_mode") == "preview"
 
 
 @pytest.mark.unit
@@ -81,23 +83,26 @@ async def test_hypothesis_node_handles_empty_graph():
         concept_graph={"nodes": [], "edges": []}
     )
     
-    with patch("app.agents.hypothesis.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.with_structured_output.return_value.ainvoke = AsyncMock(
-            return_value=Mock(
-                hypotheses=[
-                    Hypothesis(
-                        id="h1",
-                        text="Fallback hypothesis",
-                        domain_tags=["bio"],
-                        novelty_score=0.5,
-                        feasibility_score=0.5,
-                        testability_score=0.5
-                    )
-                ]
-            )
+    with patch("app.agents.hypothesis.get_llm") as mock_get_llm, \
+         patch("app.agents.hypothesis.adispatch_custom_event", new_callable=AsyncMock):
+        mock_llm = MagicMock()
+        mock_structured = AsyncMock()
+        mock_structured.ainvoke.return_value = Mock(
+            hypotheses=[
+                PreviewHypothesis(
+                    text="Fallback hypothesis: Amyloid accumulation triggers pathology",
+                    mechanism_class="Neural",
+                    mechanistic_chain=["Amyloid", "Tau"],
+                    impact_hook="Directly testable",
+                    novelty_score=0.7,
+                    feasibility_score=0.6,
+                    testability_score=0.5,
+                    domain_tags=["bio"],
+                    key_terms=["Amyloid"]
+                )
+            ]
         )
-        mock_llm.ainvoke = AsyncMock(return_value=Mock(content="No graph available"))
+        mock_llm.with_structured_output.return_value = mock_structured
         mock_get_llm.return_value = mock_llm
         
         # Create a mock config

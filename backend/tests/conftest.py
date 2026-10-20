@@ -7,6 +7,10 @@ This file is automatically loaded by pytest and provides:
 - Test configuration
 """
 
+import os
+os.environ.setdefault("SCINETS_SECRET_KEY", "test-secret-key-for-pytest-execution")
+os.environ.setdefault("OPENAI_API_KEY", "test-dummy-openai-key")
+
 import pytest
 from typing import Generator
 import asyncio
