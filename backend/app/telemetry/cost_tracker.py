@@ -147,13 +147,13 @@ class CostTracker:
             self.by_hypothesis[hyp_id]["time"] += duration
 
     def _calculate_cost(self, prompt: int, completion: int, model: str) -> float:
-        # GPT-4o Pricing (approx)
-        if "gpt-4" in model:
-            return (prompt * 2.50 / 1e6) + (completion * 10.00 / 1e6)
-        # GPT-4o-mini Pricing
+        # GPT-5-mini / GPT-4o-mini Pricing
         if "mini" in model:
             return (prompt * 0.15 / 1e6) + (completion * 0.60 / 1e6)
-        # Fallback (o1/preview/etc) -> treat as GPT-4o
+        # Full-size reasoning models (GPT-5 / GPT-4o)
+        if "gpt-5" in model or "gpt-4" in model:
+            return (prompt * 2.50 / 1e6) + (completion * 10.00 / 1e6)
+        # Fallback (o1/preview/etc)
         return (prompt * 5.00 / 1e6) + (completion * 15.00 / 1e6)
 
     def get_report(self) -> Dict[str, Any]:

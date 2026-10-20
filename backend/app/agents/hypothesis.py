@@ -280,12 +280,13 @@ async def generate_deep_hypotheses(state: DiscoveryState, config: RunnableConfig
     graph_data = state.concept_graph or {"nodes": [], "edges": []}
     for node in graph_data.get("nodes", []): G.add_node(node)
     for edge in graph_data.get("edges", []):
-        G.add_edge(edge['source'], edge['target'], relation=edge.get('relation', 'related'), papers=edge.get('papers', []))
+        supporting_pids = edge.get('supporting_papers', edge.get('papers', []))
+        G.add_edge(edge['source'], edge['target'], relation=edge.get('relation', 'related'), supporting_papers=supporting_pids, papers=supporting_pids)
         # Add inverse for navigation
         directional_rels = ["inhibits", "activates", "causes", "leads to"]
         rel = edge.get('relation', 'related')
         if rel not in directional_rels:
-             G.add_edge(edge['target'], edge['source'], relation=f"related ({rel})")
+             G.add_edge(edge['target'], edge['source'], relation=f"related ({rel})", supporting_papers=supporting_pids, papers=supporting_pids)
 
     # Tools definition (same as before)
     @tool

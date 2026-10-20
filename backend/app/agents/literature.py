@@ -294,8 +294,9 @@ async def literature_node(state: DiscoveryState, config: RunnableConfig) -> dict
         1. NODES MUST BE NOUN PHRASES (e.g., "Dopamine", "Synaptic Plasticity").
         2. DO NOT create nodes that are full sentences, titles, or verb phrases (e.g., "Running increases neurogenesis" is BANNED).
         3. DO NOT HALLUCINATE: Only extract concepts explicitly appearing in the abstracts.
+        4. PROVENANCE: For each edge, populate supporting_papers with the exact Paper ID(s) (e.g., from 'Paper ID: ...') that explicitly support this relation.
         """
-    
+
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_msg),
             ("human", "Here are the abstracts:\n\n{abstracts}")
@@ -438,7 +439,7 @@ def clean_graph(graph_data: dict) -> dict:
     for n in graph_data.get("nodes", []):
         G.add_node(n if isinstance(n, str) else n["id"])
     for e in graph_data.get("edges", []):
-        G.add_edge(e['source'], e['target'], relation=e.get('relation', 'related'))
+        G.add_edge(e['source'], e['target'], relation=e.get('relation', 'related'), supporting_papers=e.get('supporting_papers', []))
         
     # 1. Remove Isolates (Degree 0)
     isolates = list(nx.isolates(G))
@@ -455,7 +456,7 @@ def clean_graph(graph_data: dict) -> dict:
     G.remove_nodes_from(to_remove)
     
     new_nodes = list(G.nodes())
-    new_edges = [{"source": u, "target": v, "relation": data.get("relation", "related")} for u, v, data in G.edges(data=True)]
+    new_edges = [{"source": u, "target": v, "relation": data.get("relation", "related"), "supporting_papers": data.get("supporting_papers", [])} for u, v, data in G.edges(data=True)]
     return {"nodes": new_nodes, "edges": new_edges}
 
 async def densify_graph(graph_data: dict, papers: list) -> dict:
@@ -496,6 +497,9 @@ async def densify_graph(graph_data: dict, papers: list) -> dict:
                 "concepts": ", ".join(relevant_concepts),
                 "abstract": abstract
             })
+            for e in result.edges:
+                if not e.supporting_papers:
+                    e.supporting_papers = [paper["id"]]
             return result.edges
         except Exception as e:
             # print(f"[Literature] Densification error for {paper['id']}: {e}")
@@ -656,10 +660,16 @@ async def normalize_graph_nodes(graph_data: dict) -> dict:
         src = final_mapping.get(edge['source'], edge['source'])
         tgt = final_mapping.get(edge['target'], edge['target'])
         if src != tgt: # Remove self-loops
-             G.add_edge(src, tgt, relation=edge.get('relation', 'related'))
+             papers = edge.get("supporting_papers", [])
+             if G.has_edge(src, tgt):
+                 existing_papers = G[src][tgt].get("supporting_papers", [])
+                 merged_papers = list(dict.fromkeys(existing_papers + papers))
+                 G[src][tgt]["supporting_papers"] = merged_papers
+             else:
+                 G.add_edge(src, tgt, relation=edge.get('relation', 'related'), supporting_papers=papers)
              
     new_nodes = list(G.nodes())
-    new_edges = [{"source": u, "target": v, "relation": data.get("relation", "related")} for u, v, data in G.edges(data=True)]
+    new_edges = [{"source": u, "target": v, "relation": data.get("relation", "related"), "supporting_papers": data.get("supporting_papers", [])} for u, v, data in G.edges(data=True)]
     
     return {"nodes": new_nodes, "edges": new_edges}
 def analyze_graph(graph_data: dict) -> str:

@@ -115,6 +115,8 @@ class AgentConfig(BaseSettings):
     S2_API_KEY: str = "" # Set via SCINETS_S2_API_KEY
     
     # LLM settings
+    LLM_MODEL: str = "gpt-5-mini"
+    CHEAP_LLM_MODEL: str = "gpt-5-mini"
     DEFAULT_TEMPERATURE: float = 0.0
     HIGH_CREATIVITY_TEMPERATURE: float = 0.7
     LOW_CREATIVITY_TEMPERATURE: float = 0.2
