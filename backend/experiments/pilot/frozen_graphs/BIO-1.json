@@ -1,0 +1,875 @@
+{
+  "query_id": "BIO-1",
+  "domain": "bio",
+  "query": "How does sleep deprivation affect synaptic plasticity and memory consolidation in the hippocampus?",
+  "graph": {
+    "nodes": [
+      "Spatial Object Recognition Memory",
+      "Neurometabolic Coupling",
+      "Arc",
+      "Synaptic Plasticity",
+      "Brain Derived Neurotrophic Factor",
+      "NR2B Subunit",
+      "Long-term Depression",
+      "Ventral CA1",
+      "Metabolic Plasticity",
+      "NR2A/NR2B Ratio",
+      "Glutamate",
+      "A1 Receptor",
+      "Cognitive Function",
+      "Memory Function",
+      "Long-term potentiation",
+      "Growth Hormone",
+      "Emotional Memory",
+      "MMP-9",
+      "BDNF",
+      "Dorsal CA1",
+      "NMDA Receptors",
+      "Cognitive Impairment",
+      "Lactate",
+      "Hippocampal Synaptic Function",
+      "Egr1",
+      "REM Sleep",
+      "Adenosine",
+      "Long-term Potentiation (LTP)",
+      "Aerobic Glycolysis",
+      "Acclimation Handling",
+      "Stress Response",
+      "NMDA Glutamate Receptor",
+      "Soluble N-ethylmaleimide-sensitive Factor (SNARE)",
+      "Sleep Deprivation",
+      "Hippocampus",
+      "Neuron-Glia Coupling",
+      "Calcium/Calmodulin-Dependent Protein Kinase II",
+      "Astrocytes",
+      "Memory",
+      "Calcium/Calmodulin-dependent Protein Kinase II (CaMKII)",
+      "Caffeine",
+      "Enhanced Ambient Temperature",
+      "Recovery Sleep"
+    ],
+    "edges": [
+      {
+        "source": "Neurometabolic Coupling",
+        "target": "Astrocytes",
+        "relation": "involves",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Synaptic Plasticity",
+        "target": "Memory",
+        "relation": "is essential for",
+        "supporting_papers": [
+          "https://openalex.org/W2069678434"
+        ]
+      },
+      {
+        "source": "Brain Derived Neurotrophic Factor",
+        "target": "Long-term potentiation",
+        "relation": "is related to levels of",
+        "supporting_papers": [
+          "https://openalex.org/W2094483645"
+        ]
+      },
+      {
+        "source": "Brain Derived Neurotrophic Factor",
+        "target": "Long-term Potentiation (LTP)",
+        "relation": "related to",
+        "supporting_papers": [
+          "https://openalex.org/W2094483645"
+        ]
+      },
+      {
+        "source": "Long-term Depression",
+        "target": "Memory",
+        "relation": "is a substrate for",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Long-term Depression",
+        "target": "Hippocampus",
+        "relation": "occurs in",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Ventral CA1",
+        "target": "Hippocampus",
+        "relation": "part of",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Glutamate",
+        "target": "Aerobic Glycolysis",
+        "relation": "stimulates",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Glutamate",
+        "target": "Synaptic Plasticity",
+        "relation": "is involved in",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Glutamate",
+        "target": "Memory",
+        "relation": "is involved in",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "A1 Receptor",
+        "target": "Synaptic Plasticity",
+        "relation": "contributes to",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Cognitive Function",
+        "target": "Cognitive Impairment",
+        "relation": "is impaired by",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Cognitive Function",
+        "target": "Memory",
+        "relation": "involves",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Cognitive Function",
+        "target": "Emotional Memory",
+        "relation": "involves",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Long-term potentiation",
+        "target": "Memory",
+        "relation": "supports",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Long-term potentiation",
+        "target": "Cognitive Function",
+        "relation": "supports",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Long-term potentiation",
+        "target": "Hippocampus",
+        "relation": "is a function of",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Growth Hormone",
+        "target": "Hippocampal Synaptic Function",
+        "relation": "mediates",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Growth Hormone",
+        "target": "NMDA Glutamate Receptor",
+        "relation": "restores",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Growth Hormone",
+        "target": "NR2B Subunit",
+        "relation": "restores expression of",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Growth Hormone",
+        "target": "Hippocampus",
+        "relation": "links",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Growth Hormone",
+        "target": "Synaptic Plasticity",
+        "relation": "prevents impairment of",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Growth Hormone",
+        "target": "Memory Function",
+        "relation": "prevents impairment of",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Dorsal CA1",
+        "target": "Long-term potentiation",
+        "relation": "shows correlation with",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Dorsal CA1",
+        "target": "Egr1",
+        "relation": "expresses",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Dorsal CA1",
+        "target": "Long-term Potentiation (LTP)",
+        "relation": "induces",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Dorsal CA1",
+        "target": "Hippocampus",
+        "relation": "part of",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "NMDA Receptors",
+        "target": "NR2A/NR2B Ratio",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Cognitive Impairment",
+        "target": "Sleep Deprivation",
+        "relation": "related to",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Lactate",
+        "target": "Neuron-Glia Coupling",
+        "relation": "contributes to",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Egr1",
+        "target": "Dorsal CA1",
+        "relation": "expresses in",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Egr1",
+        "target": "Long-term Potentiation (LTP)",
+        "relation": "facilitates",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "REM Sleep",
+        "target": "Emotional Memory",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "REM Sleep",
+        "target": "Long-term potentiation",
+        "relation": "restores and facilitates",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "REM Sleep",
+        "target": "Cognitive Function",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "REM Sleep",
+        "target": "Synaptic Plasticity",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Adenosine",
+        "target": "A1 Receptor",
+        "relation": "activates",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Adenosine",
+        "target": "Cognitive Function",
+        "relation": "impairs",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Adenosine",
+        "target": "Memory",
+        "relation": "impairs",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Long-term Potentiation (LTP)",
+        "target": "Memory",
+        "relation": "supports",
+        "supporting_papers": [
+          "https://openalex.org/W2094483645"
+        ]
+      },
+      {
+        "source": "Long-term Potentiation (LTP)",
+        "target": "Hippocampus",
+        "relation": "occurs in",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Aerobic Glycolysis",
+        "target": "Lactate",
+        "relation": "produces",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Acclimation Handling",
+        "target": "Long-term potentiation",
+        "relation": "does not alter",
+        "supporting_papers": [
+          "https://openalex.org/W2129455558"
+        ]
+      },
+      {
+        "source": "Acclimation Handling",
+        "target": "Sleep Deprivation",
+        "relation": "does not explain impairments in",
+        "supporting_papers": [
+          "https://openalex.org/W2129455558"
+        ]
+      },
+      {
+        "source": "Acclimation Handling",
+        "target": "Stress Response",
+        "relation": "initially induces",
+        "supporting_papers": [
+          "https://openalex.org/W2129455558"
+        ]
+      },
+      {
+        "source": "Acclimation Handling",
+        "target": "Hippocampus",
+        "relation": "does not alter synaptic plasticity in",
+        "supporting_papers": [
+          "https://openalex.org/W2129455558"
+        ]
+      },
+      {
+        "source": "Stress Response",
+        "target": "Acclimation Handling",
+        "relation": "is minimally induced by",
+        "supporting_papers": [
+          "https://openalex.org/W2129455558"
+        ]
+      },
+      {
+        "source": "Soluble N-ethylmaleimide-sensitive Factor (SNARE)",
+        "target": "Astrocytes",
+        "relation": "disruption affects",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "BDNF",
+        "relation": "increases",
+        "supporting_papers": [
+          "https://openalex.org/W2253421052"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Arc",
+        "relation": "increases",
+        "supporting_papers": [
+          "https://openalex.org/W2253421052"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "MMP-9",
+        "relation": "decreases",
+        "supporting_papers": [
+          "https://openalex.org/W2253421052"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Long-term potentiation",
+        "relation": "induces impairment of E-LTP",
+        "supporting_papers": [
+          "https://openalex.org/W75676917"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Long-term Depression",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "NMDA Receptors",
+        "relation": "alters composition of",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Cognitive Function",
+        "relation": "has negative effect on",
+        "supporting_papers": [
+          "https://openalex.org/W2069678434"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Synaptic Plasticity",
+        "relation": "impairs",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Hippocampus",
+        "relation": "impairs",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Stress Response",
+        "relation": "may induce",
+        "supporting_papers": [
+          "https://openalex.org/W2129455558"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "NMDA Glutamate Receptor",
+        "relation": "impairs",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "NR2B Subunit",
+        "relation": "causes loss of",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Cognitive Impairment",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Long-term Potentiation (LTP)",
+        "relation": "impairs",
+        "supporting_papers": [
+          "https://openalex.org/W2129455558"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Memory",
+        "relation": "has negative effect on",
+        "supporting_papers": [
+          "https://openalex.org/W2069678434"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Calcium/Calmodulin-Dependent Protein Kinase II",
+        "relation": "associated with decrease in levels of phosphorylated CaMKII",
+        "supporting_papers": [
+          "https://openalex.org/W75676917"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Emotional Memory",
+        "relation": "impairs",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Sleep Deprivation",
+        "target": "Memory Function",
+        "relation": "impairs",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Hippocampus",
+        "target": "Memory",
+        "relation": "impairments in signaling mechanisms and synaptic plasticity affect",
+        "supporting_papers": [
+          "https://openalex.org/W2129455558"
+        ]
+      },
+      {
+        "source": "Hippocampus",
+        "target": "Emotional Memory",
+        "relation": "supports",
+        "supporting_papers": [
+          "https://openalex.org/W1999028759"
+        ]
+      },
+      {
+        "source": "Hippocampus",
+        "target": "Metabolic Plasticity",
+        "relation": "is metabolically active during",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Hippocampus",
+        "target": "Long-term Potentiation (LTP)",
+        "relation": "induced in",
+        "supporting_papers": [
+          "https://openalex.org/W2129455558"
+        ]
+      },
+      {
+        "source": "Hippocampus",
+        "target": "Long-term Depression",
+        "relation": "involves",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Hippocampus",
+        "target": "Long-term potentiation",
+        "relation": "is critical for",
+        "supporting_papers": [
+          "https://openalex.org/W2056915680"
+        ]
+      },
+      {
+        "source": "Hippocampus",
+        "target": "Spatial Object Recognition Memory",
+        "relation": "supports",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Hippocampus",
+        "target": "Cognitive Function",
+        "relation": "is involved in",
+        "supporting_papers": [
+          "https://openalex.org/W2069678434"
+        ]
+      },
+      {
+        "source": "Neuron-Glia Coupling",
+        "target": "Metabolic Plasticity",
+        "relation": "involves",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Neuron-Glia Coupling",
+        "target": "Synaptic Plasticity",
+        "relation": "undergoes adaptations in parallel with",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Calcium/Calmodulin-Dependent Protein Kinase II",
+        "target": "Long-term potentiation",
+        "relation": "levels decrease during expression of E-LTP",
+        "supporting_papers": [
+          "https://openalex.org/W75676917"
+        ]
+      },
+      {
+        "source": "Calcium/Calmodulin-Dependent Protein Kinase II",
+        "target": "Long-term Potentiation (LTP)",
+        "relation": "related to",
+        "supporting_papers": [
+          "https://openalex.org/W2094483645"
+        ]
+      },
+      {
+        "source": "Astrocytes",
+        "target": "Glutamate",
+        "relation": "reuptake of",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Astrocytes",
+        "target": "Adenosine",
+        "relation": "produces",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Astrocytes",
+        "target": "Neurometabolic Coupling",
+        "relation": "plays a role in the mechanism of ",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Astrocytes",
+        "target": "Lactate",
+        "relation": "release of",
+        "supporting_papers": [
+          "https://openalex.org/W783873688"
+        ]
+      },
+      {
+        "source": "Astrocytes",
+        "target": "Synaptic Plasticity",
+        "relation": "involved in",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Astrocytes",
+        "target": "Hippocampus",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2000269220"
+        ]
+      },
+      {
+        "source": "Memory",
+        "target": "Hippocampus",
+        "relation": "is consolidated in",
+        "supporting_papers": [
+          "https://openalex.org/W2069678434"
+        ]
+      },
+      {
+        "source": "Calcium/Calmodulin-dependent Protein Kinase II (CaMKII)",
+        "target": "Long-term Potentiation (LTP)",
+        "relation": "is involved in",
+        "supporting_papers": [
+          "https://openalex.org/W75676917"
+        ]
+      },
+      {
+        "source": "Caffeine",
+        "target": "Cognitive Function",
+        "relation": "prevents impairment of",
+        "supporting_papers": [
+          "https://openalex.org/W75676917"
+        ]
+      },
+      {
+        "source": "Caffeine",
+        "target": "Synaptic Plasticity",
+        "relation": "prevents impairment of",
+        "supporting_papers": [
+          "https://openalex.org/W75676917"
+        ]
+      },
+      {
+        "source": "Caffeine",
+        "target": "Long-term potentiation",
+        "relation": "prevents impairment of E-LTP",
+        "supporting_papers": [
+          "https://openalex.org/W75676917"
+        ]
+      },
+      {
+        "source": "Caffeine",
+        "target": "Memory",
+        "relation": "prevents impairment of",
+        "supporting_papers": [
+          "https://openalex.org/W2094483645"
+        ]
+      },
+      {
+        "source": "Caffeine",
+        "target": "Hippocampus",
+        "relation": "effects on hippocampus-dependent learning",
+        "supporting_papers": [
+          "https://openalex.org/W75676917"
+        ]
+      },
+      {
+        "source": "Caffeine",
+        "target": "Calcium/Calmodulin-Dependent Protein Kinase II",
+        "relation": "prevents decreases in",
+        "supporting_papers": [
+          "https://openalex.org/W2094483645"
+        ]
+      },
+      {
+        "source": "Caffeine",
+        "target": "Long-term Potentiation (LTP)",
+        "relation": "prevents impairment of",
+        "supporting_papers": [
+          "https://openalex.org/W2094483645"
+        ]
+      },
+      {
+        "source": "Caffeine",
+        "target": "Sleep Deprivation",
+        "relation": "interacts with",
+        "supporting_papers": [
+          "https://openalex.org/W2094483645"
+        ]
+      },
+      {
+        "source": "Caffeine",
+        "target": "Brain Derived Neurotrophic Factor",
+        "relation": "prevents decreases in",
+        "supporting_papers": [
+          "https://openalex.org/W2094483645"
+        ]
+      },
+      {
+        "source": "Enhanced Ambient Temperature",
+        "target": "BDNF",
+        "relation": "decreases",
+        "supporting_papers": [
+          "https://openalex.org/W2253421052"
+        ]
+      },
+      {
+        "source": "Enhanced Ambient Temperature",
+        "target": "MMP-9",
+        "relation": "increases",
+        "supporting_papers": [
+          "https://openalex.org/W2253421052"
+        ]
+      },
+      {
+        "source": "Recovery Sleep",
+        "target": "Long-term potentiation",
+        "relation": "reverses effects on",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Recovery Sleep",
+        "target": "NMDA Receptors",
+        "relation": "reverses changes in",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Recovery Sleep",
+        "target": "Long-term Depression",
+        "relation": "reverses",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      },
+      {
+        "source": "Recovery Sleep",
+        "target": "Long-term Potentiation (LTP)",
+        "relation": "reverses",
+        "supporting_papers": [
+          "https://openalex.org/W2003856118"
+        ]
+      }
+    ]
+  },
+  "construction_metrics": {
+    "duration_seconds": 147.76,
+    "total_tokens": 14092,
+    "estimated_cost_usd": 0.0042,
+    "raw_edges_extracted": 47,
+    "raw_edges_with_prov": 47,
+    "raw_edges_missing_prov": 0,
+    "node_count": 43,
+    "edge_count": 101,
+    "edges_with_provenance": 101,
+    "edges_missing_provenance": 0,
+    "unmapped_dropped_ids": 0
+  }
+}

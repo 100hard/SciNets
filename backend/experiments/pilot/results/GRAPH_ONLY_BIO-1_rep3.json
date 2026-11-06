@@ -1,0 +1,155 @@
+{
+  "condition": "GRAPH_ONLY",
+  "query_id": "BIO-1",
+  "query": "How does sleep deprivation affect synaptic plasticity and memory consolidation in the hippocampus?",
+  "domain": "bio",
+  "repetition": 3,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 11.07,
+    "prompt_tokens": 6773,
+    "completion_tokens": 1108,
+    "total_tokens": 7881,
+    "estimated_cost_usd": 0.0017,
+    "llm_calls": 1,
+    "tool_calls": 0
+  },
+  "hypotheses": [
+    {
+      "text": "Sleep deprivation impairs synaptic plasticity in the hippocampus by altering the composition of NMDA receptors, specifically increasing the NR2A/NR2B ratio, which negatively affects long-term potentiation (LTP) and memory consolidation.",
+      "domain_tags": [
+        "neuroscience",
+        "cognitive science"
+      ],
+      "novelty_score": 0.8,
+      "feasibility_score": 0.9,
+      "testability_score": 0.9,
+      "causal_chain": {
+        "nodes": [
+          "Sleep Deprivation",
+          "NMDA Receptors",
+          "Long-term Potentiation (LTP)"
+        ],
+        "relations": [
+          "causes",
+          "affects"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": null,
+      "mechanism_class": "Synaptic Plasticity",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Sleep Deprivation Effects",
+          "Synaptic Plasticity Mechanisms",
+          "NMDA Receptor Dynamics"
+        ],
+        "missing_link": "The specific alteration of NMDA receptor composition due to sleep deprivation and its direct impact on LTP has not been fully elucidated.",
+        "field_assumption": "It is assumed that sleep deprivation uniformly affects all aspects of synaptic plasticity without considering receptor composition changes.",
+        "structural_reason": "Research on sleep deprivation often focuses on behavioral outcomes rather than underlying molecular mechanisms, leading to overlooked receptor dynamics.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Sleep deprivation is known to impair memory, yet the exact molecular changes in NMDA receptors that mediate this effect remain unclear.",
+        "belief_a": "Sleep deprivation negatively impacts memory and cognitive function.",
+        "belief_b": "NMDA receptor composition does not significantly change due to sleep deprivation.",
+        "consistency_constraint": "Any explanation must account for the relationship between NMDA receptor composition and synaptic plasticity."
+      },
+      "constraints": [],
+      "key_terms": [
+        "NMDA Receptors",
+        "Long-term Potentiation",
+        "Sleep Deprivation"
+      ]
+    },
+    {
+      "text": "Increased levels of brain-derived neurotrophic factor (BDNF) following sleep deprivation may initially enhance synaptic plasticity but ultimately lead to cognitive impairment due to dysregulation of long-term potentiation (LTP) and long-term depression (LTD) mechanisms in the hippocampus.",
+      "domain_tags": [
+        "neuroscience",
+        "cognitive science"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.8,
+      "testability_score": 0.85,
+      "causal_chain": {
+        "nodes": [
+          "Sleep Deprivation",
+          "Brain Derived Neurotrophic Factor",
+          "Cognitive Impairment"
+        ],
+        "relations": [
+          "increases",
+          "leads to"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": null,
+      "mechanism_class": "Neurotrophic Regulation",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "BDNF Regulation",
+          "Cognitive Function",
+          "Synaptic Plasticity"
+        ],
+        "missing_link": "The dual role of BDNF in enhancing synaptic plasticity while also contributing to cognitive impairment post-sleep deprivation is not well understood.",
+        "field_assumption": "It is commonly believed that increased BDNF levels are solely beneficial for cognitive function without considering potential negative effects.",
+        "structural_reason": "Research often focuses on the beneficial aspects of BDNF without addressing its complex role in cognitive processes under stress conditions like sleep deprivation.",
+        "rationale_type": "tension",
+        "epistemic_tension": "Increased BDNF is associated with enhanced synaptic plasticity, yet sleep deprivation leads to cognitive impairment despite elevated BDNF levels.",
+        "belief_a": "Increased BDNF enhances synaptic plasticity and cognitive function.",
+        "belief_b": "Sleep deprivation leads to cognitive impairment regardless of BDNF levels.",
+        "consistency_constraint": "Any valid explanation must reconcile the dual effects of BDNF on synaptic function and cognitive outcomes."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Brain Derived Neurotrophic Factor",
+        "Cognitive Impairment",
+        "Long-term Potentiation"
+      ]
+    },
+    {
+      "text": "Sleep deprivation induces a stress response that impairs neuron-glia coupling and subsequently disrupts metabolic plasticity in the hippocampus, leading to deficits in synaptic plasticity and memory consolidation.",
+      "domain_tags": [
+        "neuroscience",
+        "metabolism"
+      ],
+      "novelty_score": 0.75,
+      "feasibility_score": 0.85,
+      "testability_score": 0.8,
+      "causal_chain": {
+        "nodes": [
+          "Sleep Deprivation",
+          "Neuron-Glia Coupling",
+          "Metabolic Plasticity"
+        ],
+        "relations": [
+          "induces",
+          "disrupts"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": null,
+      "mechanism_class": "Metabolic Regulation",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Sleep Deprivation Effects",
+          "Neuron-Glia Interactions",
+          "Metabolic Plasticity"
+        ],
+        "missing_link": "The impact of sleep deprivation-induced stress on neuron-glia coupling and its subsequent effects on metabolic plasticity has not been thoroughly investigated.",
+        "field_assumption": "It is assumed that sleep deprivation affects synaptic plasticity directly without considering the role of metabolic changes mediated by neuron-glia interactions.",
+        "structural_reason": "Studies often isolate synaptic plasticity from metabolic processes, neglecting the interconnectedness of these systems during sleep deprivation.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Sleep deprivation is known to impair synaptic plasticity, yet the role of metabolic disruptions via neuron-glia coupling remains unexplored.",
+        "belief_a": "Sleep deprivation directly impairs synaptic plasticity.",
+        "belief_b": "Metabolic processes mediated by neuron-glia coupling are unaffected by sleep deprivation.",
+        "consistency_constraint": "Any explanation must integrate the effects of sleep deprivation on both synaptic and metabolic plasticity."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Neuron-Glia Coupling",
+        "Metabolic Plasticity",
+        "Sleep Deprivation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "condition": "RAG",
+  "query_id": "CLIM-1",
+  "query": "What causal pathways connect deforestation, nutrient runoff, and coral reef degradation?",
+  "domain": "climate",
+  "repetition": 1,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 10.38,
+    "prompt_tokens": 6309,
+    "completion_tokens": 1106,
+    "total_tokens": 7415,
+    "estimated_cost_usd": 0.0016,
+    "llm_calls": 1,
+    "tool_calls": 0
+  },
+  "hypotheses": [
+    {
+      "text": "Deforestation leads to increased sedimentation in coastal waters, which reduces light penetration and disrupts the symbiotic relationship between corals and zooxanthellae, ultimately resulting in coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 1.0,
+      "feasibility_score": 1.0,
+      "testability_score": 1.0,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Increased sedimentation",
+          "Coral reef degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": "deforestation sedimentation coral reef degradation",
+      "mechanism_class": "Sediment-mediated",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation impacts",
+          "Sedimentation effects",
+          "Coral reef health"
+        ],
+        "missing_link": "The direct causal pathway from deforestation to coral reef degradation via sedimentation is not well established.",
+        "field_assumption": "It is often assumed that sedimentation effects on coral reefs are primarily due to other anthropogenic activities, rather than deforestation specifically.",
+        "structural_reason": "Research often focuses on sedimentation from urban runoff and agriculture, overlooking deforestation as a significant contributor.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation is known to impact terrestrial ecosystems, yet its specific effects on coral reefs through sedimentation remain underexplored.",
+        "belief_a": "Deforestation negatively impacts terrestrial ecosystems.",
+        "belief_b": "Coral reefs are primarily affected by local pollution and sedimentation from urban and agricultural runoff.",
+        "consistency_constraint": "Any valid explanation must account for how deforestation specifically contributes to sedimentation and subsequent coral reef degradation."
+      },
+      "constraints": [
+        {
+          "text": "Must demonstrate a clear mechanistic link between deforestation and sedimentation effects on coral reefs.",
+          "type": "hard",
+          "importance": 10
+        }
+      ],
+      "key_terms": [
+        "deforestation",
+        "sedimentation",
+        "coral reefs"
+      ]
+    },
+    {
+      "text": "Nutrient runoff from deforested areas increases the availability of nitrogen and phosphorus in coastal waters, leading to algal blooms that outcompete corals for space and resources, ultimately resulting in coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 1.0,
+      "feasibility_score": 1.0,
+      "testability_score": 1.0,
+      "causal_chain": {
+        "nodes": [
+          "Nutrient runoff",
+          "Algal blooms",
+          "Coral reef degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": "nutrient runoff algal blooms coral reef degradation",
+      "mechanism_class": "Nutrient-mediated",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Nutrient pollution",
+          "Algal bloom dynamics",
+          "Coral reef health"
+        ],
+        "missing_link": "The specific role of nutrient runoff from deforestation in promoting algal blooms that harm coral reefs is inadequately documented.",
+        "field_assumption": "It is assumed that nutrient runoff primarily originates from agricultural practices rather than deforestation.",
+        "structural_reason": "Research often emphasizes agricultural runoff without considering the contribution of deforestation to nutrient loading.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Nutrient enrichment is known to harm coral reefs, yet the specific pathways from deforestation to nutrient runoff and subsequent algal blooms are not well understood.",
+        "belief_a": "Nutrient runoff negatively affects aquatic ecosystems.",
+        "belief_b": "Coral reefs are primarily threatened by local nutrient pollution from agriculture.",
+        "consistency_constraint": "Any valid explanation must clarify how deforestation contributes to nutrient runoff and its impact on coral reefs."
+      },
+      "constraints": [
+        {
+          "text": "Must establish a direct link between nutrient runoff from deforestation and algal bloom dynamics affecting coral reefs.",
+          "type": "hard",
+          "importance": 10
+        }
+      ],
+      "key_terms": [
+        "nutrient runoff",
+        "algal blooms",
+        "coral reefs"
+      ]
+    },
+    {
+      "text": "Increased deforestation leads to higher rates of soil erosion, which results in sedimentation and nutrient runoff into coastal waters, ultimately causing shifts in coral reef community structure and degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 1.0,
+      "feasibility_score": 1.0,
+      "testability_score": 1.0,
+      "causal_chain": {
+        "nodes": [
+          "Increased deforestation",
+          "Soil erosion",
+          "Coral reef community degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": "deforestation soil erosion coral reef community degradation",
+      "mechanism_class": "Erosion-mediated",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation impacts",
+          "Soil erosion effects",
+          "Coral reef health"
+        ],
+        "missing_link": "The connection between soil erosion due to deforestation and its impact on coral reef community structure is not well characterized.",
+        "field_assumption": "It is assumed that soil erosion primarily affects terrestrial ecosystems without significant consideration of its impact on marine ecosystems.",
+        "structural_reason": "Research often isolates soil erosion studies from marine impacts, failing to connect terrestrial and marine ecological consequences.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Soil erosion is known to affect land ecosystems, yet its specific effects on coral reef community structure through sedimentation are not adequately explored.",
+        "belief_a": "Soil erosion negatively impacts terrestrial ecosystems.",
+        "belief_b": "Coral reefs are primarily affected by local sedimentation and nutrient loading from agriculture.",
+        "consistency_constraint": "Any valid explanation must demonstrate how soil erosion from deforestation contributes to coral reef community degradation."
+      },
+      "constraints": [
+        {
+          "text": "Must show a clear causal pathway from soil erosion due to deforestation to coral reef community changes.",
+          "type": "hard",
+          "importance": 10
+        }
+      ],
+      "key_terms": [
+        "deforestation",
+        "soil erosion",
+        "coral reef community"
+      ]
+    }
+  ]
+}

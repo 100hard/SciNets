@@ -1,0 +1,155 @@
+{
+  "condition": "GRAPH_ONLY",
+  "query_id": "BIO-1",
+  "query": "How does sleep deprivation affect synaptic plasticity and memory consolidation in the hippocampus?",
+  "domain": "bio",
+  "repetition": 2,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 11.79,
+    "prompt_tokens": 6773,
+    "completion_tokens": 1137,
+    "total_tokens": 7910,
+    "estimated_cost_usd": 0.0017,
+    "llm_calls": 1,
+    "tool_calls": 0
+  },
+  "hypotheses": [
+    {
+      "text": "Sleep deprivation impairs synaptic plasticity in the hippocampus by altering the composition of NMDA receptors, specifically increasing the NR2A/NR2B ratio, which negatively affects long-term potentiation (LTP) and memory consolidation.",
+      "domain_tags": [
+        "neuroscience",
+        "cognitive science"
+      ],
+      "novelty_score": 0.8,
+      "feasibility_score": 0.9,
+      "testability_score": 0.9,
+      "causal_chain": {
+        "nodes": [
+          "Sleep Deprivation",
+          "Alters composition of NMDA Receptors",
+          "Impairs Long-term Potentiation (LTP)"
+        ],
+        "relations": [
+          "causes",
+          "affects"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": null,
+      "mechanism_class": "Synaptic Plasticity",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Sleep Deprivation and NMDA Receptor Function",
+          "Synaptic Plasticity and Memory Consolidation",
+          "Cognitive Impairment and Sleep"
+        ],
+        "missing_link": "The specific mechanism by which sleep deprivation alters NMDA receptor composition and its subsequent effect on LTP has not been fully elucidated.",
+        "field_assumption": "It is assumed that sleep deprivation uniformly affects all aspects of synaptic plasticity without specific alterations to NMDA receptor subtypes.",
+        "structural_reason": "Research often focuses on general effects of sleep deprivation rather than specific molecular changes in receptor composition.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Sleep deprivation is known to impair memory, yet the precise molecular mechanisms linking these phenomena remain unclear.",
+        "belief_a": "Sleep deprivation negatively impacts memory consolidation.",
+        "belief_b": "NMDA receptor function is critical for synaptic plasticity and memory.",
+        "consistency_constraint": "Any explanation must account for the specific alterations in NMDA receptor composition and their functional consequences."
+      },
+      "constraints": [],
+      "key_terms": [
+        "NMDA receptors",
+        "Long-term potentiation",
+        "Cognitive impairment"
+      ]
+    },
+    {
+      "text": "Increased levels of brain-derived neurotrophic factor (BDNF) following sleep deprivation may initially support synaptic plasticity but ultimately lead to cognitive impairment due to dysregulation of long-term potentiation (LTP) mechanisms in the hippocampus.",
+      "domain_tags": [
+        "neuroscience",
+        "molecular biology"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.8,
+      "testability_score": 0.85,
+      "causal_chain": {
+        "nodes": [
+          "Sleep Deprivation",
+          "Increases BDNF levels",
+          "Leads to Cognitive Impairment"
+        ],
+        "relations": [
+          "causes",
+          "may lead to"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": null,
+      "mechanism_class": "Neurotrophic Factors",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "BDNF and Synaptic Plasticity",
+          "Sleep Deprivation and Cognitive Function",
+          "Neurotrophic Factors and Memory"
+        ],
+        "missing_link": "The dual role of BDNF in enhancing synaptic plasticity while also contributing to cognitive deficits post-sleep deprivation is not well understood.",
+        "field_assumption": "It is assumed that increased BDNF levels are solely beneficial for synaptic function without considering potential negative feedback mechanisms.",
+        "structural_reason": "Research often emphasizes the positive effects of BDNF without addressing its complex role in the context of sleep deprivation.",
+        "rationale_type": "tension",
+        "epistemic_tension": "Increased BDNF is associated with improved synaptic plasticity, yet sleep deprivation leads to cognitive impairment despite elevated BDNF levels.",
+        "belief_a": "BDNF enhances synaptic plasticity and memory.",
+        "belief_b": "Sleep deprivation causes cognitive impairment.",
+        "consistency_constraint": "Any valid explanation must reconcile the beneficial effects of BDNF with the cognitive deficits observed after sleep deprivation."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Brain-derived neurotrophic factor",
+        "Cognitive impairment",
+        "Synaptic plasticity"
+      ]
+    },
+    {
+      "text": "Astrocyte-derived adenosine signaling via A1 receptors mediates the negative effects of sleep deprivation on hippocampal synaptic plasticity and memory consolidation, suggesting a potential therapeutic target for cognitive deficits associated with sleep loss.",
+      "domain_tags": [
+        "neuroscience",
+        "pharmacology"
+      ],
+      "novelty_score": 0.9,
+      "feasibility_score": 0.85,
+      "testability_score": 0.9,
+      "causal_chain": {
+        "nodes": [
+          "Sleep Deprivation",
+          "Increases Astrocyte-derived Adenosine",
+          "Mediates Impairment of Synaptic Plasticity"
+        ],
+        "relations": [
+          "causes",
+          "contributes to"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": null,
+      "mechanism_class": "Astrocytic Signaling",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Astrocyte Function and Memory",
+          "Sleep Deprivation and Cognitive Deficits",
+          "Adenosine Signaling and Synaptic Plasticity"
+        ],
+        "missing_link": "The role of astrocyte-derived adenosine in mediating the effects of sleep deprivation on synaptic plasticity has not been fully explored.",
+        "field_assumption": "It is assumed that neuronal mechanisms primarily drive cognitive deficits without considering astrocytic contributions.",
+        "structural_reason": "The focus on neuronal signaling often overlooks the critical role of astrocytes in synaptic function and memory processes.",
+        "rationale_type": "opportunity",
+        "epistemic_tension": "Astrocyte activity is known to influence synaptic plasticity, yet the specific impact of sleep deprivation on astrocytic signaling pathways remains underexplored.",
+        "belief_a": "Astrocytes play a crucial role in synaptic plasticity.",
+        "belief_b": "Sleep deprivation negatively impacts cognitive function.",
+        "consistency_constraint": "Any explanation must integrate the role of astrocytic signaling in the context of sleep deprivation and its effects on memory."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Adenosine",
+        "Astrocytes",
+        "Synaptic plasticity"
+      ]
+    }
+  ]
+}

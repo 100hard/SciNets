@@ -4,13 +4,18 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config import config
 
+# Clean and normalize database URL
+db_url = config.DATABASE_URL or "sqlite:///./scinets.db"
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
 # connect_args={"check_same_thread": False} is needed for SQLite
 connect_args = {}
-if config.DATABASE_URL.startswith("sqlite"):
+if db_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 
 engine = create_engine(
-    config.DATABASE_URL, 
+    db_url, 
     connect_args=connect_args,
     pool_pre_ping=True,
     pool_recycle=1800

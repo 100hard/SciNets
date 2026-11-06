@@ -1,0 +1,734 @@
+{
+  "query_id": "ML-2",
+  "domain": "ml",
+  "query": "What mechanistic links connect implicit bias of stochastic gradient descent and flat minima in deep learning models?",
+  "graph": {
+    "nodes": [
+      "Allele-Specific Variability",
+      "Yolk Weight",
+      "Cell Differentiation",
+      "Climate Change",
+      "Shell",
+      "Albumen",
+      "Density Dependence",
+      "Species Interactions",
+      "Cell-Specific Variability",
+      "Structural Heterogeneity",
+      "Deterministic Models",
+      "Fire Effects",
+      "Chromatin Domains",
+      "Genome Organization",
+      "Particle Markov Chain Monte Carlo",
+      "MCMC",
+      "Biogeography",
+      "Nutrient Requirements",
+      "Extinction Risks",
+      "Vegetation Succession",
+      "Hybrid Mechanistic-Stochastic Model",
+      "Battery Voltage Dynamics",
+      "Latent ODE",
+      "Genome Function",
+      "Bayesian Parameter Inference",
+      "First-order Fire Effects",
+      "Demographic Stochasticity",
+      "Niche Differentiation",
+      "Conservation Strategies",
+      "Sources of Variability",
+      "DNA Loops",
+      "Chromatin Architecture",
+      "Species Synchrony",
+      "Solute Leaching",
+      "Heteroscedastic Observation Model",
+      "Lotka-Volterra System",
+      "Population Dynamics",
+      "Ecological Drift",
+      "Smoke Dispersion",
+      "Stochastic Differential Equations",
+      "Habitat Change",
+      "Stochastic Models",
+      "Data-augmentation",
+      "Fynbos",
+      "Higher-Order Compartments",
+      "Transcription Variability",
+      "Hen Age",
+      "Continuous-time Markov Process",
+      "Stochasticity",
+      "Second-order Fire Effects",
+      "Biogeographic History",
+      "Egg Weight",
+      "Stochastic Biochemical Network Models",
+      "Prokaryotic Auto-regulatory Network",
+      "Biodiversity Hot Spot",
+      "Biodiversity Losses"
+    ],
+    "edges": [
+      {
+        "source": "Allele-Specific Variability",
+        "target": "Chromatin Architecture",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Yolk Weight",
+        "target": "Albumen",
+        "relation": "predicted from",
+        "supporting_papers": [
+          "https://openalex.org/W2008921457"
+        ]
+      },
+      {
+        "source": "Yolk Weight",
+        "target": "Shell",
+        "relation": "predicted from",
+        "supporting_papers": [
+          "https://openalex.org/W2008921457"
+        ]
+      },
+      {
+        "source": "Cell Differentiation",
+        "target": "Stochasticity",
+        "relation": "is influenced by",
+        "supporting_papers": [
+          "https://openalex.org/W2132980978"
+        ]
+      },
+      {
+        "source": "Climate Change",
+        "target": "Extinction Risks",
+        "relation": "increases",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Climate Change",
+        "target": "Habitat Change",
+        "relation": "influences the availability of",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Climate Change",
+        "target": "Biodiversity Losses",
+        "relation": "contributes to",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Density Dependence",
+        "target": "Population Dynamics",
+        "relation": "influences through",
+        "supporting_papers": [
+          "https://openalex.org/W2047152814"
+        ]
+      },
+      {
+        "source": "Species Interactions",
+        "target": "Extinction Risks",
+        "relation": "mediate",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Structural Heterogeneity",
+        "target": "Genome Function",
+        "relation": "implicates",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Deterministic Models",
+        "target": "Stochastic Models",
+        "relation": "can incorporate",
+        "supporting_papers": [
+          "https://openalex.org/W2071605829"
+        ]
+      },
+      {
+        "source": "Deterministic Models",
+        "target": "Solute Leaching",
+        "relation": "limited by spatial variability of soil properties",
+        "supporting_papers": [
+          "https://openalex.org/W2071605829"
+        ]
+      },
+      {
+        "source": "Fire Effects",
+        "target": "First-order Fire Effects",
+        "relation": "includes",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Fire Effects",
+        "target": "Second-order Fire Effects",
+        "relation": "includes",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Fire Effects",
+        "target": "Vegetation Succession",
+        "relation": "is influenced by",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Fire Effects",
+        "target": "Smoke Dispersion",
+        "relation": "is influenced by",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Chromatin Domains",
+        "target": "DNA Loops",
+        "relation": "includes",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Genome Organization",
+        "target": "Stochasticity",
+        "relation": "is influenced by",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Genome Organization",
+        "target": "Genome Function",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Particle Markov Chain Monte Carlo",
+        "target": "Bayesian Parameter Inference",
+        "relation": "is a method for",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "Particle Markov Chain Monte Carlo",
+        "target": "Stochastic Differential Equations",
+        "relation": "is used in conjunction with to improve inference schemes",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "Particle Markov Chain Monte Carlo",
+        "target": "Lotka-Volterra System",
+        "relation": "is applied to",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "Particle Markov Chain Monte Carlo",
+        "target": "Prokaryotic Auto-regulatory Network",
+        "relation": "is applied to",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "MCMC",
+        "target": "Biogeographic History",
+        "relation": "marginalizing over all possible",
+        "supporting_papers": [
+          "https://openalex.org/W2119783895"
+        ]
+      },
+      {
+        "source": "Biogeography",
+        "target": "Stochastic Models",
+        "relation": "utilizes",
+        "supporting_papers": [
+          "https://openalex.org/W2119783895"
+        ]
+      },
+      {
+        "source": "Biogeography",
+        "target": "Biogeographic History",
+        "relation": "inferring",
+        "supporting_papers": [
+          "https://openalex.org/W2119783895"
+        ]
+      },
+      {
+        "source": "Nutrient Requirements",
+        "target": "Egg Weight",
+        "relation": "influence",
+        "supporting_papers": [
+          "https://openalex.org/W2008921457"
+        ]
+      },
+      {
+        "source": "Vegetation Succession",
+        "target": "Second-order Fire Effects",
+        "relation": "is an example of",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Hybrid Mechanistic-Stochastic Model",
+        "target": "Latent ODE",
+        "relation": "is based on",
+        "supporting_papers": [
+          "https://openalex.org/W2958796454"
+        ]
+      },
+      {
+        "source": "Hybrid Mechanistic-Stochastic Model",
+        "target": "Heteroscedastic Observation Model",
+        "relation": "incorporates",
+        "supporting_papers": [
+          "https://openalex.org/W2958796454"
+        ]
+      },
+      {
+        "source": "Battery Voltage Dynamics",
+        "target": "Hybrid Mechanistic-Stochastic Model",
+        "relation": "is modeled by",
+        "supporting_papers": [
+          "https://openalex.org/W2958796454"
+        ]
+      },
+      {
+        "source": "Battery Voltage Dynamics",
+        "target": "Latent ODE",
+        "relation": "is based on the framework of ",
+        "supporting_papers": []
+      },
+      {
+        "source": "Battery Voltage Dynamics",
+        "target": "Heteroscedastic Observation Model",
+        "relation": "is addressed by",
+        "supporting_papers": [
+          "https://openalex.org/W2958796454"
+        ]
+      },
+      {
+        "source": "Latent ODE",
+        "target": "Heteroscedastic Observation Model",
+        "relation": "is combined with",
+        "supporting_papers": [
+          "https://openalex.org/W2958796454"
+        ]
+      },
+      {
+        "source": "First-order Fire Effects",
+        "target": "Fire Effects",
+        "relation": "is a type of",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "First-order Fire Effects",
+        "target": "Second-order Fire Effects",
+        "relation": "is related to",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Demographic Stochasticity",
+        "target": "Population Dynamics",
+        "relation": "influences through",
+        "supporting_papers": [
+          "https://openalex.org/W2047152814"
+        ]
+      },
+      {
+        "source": "Niche Differentiation",
+        "target": "Species Synchrony",
+        "relation": "decreases",
+        "supporting_papers": [
+          "https://openalex.org/W2047152814"
+        ]
+      },
+      {
+        "source": "Niche Differentiation",
+        "target": "Population Dynamics",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2047152814"
+        ]
+      },
+      {
+        "source": "Conservation Strategies",
+        "target": "Biodiversity Losses",
+        "relation": "mitigate",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Sources of Variability",
+        "target": "Genome Organization",
+        "relation": "affect",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Sources of Variability",
+        "target": "Stochasticity",
+        "relation": "influences",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Chromatin Architecture",
+        "target": "Cell-Specific Variability",
+        "relation": "exhibits",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Chromatin Architecture",
+        "target": "Allele-Specific Variability",
+        "relation": "exhibits",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Chromatin Architecture",
+        "target": "Structural Heterogeneity",
+        "relation": "implicates",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Species Synchrony",
+        "target": "Population Dynamics",
+        "relation": "is affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2047152814"
+        ]
+      },
+      {
+        "source": "Solute Leaching",
+        "target": "Deterministic Models",
+        "relation": "is classified as",
+        "supporting_papers": [
+          "https://openalex.org/W2071605829"
+        ]
+      },
+      {
+        "source": "Solute Leaching",
+        "target": "Stochastic Models",
+        "relation": "is classified as",
+        "supporting_papers": [
+          "https://openalex.org/W2071605829"
+        ]
+      },
+      {
+        "source": "Heteroscedastic Observation Model",
+        "target": "Battery Voltage Dynamics",
+        "relation": "produces calibrated predictive variance for",
+        "supporting_papers": [
+          "https://openalex.org/W2958796454"
+        ]
+      },
+      {
+        "source": "Lotka-Volterra System",
+        "target": "Stochastic Biochemical Network Models",
+        "relation": "is an application of",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "Lotka-Volterra System",
+        "target": "Prokaryotic Auto-regulatory Network",
+        "relation": "is a type of model that can be analyzed alongside",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "Population Dynamics",
+        "target": "Species Interactions",
+        "relation": "influences",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Ecological Drift",
+        "target": "Population Dynamics",
+        "relation": "desynchronizes",
+        "supporting_papers": [
+          "https://openalex.org/W2047152814"
+        ]
+      },
+      {
+        "source": "Smoke Dispersion",
+        "target": "Second-order Fire Effects",
+        "relation": "is an example of",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Stochastic Differential Equations",
+        "target": "Bayesian Parameter Inference",
+        "relation": "improves",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "Stochastic Differential Equations",
+        "target": "Lotka-Volterra System",
+        "relation": "is applied to",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "Stochastic Differential Equations",
+        "target": "Prokaryotic Auto-regulatory Network",
+        "relation": "is applied to",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "Habitat Change",
+        "target": "Population Dynamics",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Stochastic Models",
+        "target": "Solute Leaching",
+        "relation": "offer solutions to problems faced by",
+        "supporting_papers": [
+          "https://openalex.org/W2071605829"
+        ]
+      },
+      {
+        "source": "Stochastic Models",
+        "target": "Continuous-time Markov Process",
+        "relation": "describes the evolution of species range as a",
+        "supporting_papers": [
+          "https://openalex.org/W2119783895"
+        ]
+      },
+      {
+        "source": "Fynbos",
+        "target": "Biodiversity Hot Spot",
+        "relation": "is a",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Fynbos",
+        "target": "Climate Change",
+        "relation": "is affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Fynbos",
+        "target": "Extinction Risks",
+        "relation": "faces",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Fynbos",
+        "target": "Biodiversity Losses",
+        "relation": "experiences",
+        "supporting_papers": [
+          "https://openalex.org/W2121850108"
+        ]
+      },
+      {
+        "source": "Higher-Order Compartments",
+        "target": "Chromatin Domains",
+        "relation": "includes",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Hen Age",
+        "target": "Yolk Weight",
+        "relation": "is related to",
+        "supporting_papers": [
+          "https://openalex.org/W2008921457"
+        ]
+      },
+      {
+        "source": "Hen Age",
+        "target": "Egg Weight",
+        "relation": "increases",
+        "supporting_papers": [
+          "https://openalex.org/W2008921457"
+        ]
+      },
+      {
+        "source": "Hen Age",
+        "target": "Nutrient Requirements",
+        "relation": "influence",
+        "supporting_papers": [
+          "https://openalex.org/W2008921457"
+        ]
+      },
+      {
+        "source": "Stochasticity",
+        "target": "Cell Differentiation",
+        "relation": "can lead to",
+        "supporting_papers": [
+          "https://openalex.org/W2132980978"
+        ]
+      },
+      {
+        "source": "Stochasticity",
+        "target": "Transcription Variability",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Stochasticity",
+        "target": "Demographic Stochasticity",
+        "relation": "is a form of",
+        "supporting_papers": [
+          "https://openalex.org/W2047152814"
+        ]
+      },
+      {
+        "source": "Stochasticity",
+        "target": "Ecological Drift",
+        "relation": "is a form of",
+        "supporting_papers": [
+          "https://openalex.org/W2047152814"
+        ]
+      },
+      {
+        "source": "Stochasticity",
+        "target": "Genome Organization",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2972175853"
+        ]
+      },
+      {
+        "source": "Second-order Fire Effects",
+        "target": "Fire Effects",
+        "relation": "is a type of",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Second-order Fire Effects",
+        "target": "Smoke Dispersion",
+        "relation": "includes",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Second-order Fire Effects",
+        "target": "Vegetation Succession",
+        "relation": "includes",
+        "supporting_papers": [
+          "https://openalex.org/W2133970424"
+        ]
+      },
+      {
+        "source": "Biogeographic History",
+        "target": "Data-augmentation",
+        "relation": "enhanced by",
+        "supporting_papers": [
+          "https://openalex.org/W2119783895"
+        ]
+      },
+      {
+        "source": "Egg Weight",
+        "target": "Albumen",
+        "relation": "contains proportionally more",
+        "supporting_papers": [
+          "https://openalex.org/W2008921457"
+        ]
+      },
+      {
+        "source": "Egg Weight",
+        "target": "Shell",
+        "relation": "contains proportionally less",
+        "supporting_papers": [
+          "https://openalex.org/W2008921457"
+        ]
+      },
+      {
+        "source": "Egg Weight",
+        "target": "Yolk Weight",
+        "relation": "contains proportionally more",
+        "supporting_papers": [
+          "https://openalex.org/W2008921457"
+        ]
+      },
+      {
+        "source": "Stochastic Biochemical Network Models",
+        "target": "Bayesian Parameter Inference",
+        "relation": "utilizes",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      },
+      {
+        "source": "Prokaryotic Auto-regulatory Network",
+        "target": "Stochastic Biochemical Network Models",
+        "relation": "is an application of",
+        "supporting_papers": [
+          "https://openalex.org/W2122028584"
+        ]
+      }
+    ]
+  },
+  "construction_metrics": {
+    "duration_seconds": 10.97,
+    "total_tokens": 10971,
+    "estimated_cost_usd": 0.0031,
+    "raw_edges_extracted": 39,
+    "raw_edges_with_prov": 39,
+    "raw_edges_missing_prov": 0,
+    "node_count": 56,
+    "edge_count": 82,
+    "edges_with_provenance": 81,
+    "edges_missing_provenance": 1,
+    "unmapped_dropped_ids": 1
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "query_id": "BIO-1",
+  "domain": "bio",
+  "query": "How does sleep deprivation affect synaptic plasticity and memory consolidation in the hippocampus?",
+  "search_term": "\"sleep deprivation\" AND \"synaptic plasticity\" AND hippocampus",
+  "paper_count": 10,
+  "papers": [
+    {
+      "id": "https://openalex.org/W783873688",
+      "title": "Neuron-glia metabolic coupling and plasticity",
+      "year": 2006,
+      "venue": "Unknown Venue",
+      "abstract": "The coupling between synaptic activity and glucose utilization (neurometabolic coupling) is a central physiological principle of brain function that has provided the basis for 2-deoxyglucose-based functional imaging with positron emission tomography (PET). Astrocytes play a central role in neurometabolic coupling, and the basic mechanism involves glutamate-stimulated aerobic glycolysis; the sodium-coupled reuptake of glutamate by astrocytes and the ensuing activation of the Na-K-ATPase triggers glucose uptake and processing via glycolysis, resulting in the release of lactate from astrocytes. Lactate can then contribute to the activity-dependent fuelling of the neuronal energy demands associated with synaptic transmission. An operational model, the 'astrocyte-neuron lactate shuttle', is supported experimentally by a large body of evidence, which provides a molecular and cellular basis for interpreting data obtained from functional brain imaging studies. In addition, this neuron-glia metabolic coupling undergoes plastic adaptations in parallel with adaptive mechanisms that characterize synaptic plasticity. Thus, distinct subregions of the hippocampus are metabolically active at different time points during spatial learning tasks, suggesting that a type of metabolic plasticity, involving by definition neuron-glia coupling, occurs during learning. In addition, marked variations in the expression of genes involved in glial glycogen metabolism are observed during the sleep-wake cycle, with in particular a marked induction of expression of the gene encoding for protein targeting to glycogen (PTG) following sleep deprivation. These data suggest that glial metabolic plasticity is likely to be concomitant with synaptic plasticity.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2253421052",
+      "title": "Conditions that affect sleep alter the expression of molecules associated with synaptic plasticity",
+      "year": 2001,
+      "venue": "Unknown Venue",
+      "abstract": "Many theories propose that sleep serves a purpose in synaptic plasticity. We tested the hypothesis, therefore, that manipulation of sleep would affect the expression of molecules known to be involved in synaptic plasticity. mRNA expression of four molecules [brain-derived neurotrophic factor (BDNF), activity-regulated cytoskeleton-associated protein (Arc), matrix metalloproteinase-9 (MMP-9), and tissue plasminogen activator (tPA)] was determined after 8 h of sleep deprivation and after 6 h of a mild increase in ambient temperature, a condition that enhances sleep in rats. After sleep deprivation, BDNF, Arc, and tPA mRNAs in the cerebral cortex increased while MMP-9 mRNA levels decreased. Conversely, after enhanced ambient temperature, BDNF, Arc, and tPA mRNAs decreased while MMP-9 mRNA increased. In the hippocampus, sleep deprivation did not significantly affect BDNF and tPA expression, although Arc mRNA increased and MMP-9 mRNA decreased. Brain temperature enhancement decreased Arc mRNA levels in the hippocampus but did not affect BDNF, MMP-9, or tPA in this area. Results are consistent with the notion that sleep plays a role in synaptic plasticity.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2003856118",
+      "title": "Insufficient Sleep Reversibly Alters Bidirectional Synaptic Plasticity and NMDA Receptor Function",
+      "year": 2006,
+      "venue": "Unknown Venue",
+      "abstract": "Insufficient sleep impairs cognitive functions in humans and animals. However, whether long-term synaptic plasticity, a cellular substrate of learning and memory, is compromised by sleep loss per se remains unclear because of confounding factors related to sleep deprivation (SD) procedures in rodents. Using an ex vivo approach in C57BL/6J mice, we show that sleep loss rapidly and reversibly alters bidirectional synaptic plasticity in the CA1 area of the hippocampus. A brief (approximately 4 h) total SD, respecting the temporal parameters of sleep regulation and maintaining unaltered low corticosterone levels, shifted the modification threshold for long-term depression/long-term potentiation (LTP) along the stimulation frequency axis (1-100 Hz) toward the right. Reducing exposure to sensory stimuli by whisker trimming did not affect the SD-induced changes in synaptic plasticity. Recovery sleep reversed the effects induced by SD. When SD was combined with moderate stress, LTP induction was not only impaired but also occluded. Both electrophysiological analysis and immunoblotting of purified synaptosomes revealed that an alteration in the molecular composition of synaptically activated NMDA receptors toward a greater NR2A/NR2B ratio accompanied the effects of SD. This change was reversed after recovery sleep. By using an unparalleled, particularly mild form of SD, this study describes a novel approach toward dissociating the consequences of insufficient sleep on synaptic plasticity from nonspecific effects accompanying SD in rodents. We establish a framework for cellular models of cognitive impairment related to sleep loss, a major problem in modern society.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W75676917",
+      "title": "Chronic Caffeine Treatment Prevents Sleep Deprivation-Induced Impairment of Cognitive Function and Synaptic Plasticity",
+      "year": 2010,
+      "venue": "Unknown Venue",
+      "abstract": "STUDY OBJECTIVES: This study was undertaken to provide a detailed account of the effect of chronic treatment with a small dose of caffeine on the deleterious effects of sleep loss on brain function in rats. EXPERIMENTAL DESIGN: We investigated the effects of chronic (4 weeks) caffeine treatment (0.3 g/L in drinking water) on memory impairment in acutely (24 h) sleep-deprived adult male Wistar rats. Sleep deprivation was induced using the modified multiple platform model. The effects of caffeine on sleep deprivation-induced hippocampus-dependent learning and memory deficits were studied by 3 approaches: learning and memory performance in the radial arm water maze task, electrophysiological recording of early long-term potentiation (E-LTP) in area CA1 of the hippocampus, and levels of memory- and synaptic plasticity-related signaling molecules after E-LTP induction. MEASUREMENT AND RESULTS: The results showed that chronic caffeine treatment prevented impairment of hippocampus-dependent learning, shortterm memory and E-LTP of area CA1 in the sleep-deprived rats. In correlation, chronic caffeine treatment prevented sleep deprivation-associated decrease in the levels of phosphorylated calcium/calmodulin-dependent protein kinase II (P-CaMKII) during expression of E-LTP. CONCLUSIONS: The results suggest that long-term use of a low dose of caffeine prevents impairment of short-term memory and E-LTP in acutely sleep-deprived rats.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2000269220",
+      "title": "Astrocyte-Derived Adenosine and A 1 Receptor Activity Contribute to Sleep Loss-Induced Deficits in Hippocampal Synaptic Plasticity and Memory in Mice",
+      "year": 2011,
+      "venue": "Unknown Venue",
+      "abstract": "Sleep deprivation (SD) can have a negative impact on cognitive function, but the mechanism(s) by which SD modulates memory remains unclear. We have previously shown that astrocyte-derived adenosine is a candidate molecule involved in the cognitive deficits following a brief period of SD (Halassa et al., 2009). In this study, we examined whether genetic disruption of soluble N-ethylmaleimide-sensitive factor attached protein (SNARE)-dependent exocytosis in astrocytes (dnSNARE mice) or pharmacological blockade of A1 receptor signaling using an adenosine A1 receptor (A1R) antagonist, 8-cyclopentyl-1,3-dimethylxanthine (CPT), could prevent the negative effects of 6 h of SD on hippocampal late-phase long-term potentiation (L-LTP) and hippocampus-dependent spatial object recognition memory. We found that SD impaired L-LTP in wild-type mice but not in dnSNARE mice. Similarly, this deficit in L-LTP resulting from SD was prevented by a chronic infusion of CPT. Consistent with these results, we found that hippocampus-dependent memory deficits produced by SD were rescued in dnSNARE mice and CPT-treated mice. These data provide the first evidence that astrocytic ATP and adenosine A1R activity contribute to the effects of SD on hippocampal synaptic plasticity and hippocampus-dependent memory, and suggest a new therapeutic target to reverse the hippocampus-related cognitive deficits induced by sleep loss.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2069678434",
+      "title": "Neurobiological Consequences of Sleep Deprivation",
+      "year": 2013,
+      "venue": "Unknown Venue",
+      "abstract": "Although the physiological function of sleep is not completely understood, it is well documented that it contributes significantly to the process of learning and memory. Ample evidence suggests that adequate sleep is essential for fostering connections among neuronal networks for memory consolidation in the hippocampus. Sleep deprivation studies are extremely valuable in understanding why we sleep and what are the consequences of sleep loss. Experimental sleep deprivation in animals allows us to gain insight into the mechanism of sleep at levels not possible to study in human subjects. Many useful approaches have been utilized to evaluate the effect of sleep loss on cognitive function, each with relative advantages and disadvantages. In this review we discuss sleep and the detrimental effects of sleep deprivation mostly in experimental animals. The negative effects of sleep deprivation on various aspects of brain function including learning and memory, synaptic plasticity and the state of cognition-related signaling molecules are discussed.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2094483645",
+      "title": "Caffeine prevents sleep loss\u2010induced deficits in long\u2010term potentiation and related signaling molecules in the dentate gyrus",
+      "year": 2010,
+      "venue": "Unknown Venue",
+      "abstract": "We have previously reported that caffeine prevented sleep deprivation-induced impairment of long-term potentiation (LTP) of area CA1 as well as hippocampus-dependent learning and memory performance in the radial arm water maze. In this report we examined the impact of long-term (4-week) caffeine consumption (0.3 g/L in drinking water) on synaptic plasticity (Alhaider et al., 2010) deficit in the dentate gyrus (DG) area of acutely sleep-deprived rats. The sleep deprivation and caffeine/sleep deprivation groups were sleep-deprived for 24 h by using the columns-in-water technique. We tested the effect of caffeine and/or sleep deprivation on LTP and measured the basal levels as well as stimulated levels of LTP-related molecules in the DG. The results showed that chronic caffeine administration prevented the impairment of early-phase LTP (E-LTP) in the DG of sleep-deprived rats. Additionally, chronic caffeine treatment prevented the sleep deprivation-associated decreases in the basal levels of the phosphorylated calcium/calmodulin-dependent protein kinase II (P-CaMKII) and brain derived neurotrophic factor (BDNF) as well as in the stimulated levels of P-CaMKII in the DG area. The results suggest that chronic use of caffeine prevented anomalous changes in the basal levels of P-CaMKII and BDNF associated with sleep deprivation and as a result contributes to the revival of LTP in the DG region.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W1999028759",
+      "title": "REM Sleep-Dependent Bidirectional Regulation of Hippocampal-Based Emotional Memory and LTP",
+      "year": 2015,
+      "venue": "Unknown Venue",
+      "abstract": "Prolonged rapid-eye-movement (REM) sleep deprivation has long been used to study the role of REM sleep in learning and memory processes. However, this method potentially induces stress and fatigue that may directly affect cognitive functions. Here, by using a short-term and nonstressful REM sleep deprivation (RSD) method we assessed in rats the bidirectional influence of reduced and increased REM sleep amount on hippocampal-dependent emotional memory and plasticity. Our results indicate that 4 h RSD impaired consolidation of contextual fear conditioning (CFC) and induction of long-term potentiation (LTP), while decreasing density of Egr1/Zif268-expressing neurons in the CA1 region of the dorsal hippocampus. LTP and Egr1 expression were not affected in ventral CA1. Conversely, an increase in REM sleep restores and further facilitates CFC consolidation and LTP induction, and also increases Egr1 expression in dorsal CA1. Moreover, CFC consolidation, Egr1 neuron density, and LTP amplitude in dorsal CA1 show a positive correlation with REM sleep amount. Altogether, these results indicate that mild changes in REM sleep amount bidirectionally affect memory and synaptic plasticity mechanisms occurring in the CA1 area of the dorsal hippocampus.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2129455558",
+      "title": "Daily Acclimation Handling Does Not Affect Hippocampal Long-Term Potentiation or Cause Chronic Sleep Deprivation in Mice",
+      "year": 2013,
+      "venue": "Unknown Venue",
+      "abstract": "STUDY OBJECTIVES: Gentle handling is commonly used to perform brief sleep deprivation in rodents. It was recently reported that daily acclimation handling, which is often used before behavioral assays, causes alterations in sleep, stress, and levels of N-methyl-D-aspartate receptor subunits prior to the actual period of sleep deprivation. It was therefore suggested that acclimation handling could mediate some of the observed effects of subsequent sleep deprivation. Here, we examine whether acclimation handling, performed as in our sleep deprivation studies, alters sleep/wake behavior, stress, or forms of hippocampal synaptic plasticity that are impaired by sleep deprivation. DESIGN: Adult C57BL/6J mice were either handled daily for 6 days or were left undisturbed in their home cages. On the day after the 6(th) day of handling, long-term potentiation (LTP) was induced in hippocampal slices with spaced four-train stimulation, which we previously demonstrated to be impaired by brief sleep deprivation. Basal synaptic properties were also assessed. In three other sets of animals, activity monitoring, polysomnography, and stress hormone measurements were performed during the 6 days of handling. RESULTS: Daily gentle handling alone does not alter LTP, rest/activity patterns, or sleep/wake architecture. Handling initially induces a minimal stress response, but by the 6(th) day, stress hormone levels are unaltered by handling. CONCLUSION: It is possible to handle mice daily to accustom them to the researcher without causing alterations in sleep, stress, or synaptic plasticity in the hippocampus. Therefore, effects of acclimation handling cannot explain the impairments in signaling mechanisms, synaptic plasticity, and memory that result from brief sleep deprivation.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2056915680",
+      "title": "Growth hormone rescues hippocampal synaptic function after sleep deprivation",
+      "year": 2010,
+      "venue": "Unknown Venue",
+      "abstract": "Sleep is required for, and sleep loss impairs, normal hippocampal synaptic N-methyl-D-aspartate (NMDA) glutamate receptor function and expression, hippocampal NMDA receptor-dependent synaptic plasticity, and hippocampal-dependent memory function. Although sleep is essential, the signals linking sleep to hippocampal function are not known. One potential signal is growth hormone. Growth hormone is released during sleep, and its release is suppressed during sleep deprivation. If growth hormone links sleep to hippocampal function, then restoration of growth hormone during sleep deprivation should prevent adverse consequences of sleep loss. To test this hypothesis, we examined rat hippocampus for spontaneous excitatory synaptic currents in CA1 pyramidal neurons, long-term potentiation in area CA1, and NMDA receptor subunit proteins in synaptic membranes. Three days of sleep deprivation caused a significant reduction in NMDA receptor-mediated synaptic currents compared with control treatments. When rats were injected with growth hormone once per day during sleep deprivation, the loss of NMDA receptor-mediated synaptic currents was prevented. Growth hormone injections also prevented the impairment of long-term potentiation that normally follows sleep deprivation. In addition, sleep deprivation led to a selective loss of NMDA receptor 2B (NR2B) from hippocampal synaptic membranes, but normal NR2B expression was restored by growth hormone injection. Our results identify growth hormone as a critical mediator linking sleep to normal synaptic function of the hippocampus.",
+      "landing_page_url": null
+    }
+  ]
+}

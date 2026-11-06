@@ -1,0 +1,155 @@
+{
+  "condition": "GRAPH_ONLY",
+  "query_id": "CLIM-1",
+  "query": "What causal pathways connect deforestation, nutrient runoff, and coral reef degradation?",
+  "domain": "climate",
+  "repetition": 2,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 11.17,
+    "prompt_tokens": 8765,
+    "completion_tokens": 967,
+    "total_tokens": 9732,
+    "estimated_cost_usd": 0.0019,
+    "llm_calls": 1,
+    "tool_calls": 0
+  },
+  "hypotheses": [
+    {
+      "text": "Deforestation leads to increased topsoil erosion, which causes sedimentation in coastal ecosystems, ultimately resulting in coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.8,
+      "testability_score": 0.9,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Topsoil Erosion",
+          "Sedimentation"
+        ],
+        "relations": [
+          "leads to",
+          "causes"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": null,
+      "mechanism_class": "Ecosystem Dynamics",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation Studies",
+          "Coral Reef Ecology",
+          "Sedimentation Effects"
+        ],
+        "missing_link": "The direct impact of deforestation on sedimentation and its subsequent effects on coral reefs has not been thoroughly established.",
+        "field_assumption": "It is often assumed that sedimentation is primarily a result of urban runoff rather than deforestation.",
+        "structural_reason": "Research communities focusing on terrestrial deforestation and marine ecology often operate in silos, leading to gaps in understanding the interconnectedness of these processes.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation is known to impact terrestrial ecosystems, yet its cascading effects on marine ecosystems, particularly coral reefs, remain underexplored.",
+        "belief_a": "Deforestation primarily affects terrestrial ecosystems.",
+        "belief_b": "Coral reefs are primarily impacted by local marine factors such as pollution and overfishing.",
+        "consistency_constraint": "Any valid explanation must account for how terrestrial changes influence marine environments."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Deforestation",
+        "Topsoil Erosion",
+        "Sedimentation"
+      ]
+    },
+    {
+      "text": "Nutrient runoff from deforested areas increases nutrient loading in coastal waters, leading to eutrophication and subsequent coral reef degradation.",
+      "domain_tags": [
+        "marine biology",
+        "environmental science"
+      ],
+      "novelty_score": 0.8,
+      "feasibility_score": 0.9,
+      "testability_score": 0.85,
+      "causal_chain": {
+        "nodes": [
+          "Nutrient Runoff",
+          "Nutrient Loading",
+          "Eutrophication"
+        ],
+        "relations": [
+          "increases",
+          "leads to"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": null,
+      "mechanism_class": "Nutrient Dynamics",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Nutrient Management",
+          "Coral Reef Health",
+          "Deforestation Impact"
+        ],
+        "missing_link": "The specific pathways connecting nutrient runoff from deforestation to coral reef health are not well defined.",
+        "field_assumption": "Nutrient loading is often attributed to agricultural runoff rather than deforestation-related runoff.",
+        "structural_reason": "Research on nutrient dynamics typically focuses on agricultural sources, neglecting the role of deforestation in nutrient cycling.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Nutrient enrichment is known to harm coral reefs, yet the contribution of deforestation to this process is not fully understood.",
+        "belief_a": "Nutrient loading from agriculture is the primary cause of eutrophication in coastal waters.",
+        "belief_b": "Coral reefs are primarily affected by local nutrient sources and not by terrestrial deforestation.",
+        "consistency_constraint": "Any valid explanation must integrate the role of terrestrial ecosystems in marine nutrient dynamics."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Nutrient Runoff",
+        "Nutrient Loading",
+        "Eutrophication"
+      ]
+    },
+    {
+      "text": "Increased sedimentation from deforestation leads to reduced light penetration in coastal waters, which causes physiological stress and reproductive failure in coral reefs.",
+      "domain_tags": [
+        "marine biology",
+        "ecology"
+      ],
+      "novelty_score": 0.75,
+      "feasibility_score": 0.85,
+      "testability_score": 0.9,
+      "causal_chain": {
+        "nodes": [
+          "Sedimentation",
+          "Light Penetration",
+          "Physiological Stress"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": null,
+      "mechanism_class": "Light Dynamics",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Sedimentation Studies",
+          "Coral Physiology",
+          "Deforestation Effects"
+        ],
+        "missing_link": "The relationship between sedimentation-induced light reduction and coral physiological responses is not well established.",
+        "field_assumption": "It is commonly believed that coral reefs are primarily affected by water temperature and nutrient levels, rather than sedimentation and light availability.",
+        "structural_reason": "The focus on nutrient and temperature impacts on coral health has overshadowed the effects of sedimentation and light reduction.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Sedimentation is known to affect light availability, yet its specific impacts on coral physiology and reproduction are not well documented.",
+        "belief_a": "Coral health is primarily influenced by temperature and nutrient levels.",
+        "belief_b": "Sedimentation has significant negative effects on coral reefs.",
+        "consistency_constraint": "Any valid explanation must clarify how sedimentation impacts light availability and coral health."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Sedimentation",
+        "Light Penetration",
+        "Physiological Stress"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1092 @@
+{
+  "query_id": "CLIM-1",
+  "domain": "climate",
+  "query": "What causal pathways connect deforestation, nutrient runoff, and coral reef degradation?",
+  "graph": {
+    "nodes": [
+      "Suspended Sediments",
+      "Reproductive Failure",
+      "Toxic Algal Blooms",
+      "Socio-economic Costs",
+      "Metals",
+      "Anoxia",
+      "Carbon Sequestration",
+      "Carbon Cycling",
+      "Microbially Dominated Ecosystems",
+      "Aquatic Ecosystems",
+      "Ocean Acidification",
+      "Trophic Link",
+      "Sedimentation",
+      "Anoxic Dead Zones",
+      "Coral Reef Communities",
+      "Coastal Ecosystems",
+      "Toxic Dinoflagellate Blooms",
+      "Coral Reefs",
+      "Sustainable Tourism",
+      "Conservation Goals",
+      "Thermal Pollution",
+      "Zooplankton Grazers",
+      "Cold-water Species",
+      "Phosphorus",
+      "Nutrient Upwelling",
+      "Genetic Strain Diversity",
+      "HAB Taxa",
+      "Anthropogenic Disturbance",
+      "El Ni\u00f1o Southern Oscillation",
+      "Coral Mortality",
+      "Coral Bleaching",
+      "Phase Shifts",
+      "Climate Change Adaptation",
+      "Algae",
+      "Metabolically Flexible Microbes",
+      "Nitrogen",
+      "Nutrient Deficiency",
+      "Coastal Protection",
+      "Mangrove Forests",
+      "Intrinsic Value of Coral Reefs",
+      "Ecosystem Resilience",
+      "Zooxanthellae",
+      "Coastal Assemblages",
+      "Sewage Disposal",
+      "Ecological Consequences",
+      "Marine Harmful Algal Blooms",
+      "Oxygen-consuming Microbes",
+      "Phytoplankton Community Responses",
+      "Plankton Growth",
+      "Eutrophication",
+      "Topsoil Erosion",
+      "Carbonate Production",
+      "Land-based Pollution",
+      "Destructive Fishing Practices",
+      "Water Transparency",
+      "Selective Seascape",
+      "Marine Biodiversity",
+      "Mass Extinction",
+      "Rehabilitation of Coral Reefs",
+      "Nonpoint Pollution",
+      "Wastewater Treatment",
+      "Dinoflagellate Cysts",
+      "Bioerosion",
+      "Range Expansion",
+      "Jellyfish Blooms",
+      "Biodiversity Loss",
+      "Nutrient Enrichment",
+      "Phytoplankton Growth",
+      "Physiological Stress",
+      "Competitive Interactions",
+      "Oil-related Pollution",
+      "Sea Surface Temperatures",
+      "Physiological Plasticity",
+      "Nutrient Loading",
+      "Habitat Destruction",
+      "Net Present Value",
+      "Seaweeds",
+      "Animal-Algal Symbioses",
+      "Calcification",
+      "Coral Reef Degradation",
+      "Light Penetration",
+      "Organic Matter"
+    ],
+    "edges": [
+      {
+        "source": "Suspended Sediments",
+        "target": "Coastal Assemblages",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W182069383"
+        ]
+      },
+      {
+        "source": "Suspended Sediments",
+        "target": "Sedimentation",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W182069383"
+        ]
+      },
+      {
+        "source": "Reproductive Failure",
+        "target": "Coral Reefs",
+        "relation": "is a consequence of",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Toxic Algal Blooms",
+        "target": "Aquatic Ecosystems",
+        "relation": "are caused by",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Metals",
+        "target": "Coral Reefs",
+        "relation": "are a type of pollution affecting",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Anoxia",
+        "target": "Coral Reefs",
+        "relation": "kills",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Carbon Cycling",
+        "target": "Mangrove Forests",
+        "relation": "involves",
+        "supporting_papers": [
+          "https://openalex.org/W2130426665"
+        ]
+      },
+      {
+        "source": "Carbon Cycling",
+        "target": "Sedimentation",
+        "relation": "interacts with",
+        "supporting_papers": [
+          "https://openalex.org/W2130426665",
+          "https://openalex.org/W182069383"
+        ]
+      },
+      {
+        "source": "Microbially Dominated Ecosystems",
+        "target": "Phase Shifts",
+        "relation": "result from",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Microbially Dominated Ecosystems",
+        "target": "Toxic Dinoflagellate Blooms",
+        "relation": "boom and bust cycles of",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Microbially Dominated Ecosystems",
+        "target": "Algae",
+        "relation": "benefit from the transformation of ecosystems",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Ocean Acidification",
+        "target": "Calcification",
+        "relation": "reduces",
+        "supporting_papers": [
+          "https://openalex.org/W1980583674"
+        ]
+      },
+      {
+        "source": "Trophic Link",
+        "target": "Coral Mortality",
+        "relation": "is impacted by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Trophic Link",
+        "target": "Coral Reefs",
+        "relation": "is provided by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Trophic Link",
+        "target": "Reproductive Failure",
+        "relation": "affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Trophic Link",
+        "target": "Physiological Stress",
+        "relation": "affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Trophic Link",
+        "target": "Animal-Algal Symbioses",
+        "relation": "is affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Trophic Link",
+        "target": "Competitive Interactions",
+        "relation": "is affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Sedimentation",
+        "target": "Marine Biodiversity",
+        "relation": "threatens",
+        "supporting_papers": [
+          "https://openalex.org/W182069383"
+        ]
+      },
+      {
+        "source": "Sedimentation",
+        "target": "Coral Reefs",
+        "relation": "is a type of pollution affecting",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Sedimentation",
+        "target": "Eutrophication",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Sedimentation",
+        "target": "Coastal Assemblages",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W182069383"
+        ]
+      },
+      {
+        "source": "Sedimentation",
+        "target": "Nutrient Loading",
+        "relation": "related to",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Sedimentation",
+        "target": "Reproductive Failure",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Sedimentation",
+        "target": "Physiological Stress",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Anoxic Dead Zones",
+        "target": "Coral Reefs",
+        "relation": "are created by",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Anoxic Dead Zones",
+        "target": "Microbially Dominated Ecosystems",
+        "relation": "transformed into by synergistic effects of habitat destruction and nutrient runoff",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Coral Reef Communities",
+        "target": "Nutrient Deficiency",
+        "relation": "adapted to",
+        "supporting_papers": [
+          "https://openalex.org/W2327706037"
+        ]
+      },
+      {
+        "source": "Coastal Ecosystems",
+        "target": "Sedimentation",
+        "relation": "affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2522525957"
+        ]
+      },
+      {
+        "source": "Toxic Dinoflagellate Blooms",
+        "target": "Microbially Dominated Ecosystems",
+        "relation": "are part of",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Anthropogenic Disturbance",
+        "relation": "affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Marine Biodiversity",
+        "relation": "threatens",
+        "supporting_papers": [
+          "https://openalex.org/W182069383"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Destructive Fishing Practices",
+        "relation": "threatened by",
+        "supporting_papers": [
+          "https://openalex.org/W954843181"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Anoxic Dead Zones",
+        "relation": "transformed into by synergistic effects of habitat destruction and nutrient runoff",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Microbially Dominated Ecosystems",
+        "relation": "transformed into by synergistic effects of habitat destruction and nutrient runoff",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Habitat Destruction",
+        "relation": "endangered by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Nutrient Loading",
+        "relation": "endangered by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Sedimentation",
+        "relation": "endangered by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Animal-Algal Symbioses",
+        "relation": "altered by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Reproductive Failure",
+        "relation": "affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Physiological Stress",
+        "relation": "measured in",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Trophic Link",
+        "relation": "provides",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Coral Reefs",
+        "target": "Competitive Interactions",
+        "relation": "shifted by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Conservation Goals",
+        "target": "Coral Reefs",
+        "relation": "aim to protect",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Thermal Pollution",
+        "target": "Coral Reefs",
+        "relation": "is a type of pollution affecting",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Phosphorus",
+        "target": "Eutrophication",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Phosphorus",
+        "target": "Nutrient Enrichment",
+        "relation": "is a component of",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Nutrient Upwelling",
+        "target": "Phytoplankton Community Responses",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W1980583674"
+        ]
+      },
+      {
+        "source": "HAB Taxa",
+        "target": "Zooplankton Grazers",
+        "relation": "impact on",
+        "supporting_papers": [
+          "https://openalex.org/W1980583674"
+        ]
+      },
+      {
+        "source": "Anthropogenic Disturbance",
+        "target": "Ecosystem Resilience",
+        "relation": "threatens",
+        "supporting_papers": [
+          "https://openalex.org/W954843181"
+        ]
+      },
+      {
+        "source": "Anthropogenic Disturbance",
+        "target": "Habitat Destruction",
+        "relation": "includes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Anthropogenic Disturbance",
+        "target": "Nutrient Loading",
+        "relation": "includes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Anthropogenic Disturbance",
+        "target": "Sedimentation",
+        "relation": "includes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Anthropogenic Disturbance",
+        "target": "Physiological Stress",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Anthropogenic Disturbance",
+        "target": "Reproductive Failure",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Anthropogenic Disturbance",
+        "target": "Animal-Algal Symbioses",
+        "relation": "alters",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Anthropogenic Disturbance",
+        "target": "Competitive Interactions",
+        "relation": "shifts",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Coral Bleaching",
+        "target": "Sea Surface Temperatures",
+        "relation": "increases due to",
+        "supporting_papers": [
+          "https://openalex.org/W2522525957"
+        ]
+      },
+      {
+        "source": "Phase Shifts",
+        "target": "Microbially Dominated Ecosystems",
+        "relation": "sudden shifts to",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Climate Change Adaptation",
+        "target": "Intrinsic Value of Coral Reefs",
+        "relation": "preserves",
+        "supporting_papers": [
+          "https://openalex.org/W2522525957"
+        ]
+      },
+      {
+        "source": "Algae",
+        "target": "Mass Extinction",
+        "relation": "may benefit from",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Metabolically Flexible Microbes",
+        "target": "Mass Extinction",
+        "relation": "may benefit from",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Nitrogen",
+        "target": "Eutrophication",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Nitrogen",
+        "target": "Nutrient Enrichment",
+        "relation": "is a component of",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Coastal Protection",
+        "target": "Socio-economic Costs",
+        "relation": "mitigates",
+        "supporting_papers": [
+          "https://openalex.org/W2522525957"
+        ]
+      },
+      {
+        "source": "Mangrove Forests",
+        "target": "Carbon Sequestration",
+        "relation": "rates of carbon storage",
+        "supporting_papers": [
+          "https://openalex.org/W2130426665"
+        ]
+      },
+      {
+        "source": "Mangrove Forests",
+        "target": "Coral Reefs",
+        "relation": "similar productivity to",
+        "supporting_papers": [
+          "https://openalex.org/W2130426665"
+        ]
+      },
+      {
+        "source": "Zooxanthellae",
+        "target": "Coral Reefs",
+        "relation": "are symbiotic with",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Coastal Assemblages",
+        "target": "Marine Biodiversity",
+        "relation": "threatens",
+        "supporting_papers": [
+          "https://openalex.org/W182069383"
+        ]
+      },
+      {
+        "source": "Sewage Disposal",
+        "target": "Nutrient Enrichment",
+        "relation": "results in",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Sewage Disposal",
+        "target": "Organic Matter",
+        "relation": "enriches the water with",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Marine Harmful Algal Blooms",
+        "target": "Nutrient Loading",
+        "relation": "influenced by",
+        "supporting_papers": [
+          "https://openalex.org/W1980583674",
+          "https://openalex.org/W2522525957"
+        ]
+      },
+      {
+        "source": "Oxygen-consuming Microbes",
+        "target": "Coral Reefs",
+        "relation": "kills",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Oxygen-consuming Microbes",
+        "target": "Anoxia",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Plankton Growth",
+        "target": "Water Transparency",
+        "relation": "reduces",
+        "supporting_papers": [
+          "https://openalex.org/W2327706037"
+        ]
+      },
+      {
+        "source": "Eutrophication",
+        "target": "Coral Reefs",
+        "relation": "causes loss of",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Eutrophication",
+        "target": "Nutrient Enrichment",
+        "relation": "is a cause of",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Eutrophication",
+        "target": "Aquatic Ecosystems",
+        "relation": "degrades",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Eutrophication",
+        "target": "Toxic Algal Blooms",
+        "relation": "is a cause of",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Topsoil Erosion",
+        "target": "Sedimentation",
+        "relation": "leads to",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Land-based Pollution",
+        "target": "Wastewater Treatment",
+        "relation": "requires investment in",
+        "supporting_papers": [
+          "https://openalex.org/W2522525957"
+        ]
+      },
+      {
+        "source": "Destructive Fishing Practices",
+        "target": "Sustainable Tourism",
+        "relation": "contradicts",
+        "supporting_papers": [
+          "https://openalex.org/W2522525957"
+        ]
+      },
+      {
+        "source": "Selective Seascape",
+        "target": "Mass Extinction",
+        "relation": "is altered by",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Selective Seascape",
+        "target": "Metabolically Flexible Microbes",
+        "relation": "radically altering",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Mass Extinction",
+        "target": "Ecological Consequences",
+        "relation": "has unknown effects on",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Mass Extinction",
+        "target": "Habitat Destruction",
+        "relation": "synergistic effects leading to",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Rehabilitation of Coral Reefs",
+        "target": "Coral Reefs",
+        "relation": "aims to restore",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Nonpoint Pollution",
+        "target": "Aquatic Ecosystems",
+        "relation": "degrades",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Nonpoint Pollution",
+        "target": "Phosphorus",
+        "relation": "is a major source of",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Nonpoint Pollution",
+        "target": "Nitrogen",
+        "relation": "is a major source of",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Dinoflagellate Cysts",
+        "target": "El Ni\u00f1o Southern Oscillation",
+        "relation": "associated with",
+        "supporting_papers": [
+          "https://openalex.org/W1980583674"
+        ]
+      },
+      {
+        "source": "Bioerosion",
+        "target": "Carbonate Production",
+        "relation": "competes with",
+        "supporting_papers": [
+          "https://openalex.org/W2327706037"
+        ]
+      },
+      {
+        "source": "Range Expansion",
+        "target": "Cold-water Species",
+        "relation": "at the expense of",
+        "supporting_papers": [
+          "https://openalex.org/W1980583674"
+        ]
+      },
+      {
+        "source": "Jellyfish Blooms",
+        "target": "Microbially Dominated Ecosystems",
+        "relation": "are part of",
+        "supporting_papers": [
+          "https://openalex.org/W2101459943"
+        ]
+      },
+      {
+        "source": "Nutrient Enrichment",
+        "target": "Toxic Algal Blooms",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Nutrient Enrichment",
+        "target": "Biodiversity Loss",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Nutrient Enrichment",
+        "target": "Zooxanthellae",
+        "relation": "introduces an imbalance in the exchange of nutrients between",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Nutrient Enrichment",
+        "target": "Phytoplankton Growth",
+        "relation": "stimulates",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Nutrient Enrichment",
+        "target": "Seaweeds",
+        "relation": "may bring about proliferation of",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Nutrient Enrichment",
+        "target": "Aquatic Ecosystems",
+        "relation": "degrades",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Nutrient Enrichment",
+        "target": "Eutrophication",
+        "relation": "is a cause of",
+        "supporting_papers": [
+          "https://openalex.org/W2138436021"
+        ]
+      },
+      {
+        "source": "Nutrient Enrichment",
+        "target": "Light Penetration",
+        "relation": "reduces",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Phytoplankton Growth",
+        "target": "Light Penetration",
+        "relation": "reduces",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Physiological Stress",
+        "target": "Coral Reefs",
+        "relation": "is measured in",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Competitive Interactions",
+        "target": "Coral Reefs",
+        "relation": "are shifted by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Competitive Interactions",
+        "target": "Reproductive Failure",
+        "relation": "affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Competitive Interactions",
+        "target": "Physiological Stress",
+        "relation": "affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Oil-related Pollution",
+        "target": "Coral Reefs",
+        "relation": "is a type of pollution affecting",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Physiological Plasticity",
+        "target": "Genetic Strain Diversity",
+        "relation": "requires consideration of",
+        "supporting_papers": [
+          "https://openalex.org/W1980583674"
+        ]
+      },
+      {
+        "source": "Nutrient Loading",
+        "target": "Eutrophication",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2522525957"
+        ]
+      },
+      {
+        "source": "Nutrient Loading",
+        "target": "Coral Reefs",
+        "relation": "is a factor in degradation of",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Nutrient Loading",
+        "target": "Physiological Stress",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Nutrient Loading",
+        "target": "Reproductive Failure",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Habitat Destruction",
+        "target": "Coral Reefs",
+        "relation": "contributes to decline of",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Habitat Destruction",
+        "target": "Reproductive Failure",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Habitat Destruction",
+        "target": "Physiological Stress",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Net Present Value",
+        "target": "Coral Reef Degradation",
+        "relation": "calculates losses from",
+        "supporting_papers": [
+          "https://openalex.org/W2522525957"
+        ]
+      },
+      {
+        "source": "Seaweeds",
+        "target": "Coral Reefs",
+        "relation": "smother and replace",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Animal-Algal Symbioses",
+        "target": "Coral Reefs",
+        "relation": "are altered by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Animal-Algal Symbioses",
+        "target": "Reproductive Failure",
+        "relation": "affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Animal-Algal Symbioses",
+        "target": "Physiological Stress",
+        "relation": "affected by",
+        "supporting_papers": [
+          "https://openalex.org/W2017008898"
+        ]
+      },
+      {
+        "source": "Organic Matter",
+        "target": "Oxygen-consuming Microbes",
+        "relation": "stimulates proliferation of",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      },
+      {
+        "source": "Organic Matter",
+        "target": "Anoxia",
+        "relation": "stimulates proliferation of oxygen-consuming microbes that may cause",
+        "supporting_papers": [
+          "https://openalex.org/W2147346498"
+        ]
+      }
+    ]
+  },
+  "construction_metrics": {
+    "duration_seconds": 149.6,
+    "total_tokens": 14419,
+    "estimated_cost_usd": 0.0043,
+    "raw_edges_extracted": 63,
+    "raw_edges_with_prov": 63,
+    "raw_edges_missing_prov": 0,
+    "node_count": 82,
+    "edge_count": 123,
+    "edges_with_provenance": 123,
+    "edges_missing_provenance": 0,
+    "unmapped_dropped_ids": 0
+  }
+}

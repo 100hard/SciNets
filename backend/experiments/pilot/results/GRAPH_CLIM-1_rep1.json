@@ -1,0 +1,180 @@
+{
+  "condition": "GRAPH",
+  "query_id": "CLIM-1",
+  "query": "What causal pathways connect deforestation, nutrient runoff, and coral reef degradation?",
+  "domain": "climate",
+  "repetition": 1,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 22.88,
+    "prompt_tokens": 5524,
+    "completion_tokens": 1776,
+    "total_tokens": 7300,
+    "estimated_cost_usd": 0.0019,
+    "llm_calls": 5,
+    "tool_calls": 9
+  },
+  "exploration_summary": "Based on the exploration of the literature concept graph, several promising multi-hop causal pathways connecting deforestation, nutrient runoff, and coral reef degradation have been identified. Here are the key findings:\n\n### Promising Causal Pathways\n\n1. **Nutrient Enrichment to Coral Reefs**\n   - **Pathways:**\n     - **Nutrient Enrichment -> Zooxanthellae -> Coral Reefs**\n     - **Nutrient Enrichment -> Seaweeds -> Coral Reefs**\n     - **Nutrient Enrichment -> Eutrophication -> Coral Reefs**\n   - **Intermediate Concepts:**\n     - **Zooxanthellae**: These symbiotic algae are crucial for coral health, and nutrient enrichment can disrupt their balance.\n     - **Seaweeds**: Increased nutrients can lead to algal blooms that outcompete corals for space and resources.\n     - **Eutrophication**: This process, driven by nutrient enrichment, can lead to conditions that are detrimental to coral ecosystems.\n\n2. **Sedimentation to Coral Reefs**\n   - **Pathways:**\n     - **Sedimentation -> Eutrophication -> Nutrient Enrichment -> Zooxanthellae -> Coral Reefs**\n     - **Sedimentation -> Eutrophication -> Nutrient Enrichment -> Seaweeds -> Coral Reefs**\n     - **Sedimentation -> Nutrient Loading -> Eutrophication -> Coral Reefs**\n     - **Sedimentation -> Nutrient Loading -> Physiological Stress -> Coral Reefs**\n     - **Sedimentation -> Nutrient Loading -> Reproductive Failure -> Coral Reefs**\n   - **Intermediate Concepts:**\n     - **Eutrophication**: Acts as a bridge that connects sedimentation with nutrient enrichment, leading to adverse effects on coral reefs.\n     - **Nutrient Loading**: This concept links sedimentation with both physiological stress and reproductive failure in corals, indicating multiple pathways of impact.\n     - **Physiological Stress**: Increased sedimentation and nutrient loading can stress coral systems, leading to degradation.\n     - **Reproductive Failure**: This outcome highlights the long-term impacts of sedimentation and nutrient dynamics on coral populations.\n\n### Summary\nThe analysis reveals that **nutrient enrichment** and **sedimentation** are critical intermediaries in the causal pathways leading to **coral reef degradation**. These pathways illustrate how anthropogenic activities, such as deforestation, can indirectly affect coral ecosystems through increased nutrient runoff and sedimentation, ultimately leading to detrimental ecological outcomes. Further research could focus on quantifying these relationships and exploring mitigation strategies to protect coral reefs.",
+  "hypotheses": [
+    {
+      "text": "Deforestation leads to increased nutrient runoff, which causes eutrophication, subsequently disrupting the balance of zooxanthellae and leading to coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 0.8,
+      "feasibility_score": 0.9,
+      "testability_score": 0.85,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Nutrient Runoff",
+          "Coral Reef Degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": "Deforestation AND nutrient runoff AND coral reef degradation",
+      "mechanism_class": "Nutrient-mediated",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation Studies",
+          "Nutrient Dynamics",
+          "Coral Reef Health"
+        ],
+        "missing_link": "The specific impact of nutrient runoff from deforestation on coral reef health is not well established.",
+        "field_assumption": "It is assumed that nutrient runoff does not significantly affect coral ecosystems directly.",
+        "structural_reason": "Different research communities focus on separate aspects of the problem without integrating findings.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation implies increased nutrient runoff, yet coral reefs continue to decline despite conservation efforts.",
+        "belief_a": "Nutrient runoff negatively impacts coral reefs.",
+        "belief_b": "Coral reefs can withstand some levels of nutrient enrichment without degradation.",
+        "consistency_constraint": "Any explanation must account for the direct effects of nutrient runoff on coral ecosystems."
+      },
+      "constraints": [
+        {
+          "text": "Must demonstrate a clear causal link between deforestation and coral reef health",
+          "type": "hard",
+          "importance": 10
+        }
+      ],
+      "key_terms": [
+        "Deforestation",
+        "Nutrient Runoff",
+        "Coral Reef Degradation",
+        "Eutrophication",
+        "Zooxanthellae"
+      ]
+    },
+    {
+      "text": "Increased sedimentation from deforestation leads to nutrient loading, which causes physiological stress in corals, ultimately resulting in coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.85,
+      "testability_score": 0.8,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Sedimentation",
+          "Coral Reef Degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": "Deforestation AND sedimentation AND coral reef degradation",
+      "mechanism_class": "Sediment-mediated",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation Impact Studies",
+          "Sediment Dynamics",
+          "Coral Physiology"
+        ],
+        "missing_link": "The connection between sedimentation from deforestation and physiological stress in corals is underexplored.",
+        "field_assumption": "It is believed that sedimentation does not significantly affect coral physiology directly.",
+        "structural_reason": "Research has historically separated sediment studies from coral health assessments.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation implies increased sedimentation, yet coral reefs show varying resilience to sediment stress.",
+        "belief_a": "Sedimentation negatively impacts coral physiology.",
+        "belief_b": "Corals can adapt to increased sedimentation without significant harm.",
+        "consistency_constraint": "Any valid explanation must clarify how sedimentation affects coral health and resilience."
+      },
+      "constraints": [
+        {
+          "text": "Must establish a direct link between sedimentation and coral physiological responses",
+          "type": "hard",
+          "importance": 9
+        }
+      ],
+      "key_terms": [
+        "Deforestation",
+        "Sedimentation",
+        "Coral Reef Degradation",
+        "Physiological Stress",
+        "Nutrient Loading"
+      ]
+    },
+    {
+      "text": "Nutrient enrichment from deforestation-induced runoff leads to algal blooms, which outcompete corals for resources, resulting in coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 0.9,
+      "feasibility_score": 0.9,
+      "testability_score": 0.9,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Nutrient Enrichment",
+          "Coral Reef Degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": "Deforestation AND nutrient enrichment AND coral reef degradation",
+      "mechanism_class": "Algal Competition",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation Research",
+          "Nutrient Dynamics",
+          "Coral Competition Studies"
+        ],
+        "missing_link": "The role of nutrient enrichment from deforestation in promoting algal blooms that harm corals is not fully understood.",
+        "field_assumption": "It is assumed that nutrient enrichment does not significantly alter competitive dynamics between algae and corals.",
+        "structural_reason": "Different fields have not integrated findings on nutrient dynamics and coral competition.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation implies increased nutrient enrichment, yet coral reefs are declining despite nutrient availability.",
+        "belief_a": "Nutrient enrichment promotes algal growth that harms corals.",
+        "belief_b": "Corals can thrive in nutrient-rich environments without being outcompeted by algae.",
+        "consistency_constraint": "Any explanation must demonstrate how nutrient enrichment affects coral-algal competition."
+      },
+      "constraints": [
+        {
+          "text": "Must show a clear causal pathway from nutrient enrichment to algal competition and coral health",
+          "type": "hard",
+          "importance": 10
+        }
+      ],
+      "key_terms": [
+        "Deforestation",
+        "Nutrient Enrichment",
+        "Coral Reef Degradation",
+        "Algal Blooms",
+        "Resource Competition"
+      ]
+    }
+  ]
+}

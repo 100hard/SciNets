@@ -1,0 +1,88 @@
+{
+  "query_id": "ML-2",
+  "domain": "ml",
+  "query": "What mechanistic links connect implicit bias of stochastic gradient descent and flat minima in deep learning models?",
+  "paper_count": 10,
+  "papers": [
+    {
+      "id": "https://openalex.org/W2071605829",
+      "title": "Concepts of solute leaching in soils: a review of modelling approaches",
+      "year": 1985,
+      "venue": "Unknown Venue",
+      "abstract": "SUMMARY A number of conceptual models for solute leaching in soil are reviewed, quantitatively compared and classified as far as possible within a framework that makes distinction between deterministic and stochastic, mechanistic and functional and rate and capacity models. They are also discussed with reference to their purpose (viz research or management), complexity, flexibility, transferability and usefulness for field soils. The basic assumptions and structures of the models impose definite limits on the ways in which they can be used. The spatial variability of soil properties caused problems for deterministic models using rate parameters, but stochastic elements can be incorporated in these models. Simpler capacity\u2010type models and non\u2010mechanistic stochastic models offer other answers to this problem. Few data sets are available for testing a range of models and few models have been tested on a range of soil types, and very few models have much demonstrable ability to simulate transient field leaching conditions. Examples of a model being tested by someone other than the developer seem very rare.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2132980978",
+      "title": "Stochasticity and Cell Fate",
+      "year": 2008,
+      "venue": "Unknown Venue",
+      "abstract": "Fundamental to living cells is the capacity to differentiate into subtypes with specialized attributes. Understanding the way cells acquire their fates is a major challenge in developmental biology. How cells adopt a particular fate is usually thought of as being deterministic, and in the large majority of cases it is. That is, cells acquire their fate by virtue of their lineage or their proximity to an inductive signal from another cell. In some cases, however, and in organisms ranging from bacteria to humans, cells choose one or another pathway of differentiation stochastically, without apparent regard to environment or history. Stochasticity has important mechanistic requirements. We speculate on why stochasticity is advantageous-and even critical in some circumstances-to the individual, the colony, or the species.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2958796454",
+      "title": "HMSPC: A Hybrid Mechanistic-Stochastic Physical-Continuous Model for Battery Dynamics",
+      "year": 2019,
+      "venue": "Unknown Venue",
+      "abstract": "Battery voltage dynamics are irregularly sampled, noise-corrupted, and strongly regime-dependent, properties that challenge standard sequential models. I propose HMSPC (Hybrid Mechanistic-Stochastic Physical-Continuous Model), a continuous-time latent variable model that addresses these challenges through two key components: a gated input-conditioned latent ODE that explicitly incorporates exogenous observations (current and temperature) into continuous-time state evolution, and a heteroscedastic observation model with uncertainty regularization that produces calibrated predictive variance. Built on the Latent ODE (Rubanova et al., 2019) framework, HMSPC replaces purely autonomous latent dynamics with a learned gating mechanism that adaptively controls how strongly operating conditions influence trajectory evolution at each integration step. Evaluated on the MIT-Stanford dataset (Severson et al., 2019) against Latent ODE and Vanilla Neural ODE (Chen et al., 2018) baselines across 5 seeds, HMSPC achieves a mean RMSE of 32.37 \u00b1 1.34 mV compared to 58.33 \u00b1 4.19 mV for Latent ODE, yielding a 45% reduction, alongside well-calibrated uncertainty estimates (ECE 0.078). Ablation studies confirm that input-conditioned drift and heteroscedastic noise each contribute meaningfully to both accuracy and calibration.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2008921457",
+      "title": "Modelling the changes in the proportions of the egg components during a laying cycle",
+      "year": 2007,
+      "venue": "Unknown Venue",
+      "abstract": "1. As hens age, egg weight increases but the eggs contain proportionally more yolk and less albumen and shell. However, at a given age, larger eggs contain proportionally more albumen. When modelling the nutrient requirements of the hen over a production cycle, based on the daily outputs of each nutrient, egg weight needs to be predicted as the sum of the three components, since each has a unique chemical composition, and these proportional changes will therefore influence the nutrient requirements of the hen. 2. Yolk weight is related to hen age and may be calculated using a logistic or Gompertz function. Allometric functions are used to predict albumen weight from yolk weight and shell weight from the weight of the egg contents. 3. A mechanistic, stochastic population model for layers may be used to verify that these functions correctly reflect the proportional changes in the egg components with advancing hen age and at a given age, over a range of egg weights. 4. The various parameters used in the equations need to be defined for the available genotypes.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2119783895",
+      "title": "Bayesian Analysis of Biogeography when the Number of Areas is Large",
+      "year": 2013,
+      "venue": "Unknown Venue",
+      "abstract": "Historical biogeography is increasingly studied from an explicitly statistical perspective, using stochastic models to describe the evolution of species range as a continuous-time Markov process of dispersal between and extinction within a set of discrete geographic areas. The main constraint of these methods is the computational limit on the number of areas that can be specified. We propose a Bayesian approach for inferring biogeographic history that extends the application of biogeographic models to the analysis of more realistic problems that involve a large number of areas. Our solution is based on a \"data-augmentation\" approach, in which we first populate the tree with a history of biogeographic events that is consistent with the observed species ranges at the tips of the tree. We then calculate the likelihood of a given history by adopting a mechanistic interpretation of the instantaneous-rate matrix, which specifies both the exponential waiting times between biogeographic events and the relative probabilities of each biogeographic change. We develop this approach in a Bayesian framework, marginalizing over all possible biogeographic histories using Markov chain Monte Carlo (MCMC). Besides dramatically increasing the number of areas that can be accommodated in a biogeographic analysis, our method allows the parameters of a given biogeographic model to be estimated and different biogeographic models to be objectively compared. Our approach is implemented in the program, BayArea.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2121850108",
+      "title": "Predicting extinction risks under climate change: coupling stochastic population models with dynamic bioclimatic habitat models",
+      "year": 2008,
+      "venue": "Unknown Venue",
+      "abstract": "Species responses to climate change may be influenced by changes in available habitat, as well as population processes, species interactions and interactions between demographic and landscape dynamics. Current methods for assessing these responses fail to provide an integrated view of these influences because they deal with habitat change or population dynamics, but rarely both. In this study, we linked a time series of habitat suitability models with spatially explicit stochastic population models to explore factors that influence the viability of plant species populations under stable and changing climate scenarios in South African fynbos, a global biodiversity hot spot. Results indicate that complex interactions between life history, disturbance regime and distribution pattern mediate species extinction risks under climate change. Our novel mechanistic approach allows more complete and direct appraisal of future biotic responses than do static bioclimatic habitat modelling approaches, and will ultimately support development of more effective conservation strategies to mitigate biodiversity losses due to climate change.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2047152814",
+      "title": "Species Synchrony and Its Drivers: Neutral and Nonneutral Community Dynamics in Fluctuating Environments",
+      "year": 2008,
+      "venue": "Unknown Venue",
+      "abstract": "Independent species fluctuations are commonly used as a null hypothesis to test the role of competition and niche differences between species in community stability. This hypothesis, however, is unrealistic because it ignores the forces that contribute to synchronization of population dynamics. Here we present a mechanistic neutral model that describes the dynamics of a community of equivalent species under the joint influence of density dependence, environmental forcing, and demographic stochasticity. We also introduce a new standardized measure of species synchrony in multispecies communities. We show that the per capita population growth rates of equivalent species are strongly synchronized, especially when endogenous population dynamics are cyclic or chaotic, while their long-term fluctuations in population sizes are desynchronized by ecological drift. We then generalize our model to nonneutral dynamics by incorporating temporal and nontemporal forms of niche differentiation. Niche differentiation consistently decreases the synchrony of species per capita population growth rates, while its effects on the synchrony of population sizes are more complex. Comparing the observed synchrony of species per capita population growth rates with that predicted by the neutral model potentially provides a simple test of deterministic asynchrony in a community.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2133970424",
+      "title": "Modeling fire effects",
+      "year": 2001,
+      "venue": "Unknown Venue",
+      "abstract": "This paper was presented at the conference \u2018Integrating spatial technologies and ecological principles for a new age in fire management\u2019, Boise, Idaho, USA, June 1999 Fire effects are modeled for a variety of reasons including: to evaluate risk, to develop treatment prescriptions, to compare management options, and to understand ecosystems. Fire effects modeling may be conducted at a range of temporal and spatial scales. First-order fire effects are those that are the direct result of the combustion process such as plant injury and death, fuel consumption and smoke production. Modeling these effects provides an important cornerstone for models that operate at larger spatial and temporal scales. Detailed physical models of heat transfer and the combustion process under development should provide a vehicle for quantifying fire treatment and predicting fire effects. Second-order fire effects are indirect consequences of fire and other post-fire interactions such as weather. They may take place a few hours to many decades after a fire. Some important second-order fire effects are smoke dispersion, erosion, and vegetation succession. Many approaches have been used to model fire effects including empirical, mechanistic, stochastic, and combinations of all three. Selection of the appropriate model approach and scale depends on the objectives of the modeler, as well as the quality and quantity of available data. This paper is not meant to provide an exhaustive review of fire effects models. Instead, it presents a background in approaches to modeling fire effects to provide managers a basis for selecting and interpreting simulation tools.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2122028584",
+      "title": "Bayesian parameter inference for stochastic biochemical network models using particle Markov chain Monte Carlo",
+      "year": 2011,
+      "venue": "Unknown Venue",
+      "abstract": "Computational systems biology is concerned with the development of detailed mechanistic models of biological processes. Such models are often stochastic and analytically intractable, containing uncertain parameters that must be estimated from time course data. In this article, we consider the task of inferring the parameters of a stochastic kinetic model defined as a Markov (jump) process. Inference for the parameters of complex nonlinear multivariate stochastic process models is a challenging problem, but we find here that algorithms based on particle Markov chain Monte Carlo turn out to be a very effective computationally intensive approach to the problem. Approximations to the inferential model based on stochastic differential equations (SDEs) are considered, as well as improvements to the inference scheme that exploit the SDE structure. We apply the methodology to a Lotka-Volterra system and a prokaryotic auto-regulatory network.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2972175853",
+      "title": "Molecular basis and biological function of variability in spatial genome organization",
+      "year": 2019,
+      "venue": "Unknown Venue",
+      "abstract": "The complex three-dimensional organization of genomes in the cell nucleus arises from a wide range of architectural features including DNA loops, chromatin domains, and higher-order compartments. Although these features are universally present in most cell types and tissues, recent single-cell biochemistry and imaging approaches have demonstrated stochasticity in transcription and high variability of chromatin architecture in individual cells. We review the occurrence, mechanistic basis, and functional implications of stochasticity in genome organization. We summarize recent observations on cell- and allele-specific variability of genome architecture, discuss the nature of extrinsic and intrinsic sources of variability in genome organization, and highlight potential implications of structural heterogeneity for genome function.",
+      "landing_page_url": null
+    }
+  ]
+}

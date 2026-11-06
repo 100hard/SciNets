@@ -1,0 +1,88 @@
+{
+  "query_id": "ML-1",
+  "domain": "ml",
+  "query": "How does loss landscape geometry influence generalization in overparameterized neural networks?",
+  "paper_count": 10,
+  "papers": [
+    {
+      "id": "https://openalex.org/W2991497298",
+      "title": "Distributionally Robust Neural Networks for Group Shifts: On the Importance of Regularization for Worst-Case Generalization",
+      "year": 2019,
+      "venue": "Unknown Venue",
+      "abstract": "Overparameterized neural networks can be highly accurate on average on an i.i.d. test set yet consistently fail on atypical groups of the data (e.g., by learning spurious correlations that hold on average but not in such groups). Distributionally robust optimization (DRO) allows us to learn models that instead minimize the worst-case training loss over a set of pre-defined groups. However, we find that naively applying group DRO to overparameterized neural networks fails: these models can perfectly fit the training data, and any model with vanishing average training loss also already has vanishing worst-case training loss. Instead, the poor worst-case performance arises from poor generalization on some groups. By coupling group DRO models with increased regularization---a stronger-than-typical L2 penalty or early stopping---we achieve substantially higher worst-group accuracies, with 10-40 percentage point improvements on a natural language inference task and two image tasks, while maintaining high average accuracies. Our results suggest that regularization is important for worst-group generalization in the overparameterized regime, even if it is not needed for average generalization. Finally, we introduce a stochastic optimization algorithm, with convergence guarantees, to efficiently train group DRO models.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2619516334",
+      "title": "The Marginal Value of Adaptive Gradient Methods in Machine Learning",
+      "year": 2017,
+      "venue": "Unknown Venue",
+      "abstract": "Adaptive optimization methods, which perform local optimization with a metric constructed from the history of iterates, are becoming increasingly popular for training deep neural networks. Examples include AdaGrad, RMSProp, and Adam. We show that for simple overparameterized problems, adaptive methods often find drastically different solutions than gradient descent (GD) or stochastic gradient descent (SGD). We construct an illustrative binary classification problem where the data is linearly separable, GD and SGD achieve zero test error, and AdaGrad, Adam, and RMSProp attain test errors arbitrarily close to half. We additionally study the empirical generalization capability of adaptive methods on several state-of-the-art deep learning models. We observe that the solutions found by adaptive methods generalize worse (often significantly worse) than SGD, even when these solutions have better training performance. These results suggest that practitioners should reconsider the use of adaptive methods to train neural networks.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2886067286",
+      "title": "Learning Overparameterized Neural Networks via Stochastic Gradient Descent on Structured Data",
+      "year": 2018,
+      "venue": "Unknown Venue",
+      "abstract": "Neural networks have many successful applications, while much less theoretical understanding has been gained. Towards bridging this gap, we study the problem of learning a two-layer overparameterized ReLU neural network for multi-class classification via stochastic gradient descent (SGD) from random initialization. In the overparameterized setting, when the data comes from mixtures of well-separated distributions, we prove that SGD learns a network with a small generalization error, albeit the network has enough capacity to fit arbitrary labels. Furthermore, the analysis provides interesting insights into several aspects of learning neural networks and can be verified based on empirical studies on synthetic data and on the MNIST dataset.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2059974661",
+      "title": "Summarizing the predictive power of a generalized linear model",
+      "year": 2000,
+      "venue": "Unknown Venue",
+      "abstract": "This paper studies summary measures of the predictive power of a generalized linear model, paying special attention to a generalization of the multiple correlation coefficient from ordinary linear regression. The population value is the correlation between the response and its conditional expectation given the predictors, and the sample value is the correlation between the observed response and the model predicted value. We compare four estimators of the measure in terms of bias, mean squared error and behaviour in the presence of overparameterization. The sample estimator and a jack-knife estimator usually behave adequately, but a cross-validation estimator has a large negative bias with large mean squared error. One can use bootstrap methods to construct confidence intervals for the population value of the correlation measure and to estimate the degree to which a model selection procedure may provide an overly optimistic measure of the actual predictive power.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2949804919",
+      "title": "Learning Overparameterized Neural Networks via Stochastic Gradient\\n Descent on Structured Data",
+      "year": 2018,
+      "venue": "Unknown Venue",
+      "abstract": "Neural networks have many successful applications, while much less\\ntheoretical understanding has been gained. Towards bridging this gap, we study\\nthe problem of learning a two-layer overparameterized ReLU neural network for\\nmulti-class classification via stochastic gradient descent (SGD) from random\\ninitialization. In the overparameterized setting, when the data comes from\\nmixtures of well-separated distributions, we prove that SGD learns a network\\nwith a small generalization error, albeit the network has enough capacity to\\nfit arbitrary labels. Furthermore, the analysis provides interesting insights\\ninto several aspects of learning neural networks and can be verified based on\\nempirical studies on synthetic data and on the MNIST dataset.\\n",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2970290137",
+      "title": "Uniform convergence may be unable to explain generalization in deep learning",
+      "year": 2019,
+      "venue": "Unknown Venue",
+      "abstract": "Aimed at explaining the surprisingly good generalization behavior of overparameterized deep networks, recent works have developed a variety of generalization bounds for deep learning, all based on the fundamental learning-theoretic technique of uniform convergence. While it is well-known that many of these existing bounds are numerically large, through numerous experiments, we bring to light a more concerning aspect of these bounds: in practice, these bounds can {\\em increase} with the training dataset size. Guided by our observations, we then present examples of overparameterized linear classifiers and neural networks trained by gradient descent (GD) where uniform convergence provably cannot \"explain generalization\" -- even if we take into account the implicit bias of GD {\\em to the fullest extent possible}. More precisely, even if we consider only the set of classifiers output by GD, which have test errors less than some small $\u03b5$ in our settings, we show that applying (two-sided) uniform convergence on this set of classifiers will yield only a vacuous generalization guarantee larger than $1-\u03b5$. Through these findings, we cast doubt on the power of uniform convergence-based generalization bounds to provide a complete picture of why overparameterized deep networks generalize well.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W3096003755",
+      "title": "Spectral bias and task-model alignment explain generalization in kernel regression and infinitely wide neural networks",
+      "year": 2021,
+      "venue": "Unknown Venue",
+      "abstract": "A theoretical understanding of generalization remains an open problem for many machine learning models, including deep networks where overparameterization leads to better performance, contradicting the conventional wisdom from classical statistics. Here, we investigate generalization error for kernel regression, which, besides being a popular machine learning method, also describes certain infinitely overparameterized neural networks. We use techniques from statistical mechanics to derive an analytical expression for generalization error applicable to any kernel and data distribution. We present applications of our theory to real and synthetic datasets, and for many kernels including those that arise from training deep networks in the infinite-width limit. We elucidate an inductive bias of kernel regression to explain data with simple functions, characterize whether a kernel is compatible with a learning task, and show that more data may impair generalization when noisy or not expressible by the kernel, leading to non-monotonic learning curves with possibly many peaks.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2150013545",
+      "title": "Model complexity control for hydrologic prediction",
+      "year": 2008,
+      "venue": "Unknown Venue",
+      "abstract": "A common concern in hydrologic modeling is overparameterization of complex models given limited and noisy data. This leads to problems of parameter nonuniqueness and equifinality, which may negatively affect prediction uncertainties. A systematic way of controlling model complexity is therefore needed. We compare three model complexity control methods for hydrologic prediction, namely, cross validation (CV), Akaike's information criterion (AIC), and structural risk minimization (SRM). Results show that simulation of water flow using non\u2010physically\u2010based models (polynomials in this case) leads to increasingly better calibration fits as the model complexity (polynomial order) increases. However, prediction uncertainty worsens for complex non\u2010physically\u2010based models because of overfitting of noisy data. Incorporation of physically based constraints into the model (e.g., storage\u2010discharge relationship) effectively bounds prediction uncertainty, even as the number of parameters increases. The conclusion is that overparameterization and equifinality do not lead to a continued increase in prediction uncertainty, as long as models are constrained by such physical principles. Complexity control of hydrologic models reduces parameter equifinality and identifies the simplest model that adequately explains the data, thereby providing a means of hydrologic generalization and classification. SRM is a promising technique for this purpose, as it (1) provides analytic upper bounds on prediction uncertainty, hence avoiding the computational burden of CV, and (2) extends the applicability of classic methods such as AIC to finite data. The main hurdle in applying SRM is the need for an a priori estimation of the complexity of the hydrologic model, as measured by its Vapnik\u2010Chernovenkis (VC) dimension. Further research is needed in this area.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W2963208657",
+      "title": "The Marginal Value of Adaptive Gradient Methods in Machine Learning",
+      "year": 2017,
+      "venue": "Unknown Venue",
+      "abstract": "Adaptive optimization methods, which perform local optimization with a metric constructed from the history of iterates, are becoming increasingly popular for training deep neural networks. Examples include AdaGrad, RMSProp, and Adam. We show that for simple overparameterized problems, adaptive methods often find drastically different solutions than gradient descent (GD) or stochastic gradient descent (SGD). We construct an illustrative binary classification problem where the data is linearly separable, GD and SGD achieve zero test error, and AdaGrad, Adam, and RMSProp attain test errors arbitrarily close to half. We additionally study the empirical generalization capability of adaptive methods on several state-of-the-art deep learning models. We observe that the solutions found by adaptive methods generalize worse (often significantly worse) than SGD, even when these solutions have better training performance. These results suggest that practitioners should reconsider the use of adaptive methods to train neural networks.",
+      "landing_page_url": null
+    },
+    {
+      "id": "https://openalex.org/W3162003518",
+      "title": "Spectral bias and task-model alignment explain generalization in kernel regression and infinitely wide neural networks",
+      "year": 2024,
+      "venue": "Unknown Venue",
+      "abstract": "Abstract A theoretical understanding of generalization remains an open problem for many machine learning models, including deep networks where overparameterization leads to better performance, contradicting the conventional wisdom from classical statistics. Here, we investigate generalization error for kernel regression, which, besides being a popular machine learning method, also describes certain infinitely overparameterized neural networks. We use techniques from statistical mechanics to derive an analytical expression for generalization error applicable to any kernel and data distribution. We present applications of our theory to real and synthetic datasets, and for many kernels including those that arise from training deep networks in the infinite-width limit. We elucidate an inductive bias of kernel regression to explain data with simple functions, characterize whether a kernel is compatible with a learning task, and show that more data may impair generalization when noisy or not expressible by the kernel, leading to non-monotonic learning curves with possibly many peaks.",
+      "landing_page_url": null
+    }
+  ]
+}

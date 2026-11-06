@@ -1,0 +1,1099 @@
+{
+  "query_id": "BIO-3",
+  "domain": "bio",
+  "query": "What mechanistic pathways link gut microbiome dysbiosis to cognitive decline and mood regulation abnormalities?",
+  "graph": {
+    "nodes": [
+      "Alpha Diversity",
+      "Clostridium",
+      "Mental Health",
+      "Vagus Nerve",
+      "Fecal Microbiota Transplantation",
+      "Microbial Metabolites",
+      "Anorexia Nervosa",
+      "Cerebral Inflammation",
+      "Depression",
+      "Neurodegenerative Diseases",
+      "Ruminococcus",
+      "Alistipes",
+      "Deoxycholic Acid",
+      "Short-chain fatty acids",
+      "Cognitive Performance",
+      "Clinical Outcomes",
+      "Methanobrevibacter smithii",
+      "Coriobacteriaceae",
+      "Metabolomics",
+      "Clinical Traits",
+      "BMI",
+      "Microbiota-Gut-Brain Axis",
+      "Body Composition",
+      "Probiotics",
+      "Serum Metabolism",
+      "Neurotoxic Metabolites",
+      "Roseburia",
+      "Huntington's Disease",
+      "Cognition",
+      "Neurotransmitters",
+      "Inflammation",
+      "Gut Dysbiosis",
+      "Immune Mediators",
+      "Systemic Inflammation",
+      "Psychopathological Scores",
+      "Propionate",
+      "Microbial Communities",
+      "Cognitive Impairment",
+      "Enteric Nervous System",
+      "Metagenomics",
+      "Cancer",
+      "Gut-Brain Axis",
+      "Gut Microbiome Dysbiosis",
+      "Mental Disorders",
+      "Hypothalamic-Pituitary-Adrenal Axis",
+      "Cholic Acid",
+      "Psychological Traits",
+      "Depressive Symptoms",
+      "Dysbiosis",
+      "Gut Microbiota",
+      "Alzheimer's Disease",
+      "Enterobacteriaceae",
+      "Bacteroides uniformis",
+      "Neuroinflammation",
+      "Adaptive Immune System",
+      "Butyrate",
+      "Bile Acids",
+      "Gut Microbiome",
+      "Hippocampal Metabolism",
+      "Neurotoxicity",
+      "Bacterial Dysbiosis",
+      "Bacterial Proteins"
+    ],
+    "edges": [
+      {
+        "source": "Clostridium",
+        "target": "Gut Microbiota",
+        "relation": "is depleted in",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Fecal Microbiota Transplantation",
+        "target": "Depressive Symptoms",
+        "relation": "regulates",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Fecal Microbiota Transplantation",
+        "target": "Cerebral Inflammation",
+        "relation": "addresses",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Microbial Metabolites",
+        "target": "Neuroinflammation",
+        "relation": "trigger changes in",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Microbial Metabolites",
+        "target": "Immune Mediators",
+        "relation": "produced by",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Anorexia Nervosa",
+        "target": "Enterobacteriaceae",
+        "relation": "shows increase of",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Anorexia Nervosa",
+        "target": "Methanobrevibacter smithii",
+        "relation": "shows increase of",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Anorexia Nervosa",
+        "target": "Roseburia",
+        "relation": "shows depletion of",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Anorexia Nervosa",
+        "target": "Ruminococcus",
+        "relation": "shows depletion of",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Anorexia Nervosa",
+        "target": "Clostridium",
+        "relation": "shows depletion of",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Anorexia Nervosa",
+        "target": "Coriobacteriaceae",
+        "relation": "is enriched in",
+        "supporting_papers": [
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Anorexia Nervosa",
+        "target": "Gut Dysbiosis",
+        "relation": "is associated with the presence of ",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Anorexia Nervosa",
+        "target": "Alpha Diversity",
+        "relation": "has lower",
+        "supporting_papers": [
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Anorexia Nervosa",
+        "target": "Dysbiosis",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Cerebral Inflammation",
+        "target": "Depression",
+        "relation": "serves as a novel therapeutic strategy for",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Depression",
+        "target": "Body Composition",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Ruminococcus",
+        "target": "Gut Microbiota",
+        "relation": "is depleted in",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Alistipes",
+        "target": "Dysbiosis",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Alistipes",
+        "target": "Inflammation",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Alistipes",
+        "target": "Cancer",
+        "relation": "associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Alistipes",
+        "target": "Mental Health",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Alistipes",
+        "target": "Gut Dysbiosis",
+        "relation": "associated with the compositional abundance of",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Alistipes",
+        "target": "Depression",
+        "relation": "associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Deoxycholic Acid",
+        "target": "Cognitive Impairment",
+        "relation": "increases",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Deoxycholic Acid",
+        "target": "Cognition",
+        "relation": "associated with cognitive decline",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Short-chain fatty acids",
+        "target": "Neurotoxicity",
+        "relation": "may exert",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Short-chain fatty acids",
+        "target": "Butyrate",
+        "relation": "is correlated with",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Short-chain fatty acids",
+        "target": "Propionate",
+        "relation": "is correlated with",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Methanobrevibacter smithii",
+        "target": "Gut Microbiota",
+        "relation": "is significantly increased in",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Coriobacteriaceae",
+        "target": "Anorexia Nervosa",
+        "relation": "is enriched in",
+        "supporting_papers": [
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "BMI",
+        "target": "Dysbiosis",
+        "relation": "is predictive of",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560",
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "BMI",
+        "target": "Bacteroides uniformis",
+        "relation": "shows negative correlation with",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "BMI",
+        "target": "Psychopathological Scores",
+        "relation": "is negatively correlated with",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "BMI",
+        "target": "Gut Dysbiosis",
+        "relation": "is predictive of",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "BMI",
+        "target": "Body Composition",
+        "relation": "is related to",
+        "supporting_papers": [
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Microbiota-Gut-Brain Axis",
+        "target": "Neuroinflammation",
+        "relation": "modulates",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Microbiota-Gut-Brain Axis",
+        "target": "Cerebral Inflammation",
+        "relation": "involves",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Microbiota-Gut-Brain Axis",
+        "target": "Cognition",
+        "relation": "influences",
+        "supporting_papers": [
+          "https://openalex.org/W3175256745"
+        ]
+      },
+      {
+        "source": "Microbiota-Gut-Brain Axis",
+        "target": "Vagus Nerve",
+        "relation": "modulates through the production of microbial metabolites and immune mediators.",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Microbiota-Gut-Brain Axis",
+        "target": "Mental Health",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Microbiota-Gut-Brain Axis",
+        "target": "Gut Microbiome Dysbiosis",
+        "relation": "is investigated in relation to",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Body Composition",
+        "target": "Alpha Diversity",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Body Composition",
+        "target": "Gut Microbiota",
+        "relation": "is influenced by",
+        "supporting_papers": [
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Probiotics",
+        "target": "Depressive Symptoms",
+        "relation": "ineffective against",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Probiotics",
+        "target": "Gut Microbiome",
+        "relation": "alter therapeutically",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Probiotics",
+        "target": "Depression",
+        "relation": "invalid or transient",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Serum Metabolism",
+        "target": "Hippocampal Metabolism",
+        "relation": "influences",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Neurotoxic Metabolites",
+        "target": "Neurotransmitters",
+        "relation": "may produce",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Roseburia",
+        "target": "Gut Microbiota",
+        "relation": "is depleted in",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Huntington's Disease",
+        "target": "Gut Dysbiosis",
+        "relation": "characterized by",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Inflammation",
+        "target": "Cerebral Inflammation",
+        "relation": "is a type of",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Gut Dysbiosis",
+        "target": "Cognitive Performance",
+        "relation": "negatively affects",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Gut Dysbiosis",
+        "target": "Inflammation",
+        "relation": "associated with chronic intestinal",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Gut Dysbiosis",
+        "target": "Cancer",
+        "relation": "plays a role in",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Gut Dysbiosis",
+        "target": "Depression",
+        "relation": "is correlated with",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Gut Dysbiosis",
+        "target": "Alzheimer's Disease",
+        "relation": "possible role in pathogenesis of",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Gut Dysbiosis",
+        "target": "Cognition",
+        "relation": "negatively affects",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Immune Mediators",
+        "target": "Neuroinflammation",
+        "relation": "triggers",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Propionate",
+        "target": "Roseburia",
+        "relation": "is directly correlated with the relative abundance of",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Microbial Communities",
+        "target": "Cognitive Performance",
+        "relation": "associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Microbial Communities",
+        "target": "Alpha Diversity",
+        "relation": "significantly lower",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Microbial Communities",
+        "target": "Clinical Outcomes",
+        "relation": "associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Cognitive Impairment",
+        "target": "Alzheimer's Disease",
+        "relation": "associated with",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Enteric Nervous System",
+        "target": "Vagus Nerve",
+        "relation": "send signals to the brain via the",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Metagenomics",
+        "target": "Metabolomics",
+        "relation": "is related to",
+        "supporting_papers": [
+          "https://openalex.org/W4293162929"
+        ]
+      },
+      {
+        "source": "Gut-Brain Axis",
+        "target": "Alzheimer's Disease",
+        "relation": "possible role in pathogenesis of",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Gut-Brain Axis",
+        "target": "Mental Health",
+        "relation": "is involved in",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Gut Microbiome Dysbiosis",
+        "target": "Mental Disorders",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Gut Microbiome Dysbiosis",
+        "target": "Depression",
+        "relation": "is related to",
+        "supporting_papers": [
+          "https://openalex.org/W4293162929"
+        ]
+      },
+      {
+        "source": "Gut Microbiome Dysbiosis",
+        "target": "Gut Microbiota",
+        "relation": "modification of",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Gut Microbiome Dysbiosis",
+        "target": "Neuroinflammation",
+        "relation": "may affect through",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Gut Microbiome Dysbiosis",
+        "target": "Cancer",
+        "relation": "is related to",
+        "supporting_papers": [
+          "https://openalex.org/W4293162929"
+        ]
+      },
+      {
+        "source": "Gut Microbiome Dysbiosis",
+        "target": "Gut Microbiome",
+        "relation": "is a type of",
+        "supporting_papers": [
+          "https://openalex.org/W4293162929"
+        ]
+      },
+      {
+        "source": "Gut Microbiome Dysbiosis",
+        "target": "Depressive Symptoms",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Gut Microbiome Dysbiosis",
+        "target": "Inflammation",
+        "relation": "causes",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Cholic Acid",
+        "target": "Cognitive Impairment",
+        "relation": "decreases",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Cholic Acid",
+        "target": "Deoxycholic Acid",
+        "relation": "ratio reflects 7\u03b1-dehydroxylation by gut bacteria",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Psychological Traits",
+        "target": "Clinical Traits",
+        "relation": "are integrated with",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Dysbiosis",
+        "target": "Cognition",
+        "relation": "negatively affects",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Dysbiosis",
+        "target": "Inflammation",
+        "relation": "may produce",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Dysbiosis",
+        "target": "Anorexia Nervosa",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560",
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Dysbiosis",
+        "target": "Short-chain fatty acids",
+        "relation": "is linked to reduction in",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Dysbiosis",
+        "target": "Gut Microbiome",
+        "relation": "is a condition of",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Dysbiosis",
+        "target": "Neurodegenerative Diseases",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W3175256745"
+        ]
+      },
+      {
+        "source": "Dysbiosis",
+        "target": "Cognitive Performance",
+        "relation": "negatively affects",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Dysbiosis",
+        "target": "Clinical Outcomes",
+        "relation": "related to",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Dysbiosis",
+        "target": "Gut Microbiota",
+        "relation": "is a type of",
+        "supporting_papers": [
+          "https://openalex.org/W4293162929"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Neurotransmitters",
+        "relation": "regulates",
+        "supporting_papers": [
+          "https://openalex.org/W3175256745"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Cognition",
+        "relation": "modulates communication between brain and gut",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Microbiota-Gut-Brain Axis",
+        "relation": "mediates communication via",
+        "supporting_papers": [
+          "https://openalex.org/W3175256745"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Hypothalamic-Pituitary-Adrenal Axis",
+        "relation": "shapes architecture of",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Vagus Nerve",
+        "relation": "stimulates",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Enteric Nervous System",
+        "relation": "directly stimulates",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Gut-Brain Axis",
+        "relation": "mediates communication via",
+        "supporting_papers": [
+          "https://openalex.org/W3175256745"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Cognitive Performance",
+        "relation": "modulates communication between brain and gut",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Clinical Outcomes",
+        "relation": "related to",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Neuroinflammation",
+        "relation": "triggers changes in neurotransmission and behavior through",
+        "supporting_papers": [
+          "https://openalex.org/W3010636850"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Dysbiosis",
+        "relation": "is characterized by",
+        "supporting_papers": [
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Cerebral Inflammation",
+        "relation": "solves",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Depression",
+        "relation": "potential therapy for",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Gut Microbiota",
+        "target": "Depressive Symptoms",
+        "relation": "regulates",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Alzheimer's Disease",
+        "target": "Gut Dysbiosis",
+        "relation": "implicates",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Alzheimer's Disease",
+        "target": "Dysbiosis",
+        "relation": "is associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3175256745"
+        ]
+      },
+      {
+        "source": "Enterobacteriaceae",
+        "target": "Gut Microbiota",
+        "relation": "is significantly increased in",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Bacteroides uniformis",
+        "target": "Gut Dysbiosis",
+        "relation": "is negatively correlated with",
+        "supporting_papers": [
+          "https://openalex.org/W2687532560"
+        ]
+      },
+      {
+        "source": "Bile Acids",
+        "target": "Cognitive Impairment",
+        "relation": "associates with",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Bile Acids",
+        "target": "Alzheimer's Disease",
+        "relation": "associated with dysregulation in",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Cognitive Impairment",
+        "relation": "modulates",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656",
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Depression",
+        "relation": "associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Dysbiosis",
+        "relation": "is linked to",
+        "supporting_papers": [
+          "https://openalex.org/W4293162929",
+          "https://openalex.org/W2687532560",
+          "https://openalex.org/W2767423524"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Metagenomics",
+        "relation": "is analyzed through",
+        "supporting_papers": [
+          "https://openalex.org/W4293162929"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Metabolomics",
+        "relation": "is analyzed through",
+        "supporting_papers": [
+          "https://openalex.org/W4293162929"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Inflammation",
+        "relation": "associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Cancer",
+        "relation": "associated with",
+        "supporting_papers": [
+          "https://openalex.org/W3026296114"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Neurotransmitters",
+        "relation": "can produce hormones and",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Cognition",
+        "relation": "implicated in disease progression",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Enteric Nervous System",
+        "relation": "directly stimulate afferent neurons of the",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Hypothalamic-Pituitary-Adrenal Axis",
+        "relation": "shape the architecture of sleep and stress reactivity of the",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Bile Acids",
+        "relation": "metabolizes and regulates",
+        "supporting_papers": [
+          "https://openalex.org/W2794227656"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Cognitive Performance",
+        "relation": "implicated in disease progression",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Clinical Outcomes",
+        "relation": "implicated in disease progression",
+        "supporting_papers": [
+          "https://openalex.org/W3045452138"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Hippocampal Metabolism",
+        "relation": "regulates",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Gut Microbiome",
+        "target": "Cerebral Inflammation",
+        "relation": "solves",
+        "supporting_papers": [
+          "https://openalex.org/W4225103233"
+        ]
+      },
+      {
+        "source": "Bacterial Dysbiosis",
+        "target": "Systemic Inflammation",
+        "relation": "may produce",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Bacterial Dysbiosis",
+        "target": "Inflammation",
+        "relation": "may produce excessive stimulation leading to",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      },
+      {
+        "source": "Bacterial Proteins",
+        "target": "Adaptive Immune System",
+        "relation": "stimulate dysfunctional responses of the",
+        "supporting_papers": [
+          "https://openalex.org/W1551543102"
+        ]
+      }
+    ]
+  },
+  "construction_metrics": {
+    "duration_seconds": 19.07,
+    "total_tokens": 15221,
+    "estimated_cost_usd": 0.0045,
+    "raw_edges_extracted": 52,
+    "raw_edges_with_prov": 52,
+    "raw_edges_missing_prov": 0,
+    "node_count": 62,
+    "edge_count": 126,
+    "edges_with_provenance": 126,
+    "edges_missing_provenance": 0,
+    "unmapped_dropped_ids": 0
+  }
+}

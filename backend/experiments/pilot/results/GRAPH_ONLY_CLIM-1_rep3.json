@@ -1,0 +1,155 @@
+{
+  "condition": "GRAPH_ONLY",
+  "query_id": "CLIM-1",
+  "query": "What causal pathways connect deforestation, nutrient runoff, and coral reef degradation?",
+  "domain": "climate",
+  "repetition": 3,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 10.25,
+    "prompt_tokens": 8765,
+    "completion_tokens": 1025,
+    "total_tokens": 9790,
+    "estimated_cost_usd": 0.0019,
+    "llm_calls": 1,
+    "tool_calls": 0
+  },
+  "hypotheses": [
+    {
+      "text": "Deforestation increases sedimentation in coastal waters, which leads to nutrient loading and ultimately causes coral reef degradation through reduced light penetration and increased competition from algae.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 0.8,
+      "feasibility_score": 0.9,
+      "testability_score": 0.8,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Sedimentation",
+          "Coral Reef Degradation"
+        ],
+        "relations": [
+          "increases",
+          "leads to"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": null,
+      "mechanism_class": "Anthropogenic Disturbance",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation and Coastal Ecosystems",
+          "Nutrient Loading and Coral Reefs",
+          "Sedimentation and Marine Biodiversity"
+        ],
+        "missing_link": "The direct relationship between deforestation-induced sedimentation and its impact on coral reefs has not been thoroughly established.",
+        "field_assumption": "It is assumed that sedimentation effects are independent of nutrient loading dynamics in coastal ecosystems.",
+        "structural_reason": "Research communities studying deforestation and marine ecosystems often operate in silos, leading to a lack of integrated studies.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation implies increased sedimentation, yet the direct impact on coral reefs remains underexplored.",
+        "belief_a": "Deforestation negatively impacts coastal ecosystems.",
+        "belief_b": "Coral reefs are primarily affected by nutrient loading and sedimentation from other sources.",
+        "consistency_constraint": "Any valid explanation must connect deforestation to sedimentation and demonstrate its subsequent effects on coral reefs."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Deforestation",
+        "Sedimentation",
+        "Coral Reef Degradation"
+      ]
+    },
+    {
+      "text": "Nutrient runoff from deforested areas enhances phytoplankton growth, which leads to harmful algal blooms that degrade coral reef health by reducing light availability and increasing competition for space.",
+      "domain_tags": [
+        "marine biology",
+        "environmental science"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.85,
+      "testability_score": 0.75,
+      "causal_chain": {
+        "nodes": [
+          "Nutrient Runoff",
+          "Phytoplankton Growth",
+          "Coral Reef Health"
+        ],
+        "relations": [
+          "enhances",
+          "leads to"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": null,
+      "mechanism_class": "Eutrophication",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Nutrient Runoff and Phytoplankton Dynamics",
+          "Coral Reef Health and Eutrophication",
+          "Deforestation and Nutrient Loading"
+        ],
+        "missing_link": "The specific pathways connecting nutrient runoff from deforestation to harmful algal blooms affecting coral reefs are not well defined.",
+        "field_assumption": "It is assumed that nutrient runoff primarily affects phytoplankton without considering its broader ecological impacts on coral reefs.",
+        "structural_reason": "Different research focuses on nutrient dynamics and coral health without linking them to land-use changes like deforestation.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Nutrient runoff is known to enhance phytoplankton, yet its direct consequences on coral reefs through algal blooms are inadequately documented.",
+        "belief_a": "Nutrient runoff negatively affects aquatic ecosystems.",
+        "belief_b": "Coral reefs are resilient to changes in phytoplankton communities.",
+        "consistency_constraint": "Any valid explanation must show how nutrient runoff directly contributes to harmful algal blooms that impact coral reefs."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Nutrient Runoff",
+        "Phytoplankton Growth",
+        "Coral Reef Health"
+      ]
+    },
+    {
+      "text": "Increased sedimentation from deforestation leads to anoxic conditions in coastal waters, which causes coral mortality and shifts the ecosystem towards microbially dominated states, further degrading coral reef communities.",
+      "domain_tags": [
+        "marine ecology",
+        "environmental science"
+      ],
+      "novelty_score": 0.9,
+      "feasibility_score": 0.8,
+      "testability_score": 0.85,
+      "causal_chain": {
+        "nodes": [
+          "Sedimentation",
+          "Anoxia",
+          "Coral Mortality"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": null,
+      "mechanism_class": "Ecosystem Dynamics",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Sedimentation and Anoxia",
+          "Coral Mortality and Ecosystem Shifts",
+          "Deforestation and Marine Ecosystems"
+        ],
+        "missing_link": "The relationship between sedimentation-induced anoxia and its cascading effects on coral mortality has not been fully elucidated.",
+        "field_assumption": "It is assumed that sedimentation effects are isolated from broader ecological impacts on coral reefs.",
+        "structural_reason": "Research often separates studies on sedimentation and coral health, missing the interconnectedness of these processes.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Sedimentation is known to cause anoxia, yet the direct link to coral mortality and ecosystem shifts remains unclear.",
+        "belief_a": "Sedimentation negatively impacts marine ecosystems.",
+        "belief_b": "Coral reefs can withstand temporary increases in sedimentation without significant mortality.",
+        "consistency_constraint": "Any valid explanation must connect sedimentation to anoxia and demonstrate its effects on coral mortality."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Sedimentation",
+        "Anoxia",
+        "Coral Mortality"
+      ]
+    }
+  ]
+}

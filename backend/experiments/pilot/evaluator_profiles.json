@@ -1,0 +1,24 @@
+{
+  "evaluator_1": {
+    "evaluator_id": "EVALUATOR_1",
+    "domain_background": "",
+    "highest_degree": "",
+    "research_experience_years": 0,
+    "qualified_domains": [
+      "Machine Learning",
+      "Biology / Medicine",
+      "Climate / Environmental Science"
+    ]
+  },
+  "evaluator_2": {
+    "evaluator_id": "EVALUATOR_2",
+    "domain_background": "",
+    "highest_degree": "",
+    "research_experience_years": 0,
+    "qualified_domains": [
+      "Machine Learning",
+      "Biology / Medicine",
+      "Climate / Environmental Science"
+    ]
+  }
+}

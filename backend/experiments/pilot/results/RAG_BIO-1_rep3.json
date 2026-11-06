@@ -1,0 +1,158 @@
+{
+  "condition": "RAG",
+  "query_id": "BIO-1",
+  "query": "How does sleep deprivation affect synaptic plasticity and memory consolidation in the hippocampus?",
+  "domain": "bio",
+  "repetition": 3,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 14.85,
+    "prompt_tokens": 4812,
+    "completion_tokens": 1192,
+    "total_tokens": 6004,
+    "estimated_cost_usd": 0.0014,
+    "llm_calls": 1,
+    "tool_calls": 0
+  },
+  "hypotheses": [
+    {
+      "text": "Sleep deprivation leads to increased expression of Arc mRNA in the hippocampus, which subsequently enhances synaptic plasticity but impairs memory consolidation due to a decrease in MMP-9 expression. This dual effect suggests that while synaptic activity may be heightened, the overall capacity for memory consolidation is compromised. Thus, sleep deprivation disrupts the balance between synaptic strengthening and memory retention.",
+      "domain_tags": [
+        "neuroscience",
+        "cognitive science"
+      ],
+      "novelty_score": 0.8,
+      "feasibility_score": 0.9,
+      "testability_score": 0.9,
+      "causal_chain": {
+        "nodes": [
+          "Sleep Deprivation",
+          "Increased Arc mRNA Expression",
+          "Impaired Memory Consolidation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": "Sleep deprivation AND Arc mRNA AND memory consolidation",
+      "mechanism_class": "Molecular",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Synaptic Plasticity",
+          "Memory Consolidation",
+          "Sleep Physiology"
+        ],
+        "missing_link": "The relationship between increased Arc expression and its dual role in synaptic plasticity and memory consolidation post-sleep deprivation is not well established.",
+        "field_assumption": "It is assumed that increased synaptic activity directly correlates with improved memory consolidation, which may not hold true under sleep deprivation conditions.",
+        "structural_reason": "Different research communities focus on isolated aspects of sleep effects, leading to a lack of integrated understanding.",
+        "rationale_type": "tension",
+        "epistemic_tension": "Increased synaptic plasticity is expected to enhance memory, yet sleep deprivation leads to memory impairment.",
+        "belief_a": "Increased synaptic plasticity enhances memory consolidation.",
+        "belief_b": "Sleep deprivation impairs memory consolidation despite increased synaptic plasticity.",
+        "consistency_constraint": "Any valid explanation must account for the contradictory effects of sleep deprivation on synaptic plasticity and memory."
+      },
+      "constraints": [],
+      "key_terms": [
+        "Arc mRNA",
+        "MMP-9",
+        "synaptic plasticity",
+        "memory consolidation"
+      ]
+    },
+    {
+      "text": "Sleep deprivation alters the NMDA receptor composition in the hippocampus, leading to a shift in the NR2A/NR2B ratio, which subsequently impairs long-term potentiation (LTP) and memory consolidation. This suggests that the molecular changes induced by sleep loss are critical for understanding the mechanisms underlying cognitive deficits associated with sleep deprivation.",
+      "domain_tags": [
+        "neuroscience",
+        "cognitive science"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.8,
+      "testability_score": 0.85,
+      "causal_chain": {
+        "nodes": [
+          "Sleep Deprivation",
+          "Altered NMDA Receptor Composition",
+          "Impaired Long-Term Potentiation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": "Sleep deprivation AND NMDA receptor composition AND long-term potentiation",
+      "mechanism_class": "Molecular",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Synaptic Plasticity",
+          "Cognitive Function",
+          "Sleep Physiology"
+        ],
+        "missing_link": "The specific changes in NMDA receptor subunit ratios due to sleep deprivation and their direct impact on LTP and memory are not fully elucidated.",
+        "field_assumption": "It is assumed that NMDA receptor function remains stable despite sleep deprivation, which may not be the case.",
+        "structural_reason": "Research often separates the study of NMDA receptor function from sleep deprivation effects, missing their interaction.",
+        "rationale_type": "tension",
+        "epistemic_tension": "Changes in NMDA receptor composition imply altered synaptic function, yet sleep deprivation is known to impair cognitive performance.",
+        "belief_a": "Stable NMDA receptor function supports cognitive performance.",
+        "belief_b": "Sleep deprivation alters NMDA receptor function, impairing cognitive performance.",
+        "consistency_constraint": "Any valid explanation must reconcile the effects of sleep deprivation on NMDA receptor function with cognitive deficits."
+      },
+      "constraints": [],
+      "key_terms": [
+        "NMDA receptor",
+        "NR2A",
+        "NR2B",
+        "long-term potentiation"
+      ]
+    },
+    {
+      "text": "Astrocyte-derived adenosine signaling is upregulated during sleep deprivation, which leads to impaired late-phase long-term potentiation (L-LTP) and subsequent memory deficits in the hippocampus. This highlights the role of astrocytic signaling in mediating the cognitive consequences of sleep loss, suggesting potential therapeutic targets for reversing these effects.",
+      "domain_tags": [
+        "neuroscience",
+        "cognitive science"
+      ],
+      "novelty_score": 0.9,
+      "feasibility_score": 0.85,
+      "testability_score": 0.9,
+      "causal_chain": {
+        "nodes": [
+          "Sleep Deprivation",
+          "Increased Adenosine Signaling",
+          "Impaired Late-Phase Long-Term Potentiation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": "Sleep deprivation AND adenosine signaling AND long-term potentiation",
+      "mechanism_class": "Astrocytic",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Astrocyte Function",
+          "Memory Consolidation",
+          "Sleep Physiology"
+        ],
+        "missing_link": "The specific role of astrocyte-derived adenosine in mediating the effects of sleep deprivation on L-LTP and memory is not clearly defined.",
+        "field_assumption": "It is assumed that neuronal mechanisms alone account for memory deficits due to sleep deprivation, overlooking astrocytic contributions.",
+        "structural_reason": "Astrocytic signaling is often studied separately from synaptic plasticity, leading to a gap in understanding their interactions.",
+        "rationale_type": "tension",
+        "epistemic_tension": "Increased adenosine signaling is expected to enhance synaptic inhibition, yet sleep deprivation leads to cognitive deficits.",
+        "belief_a": "Adenosine signaling enhances synaptic inhibition and memory consolidation.",
+        "belief_b": "Sleep deprivation increases adenosine signaling, impairing memory consolidation.",
+        "consistency_constraint": "Any valid explanation must account for the dual role of adenosine in synaptic function and memory under sleep deprivation."
+      },
+      "constraints": [],
+      "key_terms": [
+        "adenosine",
+        "L-LTP",
+        "astrocytes",
+        "memory deficits"
+      ]
+    }
+  ]
+}

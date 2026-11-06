@@ -1,0 +1,574 @@
+{
+  "query_id": "ML-1",
+  "domain": "ml",
+  "query": "How does loss landscape geometry influence generalization in overparameterized neural networks?",
+  "graph": {
+    "nodes": [
+      "Overparameterized Neural Networks",
+      "Worst-Case Generalization",
+      "Training Performance",
+      "Multi-Class Classification",
+      "Uniform Convergence",
+      "Kernel Regression",
+      "Generalized Linear Model",
+      "Training Dataset Size",
+      "Physically Based Constraints",
+      "Multiple Correlation Coefficient",
+      "Generalization Capability",
+      "ReLU Neural Network",
+      "Hydrologic Prediction",
+      "Overparameterization",
+      "Generalization Error",
+      "Non-monotonic Learning Curves",
+      "Deep Learning",
+      "Test Error",
+      "Learning Task Compatibility",
+      "Statistical Mechanics",
+      "Stochastic Gradient Descent",
+      "Model Complexity Control",
+      "Local Optimization",
+      "Distributionally Robust Optimization",
+      "Implicit Bias",
+      "Equifinality",
+      "Inductive Bias",
+      "Parameter Nonuniqueness",
+      "Vapnik-Chernovenkis Dimension",
+      "Prediction Uncertainty",
+      "Gradient Descent",
+      "Adaptive Optimization Methods",
+      "Regularization",
+      "More Data"
+    ],
+    "edges": [
+      {
+        "source": "Overparameterized Neural Networks",
+        "target": "Worst-Case Generalization",
+        "relation": "influences",
+        "supporting_papers": [
+          "https://openalex.org/W2991497298"
+        ]
+      },
+      {
+        "source": "Overparameterized Neural Networks",
+        "target": "Distributionally Robust Optimization",
+        "relation": "fails to generalize with naively applied",
+        "supporting_papers": [
+          "https://openalex.org/W2991497298"
+        ]
+      },
+      {
+        "source": "Overparameterized Neural Networks",
+        "target": "Generalization Error",
+        "relation": "leads to better performance in",
+        "supporting_papers": [
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Training Performance",
+        "target": "Test Error",
+        "relation": "discrepancy with",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Training Performance",
+        "target": "Adaptive Optimization Methods",
+        "relation": "is better in",
+        "supporting_papers": [
+          "https://openalex.org/W2963208657"
+        ]
+      },
+      {
+        "source": "Training Performance",
+        "target": "Generalization Capability",
+        "relation": "correlates with",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Multi-Class Classification",
+        "target": "ReLU Neural Network",
+        "relation": "applied in",
+        "supporting_papers": [
+          "https://openalex.org/W2886067286"
+        ]
+      },
+      {
+        "source": "Multi-Class Classification",
+        "target": "Generalization Error",
+        "relation": "is related to",
+        "supporting_papers": [
+          "https://openalex.org/W2886067286"
+        ]
+      },
+      {
+        "source": "Uniform Convergence",
+        "target": "Deep Learning",
+        "relation": "is a technique used in",
+        "supporting_papers": [
+          "https://openalex.org/W2970290137"
+        ]
+      },
+      {
+        "source": "Uniform Convergence",
+        "target": "Test Error",
+        "relation": "cannot explain",
+        "supporting_papers": [
+          "https://openalex.org/W2970290137"
+        ]
+      },
+      {
+        "source": "Kernel Regression",
+        "target": "Generalization Error",
+        "relation": "investigates",
+        "supporting_papers": [
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Kernel Regression",
+        "target": "Inductive Bias",
+        "relation": "elucidates",
+        "supporting_papers": [
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Kernel Regression",
+        "target": "Overparameterized Neural Networks",
+        "relation": "describes",
+        "supporting_papers": [
+          "https://openalex.org/W3096003755"
+        ]
+      },
+      {
+        "source": "Generalized Linear Model",
+        "target": "Multiple Correlation Coefficient",
+        "relation": "studies summary measures of predictive power of",
+        "supporting_papers": [
+          "https://openalex.org/W2059974661"
+        ]
+      },
+      {
+        "source": "Generalized Linear Model",
+        "target": "Overparameterization",
+        "relation": "compared in terms of behavior in presence of",
+        "supporting_papers": [
+          "https://openalex.org/W2059974661"
+        ]
+      },
+      {
+        "source": "Training Dataset Size",
+        "target": "Uniform Convergence",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2970290137"
+        ]
+      },
+      {
+        "source": "Training Dataset Size",
+        "target": "Test Error",
+        "relation": "can affect",
+        "supporting_papers": [
+          "https://openalex.org/W2970290137"
+        ]
+      },
+      {
+        "source": "Physically Based Constraints",
+        "target": "Prediction Uncertainty",
+        "relation": "bounds",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Multiple Correlation Coefficient",
+        "target": "Overparameterization",
+        "relation": "compared in terms of behavior in presence of",
+        "supporting_papers": [
+          "https://openalex.org/W2059974661"
+        ]
+      },
+      {
+        "source": "Generalization Capability",
+        "target": "Test Error",
+        "relation": "correlates with",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Generalization Capability",
+        "target": "Adaptive Optimization Methods",
+        "relation": "is worse in",
+        "supporting_papers": [
+          "https://openalex.org/W2963208657"
+        ]
+      },
+      {
+        "source": "ReLU Neural Network",
+        "target": "Generalization Error",
+        "relation": "achieves",
+        "supporting_papers": [
+          "https://openalex.org/W2949804919"
+        ]
+      },
+      {
+        "source": "ReLU Neural Network",
+        "target": "Multi-Class Classification",
+        "relation": "applies to",
+        "supporting_papers": [
+          "https://openalex.org/W2949804919"
+        ]
+      },
+      {
+        "source": "Hydrologic Prediction",
+        "target": "Model Complexity Control",
+        "relation": "is improved by",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Overparameterization",
+        "target": "Stochastic Gradient Descent",
+        "relation": "is studied in",
+        "supporting_papers": [
+          "https://openalex.org/W2949804919"
+        ]
+      },
+      {
+        "source": "Overparameterization",
+        "target": "Generalization Error",
+        "relation": "contradicts conventional wisdom from",
+        "supporting_papers": [
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Overparameterization",
+        "target": "Parameter Nonuniqueness",
+        "relation": "leads to",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Overparameterization",
+        "target": "Equifinality",
+        "relation": "leads to",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Overparameterization",
+        "target": "Model Complexity Control",
+        "relation": "is a concern in",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Generalization Error",
+        "target": "Kernel Regression",
+        "relation": "is explained by",
+        "supporting_papers": [
+          "https://openalex.org/W3096003755",
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Non-monotonic Learning Curves",
+        "target": "Generalization Error",
+        "relation": "can result in",
+        "supporting_papers": [
+          "https://openalex.org/W3096003755",
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Non-monotonic Learning Curves",
+        "target": "More Data",
+        "relation": "arise from",
+        "supporting_papers": [
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Learning Task Compatibility",
+        "target": "Kernel Regression",
+        "relation": "is assessed by",
+        "supporting_papers": [
+          "https://openalex.org/W3096003755",
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Statistical Mechanics",
+        "target": "Generalization Error",
+        "relation": "used to derive",
+        "supporting_papers": [
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Statistical Mechanics",
+        "target": "Kernel Regression",
+        "relation": "use techniques from",
+        "supporting_papers": [
+          "https://openalex.org/W3096003755"
+        ]
+      },
+      {
+        "source": "Stochastic Gradient Descent",
+        "target": "Generalization Capability",
+        "relation": "performs better than",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Stochastic Gradient Descent",
+        "target": "Overparameterized Neural Networks",
+        "relation": "used for training",
+        "supporting_papers": [
+          "https://openalex.org/W2886067286"
+        ]
+      },
+      {
+        "source": "Stochastic Gradient Descent",
+        "target": "Adaptive Optimization Methods",
+        "relation": "is compared with",
+        "supporting_papers": [
+          "https://openalex.org/W2963208657"
+        ]
+      },
+      {
+        "source": "Stochastic Gradient Descent",
+        "target": "Test Error",
+        "relation": "achieves",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Stochastic Gradient Descent",
+        "target": "ReLU Neural Network",
+        "relation": "used for training",
+        "supporting_papers": [
+          "https://openalex.org/W2949804919"
+        ]
+      },
+      {
+        "source": "Stochastic Gradient Descent",
+        "target": "Generalization Error",
+        "relation": "affects",
+        "supporting_papers": [
+          "https://openalex.org/W2949804919"
+        ]
+      },
+      {
+        "source": "Model Complexity Control",
+        "target": "Hydrologic Prediction",
+        "relation": "is applied to",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Model Complexity Control",
+        "target": "Overparameterization",
+        "relation": "reduces",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Model Complexity Control",
+        "target": "Equifinality",
+        "relation": "reduces",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Model Complexity Control",
+        "target": "Prediction Uncertainty",
+        "relation": "avoids increase in",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Model Complexity Control",
+        "target": "Parameter Nonuniqueness",
+        "relation": "reduces",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Distributionally Robust Optimization",
+        "target": "Regularization",
+        "relation": "coupled with",
+        "supporting_papers": [
+          "https://openalex.org/W2991497298"
+        ]
+      },
+      {
+        "source": "Implicit Bias",
+        "target": "Uniform Convergence",
+        "relation": "is considered in relation to",
+        "supporting_papers": [
+          "https://openalex.org/W2970290137"
+        ]
+      },
+      {
+        "source": "Equifinality",
+        "target": "Prediction Uncertainty",
+        "relation": "negatively affects",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Inductive Bias",
+        "target": "Kernel Regression",
+        "relation": "is a characteristic of",
+        "supporting_papers": [
+          "https://openalex.org/W3096003755",
+          "https://openalex.org/W3162003518"
+        ]
+      },
+      {
+        "source": "Parameter Nonuniqueness",
+        "target": "Model Complexity Control",
+        "relation": "is a challenge in",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Vapnik-Chernovenkis Dimension",
+        "target": "Model Complexity Control",
+        "relation": "is a measure of",
+        "supporting_papers": [
+          "https://openalex.org/W2150013545"
+        ]
+      },
+      {
+        "source": "Gradient Descent",
+        "target": "Test Error",
+        "relation": "achieves",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Gradient Descent",
+        "target": "Adaptive Optimization Methods",
+        "relation": "is compared with",
+        "supporting_papers": [
+          "https://openalex.org/W2963208657"
+        ]
+      },
+      {
+        "source": "Gradient Descent",
+        "target": "Implicit Bias",
+        "relation": "is influenced by",
+        "supporting_papers": [
+          "https://openalex.org/W2970290137"
+        ]
+      },
+      {
+        "source": "Gradient Descent",
+        "target": "Uniform Convergence",
+        "relation": "is related to",
+        "supporting_papers": [
+          "https://openalex.org/W2970290137"
+        ]
+      },
+      {
+        "source": "Adaptive Optimization Methods",
+        "target": "Generalization Capability",
+        "relation": "generalizes worse than",
+        "supporting_papers": [
+          "https://openalex.org/W2963208657"
+        ]
+      },
+      {
+        "source": "Adaptive Optimization Methods",
+        "target": "Local Optimization",
+        "relation": "performs",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Adaptive Optimization Methods",
+        "target": "Deep Learning",
+        "relation": "used for",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Adaptive Optimization Methods",
+        "target": "Test Error",
+        "relation": "attains",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Adaptive Optimization Methods",
+        "target": "Training Performance",
+        "relation": "can improve",
+        "supporting_papers": [
+          "https://openalex.org/W2619516334"
+        ]
+      },
+      {
+        "source": "Regularization",
+        "target": "Worst-Case Generalization",
+        "relation": "improves",
+        "supporting_papers": [
+          "https://openalex.org/W2991497298"
+        ]
+      },
+      {
+        "source": "Regularization",
+        "target": "Overparameterized Neural Networks",
+        "relation": "important for worst-group generalization",
+        "supporting_papers": [
+          "https://openalex.org/W2991497298"
+        ]
+      },
+      {
+        "source": "More Data",
+        "target": "Generalization Error",
+        "relation": "may impair",
+        "supporting_papers": [
+          "https://openalex.org/W3096003755"
+        ]
+      }
+    ]
+  },
+  "construction_metrics": {
+    "duration_seconds": 12.98,
+    "total_tokens": 11213,
+    "estimated_cost_usd": 0.0032,
+    "raw_edges_extracted": 39,
+    "raw_edges_with_prov": 39,
+    "raw_edges_missing_prov": 0,
+    "node_count": 34,
+    "edge_count": 64,
+    "edges_with_provenance": 64,
+    "edges_missing_provenance": 0,
+    "unmapped_dropped_ids": 0
+  }
+}

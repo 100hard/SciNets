@@ -1,0 +1,4276 @@
+{
+  "TASK_001": {
+    "condition": "GRAPH",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "source_file": "GRAPH_CLIM-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Nutrient Enrichment",
+          "to": "Zooxanthellae",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2147346498"
+          ]
+        },
+        {
+          "from": "Zooxanthellae",
+          "to": "Coral Reefs",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2147346498"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_002": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_CLIM-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Sedimentation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Sedimentation",
+          "to": "Coral Reef Degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_003": {
+    "condition": "RAG",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "source_file": "RAG_ML-2_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochastic updates in SGD",
+          "to": "Implicit bias favoring certain loss landscape regions",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Implicit bias favoring certain loss landscape regions",
+          "to": "Convergence to flatter minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_004": {
+    "condition": "GRAPH",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "source_file": "GRAPH_BIO-3_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Dysbiosis",
+          "to": "Anorexia Nervosa",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2687532560",
+            "https://openalex.org/W2767423524"
+          ]
+        },
+        {
+          "from": "Anorexia Nervosa",
+          "to": "Neuroinflammation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_005": {
+    "condition": "RAG",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "source_file": "RAG_ML-2_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit bias in SGD",
+          "to": "Modification of exploration dynamics",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Modification of exploration dynamics",
+          "to": "Preference for flat minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_006": {
+    "condition": "GRAPH",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "source_file": "GRAPH_BIO-3_rep3.json",
+    "automated_metrics": {
+      "hop_count": 3,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.667,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Dysbiosis",
+          "to": "Methanobrevibacter smithii",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Methanobrevibacter smithii",
+          "to": "Gut Microbiota",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2687532560"
+          ]
+        },
+        {
+          "from": "Gut Microbiota",
+          "to": "Cognition",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W3045452138"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_007": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_ML-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Loss Landscape Geometry",
+          "to": "Generalization Error",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Generalization Error",
+          "to": "Generalization Capability",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_008": {
+    "condition": "RAG",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "source_file": "RAG_BIO-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Increased Arc mRNA Expression",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2253421052"
+          ]
+        },
+        {
+          "from": "Increased Arc mRNA Expression",
+          "to": "Impaired Memory Consolidation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_009": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_ML-2_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit Bias in SGD",
+          "to": "Convergence Behavior",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Convergence Behavior",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_010": {
+    "condition": "RAG",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "source_file": "RAG_BIO-3_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut microbiome dysbiosis (increased inflammatory cytokines)",
+          "to": "Disruption of neurotransmitter balance",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Disruption of neurotransmitter balance",
+          "to": "Mood regulation abnormalities",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_011": {
+    "condition": "GRAPH",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "source_file": "GRAPH_BIO-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Long-term Depression",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        },
+        {
+          "from": "Long-term Depression",
+          "to": "Memory",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_012": {
+    "condition": "RAG",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "source_file": "RAG_ML-2_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit bias of SGD",
+          "to": "Tendency to converge to flatter minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Tendency to converge to flatter minima",
+          "to": "Enhanced model performance",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_013": {
+    "condition": "RAG",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "source_file": "RAG_BIO-3_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut microbiome dysbiosis",
+          "to": "Altered bile acid profiles",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Altered bile acid profiles",
+          "to": "Cognitive decline in Alzheimer's disease",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_014": {
+    "condition": "RAG",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "source_file": "RAG_BIO-3_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Altered bile acid profiles",
+          "to": "Impaired gut-brain axis signaling",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Impaired gut-brain axis signaling",
+          "to": "Neuroinflammation and cognitive decline",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_015": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_CLIM-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Topsoil Erosion",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Topsoil Erosion",
+          "to": "Sedimentation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2147346498"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_016": {
+    "condition": "RAG",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "source_file": "RAG_BIO-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Altered Expression of Arc and MMP-9",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2253421052"
+          ]
+        },
+        {
+          "from": "Altered Expression of Arc and MMP-9",
+          "to": "Impaired Synaptic Plasticity",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_017": {
+    "condition": "RAG",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "source_file": "RAG_CLIM-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Nutrient runoff",
+          "to": "Algal blooms",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Algal blooms",
+          "to": "Coral reef degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_018": {
+    "condition": "GRAPH",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ML-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Generalization Capability",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2619516334"
+          ]
+        },
+        {
+          "from": "Generalization Capability",
+          "to": "Adaptive Optimization Methods",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2963208657"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_019": {
+    "condition": "GRAPH",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "source_file": "GRAPH_CLIM-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Nutrient Runoff",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Nutrient Runoff",
+          "to": "Coral Reef Degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_020": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_BIO-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Increases Astrocyte-derived Adenosine",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Increases Astrocyte-derived Adenosine",
+          "to": "Mediates Impairment of Synaptic Plasticity",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_021": {
+    "condition": "GRAPH",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "source_file": "GRAPH_CLIM-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Sedimentation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Sedimentation",
+          "to": "Coral Reefs",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2147346498"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_022": {
+    "condition": "RAG",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "source_file": "RAG_CLIM-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Increased sedimentation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Increased sedimentation",
+          "to": "Coral reef degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_023": {
+    "condition": "GRAPH",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "source_file": "GRAPH_BIO-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Long-term Depression",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        },
+        {
+          "from": "Long-term Depression",
+          "to": "Memory",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_024": {
+    "condition": "GRAPH",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "source_file": "GRAPH_ML-2_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Implicit Bias",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Implicit Bias",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_025": {
+    "condition": "RAG",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "source_file": "RAG_BIO-3_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut microbiome dysbiosis",
+          "to": "Production of neurotoxic metabolites",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Production of neurotoxic metabolites",
+          "to": "Impairment of neurotransmitter function",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_026": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_BIO-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "NMDA Receptors",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        },
+        {
+          "from": "NMDA Receptors",
+          "to": "Long-term Potentiation (LTP)",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_027": {
+    "condition": "GRAPH",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "source_file": "GRAPH_ML-2_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochasticity",
+          "to": "Demographic Stochasticity",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2047152814"
+          ]
+        },
+        {
+          "from": "Demographic Stochasticity",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_028": {
+    "condition": "GRAPH",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ML-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Adaptive Optimization Methods",
+          "to": "Training Performance",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2619516334"
+          ]
+        },
+        {
+          "from": "Training Performance",
+          "to": "Generalization Capability",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2619516334"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_029": {
+    "condition": "RAG",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "source_file": "RAG_CLIM-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Nutrient runoff",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Nutrient runoff",
+          "to": "Coral reef degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_030": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_BIO-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Increases BDNF levels",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2253421052"
+          ]
+        },
+        {
+          "from": "Increases BDNF levels",
+          "to": "Leads to Cognitive Impairment",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_031": {
+    "condition": "GRAPH",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ML-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Generalization Capability",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2619516334"
+          ]
+        },
+        {
+          "from": "Generalization Capability",
+          "to": "Test Error",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2619516334"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_032": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_ML-2_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit Bias in SGD",
+          "to": "Stochasticity",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Stochasticity",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_033": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_ML-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Overparameterized Neural Networks",
+          "to": "Regularization",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Regularization",
+          "to": "Worst-Case Generalization",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2991497298"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_034": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_BIO-3_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Altered Bile Acid Profiles",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Altered Bile Acid Profiles",
+          "to": "Cognitive Impairment",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_035": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_BIO-3_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Altered Bile Acid Profiles",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Altered Bile Acid Profiles",
+          "to": "Cognitive Impairment",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_036": {
+    "condition": "RAG",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "source_file": "RAG_BIO-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Altered Expression of Arc and MMP-9",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2253421052"
+          ]
+        },
+        {
+          "from": "Altered Expression of Arc and MMP-9",
+          "to": "Impaired Memory Consolidation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_037": {
+    "condition": "RAG",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "source_file": "RAG_CLIM-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Nutrient runoff",
+          "to": "Eutrophication",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Eutrophication",
+          "to": "Coral reef degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_038": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_BIO-3_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Microbial Metabolites",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Microbial Metabolites",
+          "to": "Mood Regulation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_039": {
+    "condition": "GRAPH",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "source_file": "GRAPH_BIO-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Long-term Potentiation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W75676917"
+          ]
+        },
+        {
+          "from": "Long-term Potentiation",
+          "to": "Cognitive Function",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2000269220"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_040": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_BIO-3_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Neurotoxic Metabolites",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Neurotoxic Metabolites",
+          "to": "Cognitive Decline",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_041": {
+    "condition": "RAG",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "source_file": "RAG_ML-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stronger regularization techniques",
+          "to": "Mitigation of spurious correlations",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Mitigation of spurious correlations",
+          "to": "Improved worst-case generalization performance",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_042": {
+    "condition": "RAG",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "source_file": "RAG_ML-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Geometry of the loss landscape",
+          "to": "Convergence behavior of optimization algorithms",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Convergence behavior of optimization algorithms",
+          "to": "Better generalization performance",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_043": {
+    "condition": "GRAPH",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "source_file": "GRAPH_BIO-3_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Dysbiosis",
+          "to": "Anorexia Nervosa",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2687532560",
+            "https://openalex.org/W2767423524"
+          ]
+        },
+        {
+          "from": "Anorexia Nervosa",
+          "to": "Cognition",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_044": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_CLIM-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Nutrient Runoff",
+          "to": "Nutrient Loading",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Nutrient Loading",
+          "to": "Eutrophication",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2522525957"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_045": {
+    "condition": "RAG",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "source_file": "RAG_CLIM-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Increased deforestation",
+          "to": "Soil erosion",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Soil erosion",
+          "to": "Coral reef community degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_046": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_BIO-3_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Systemic Inflammation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4225103233"
+          ]
+        },
+        {
+          "from": "Systemic Inflammation",
+          "to": "Mood Disorders",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_047": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_ML-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Overparameterized Neural Networks",
+          "to": "Loss Landscape Geometry",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Loss Landscape Geometry",
+          "to": "Generalization Capability",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_048": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_ML-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Adaptive Optimization Methods",
+          "to": "Implicit Bias",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Implicit Bias",
+          "to": "Generalization Capability",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_049": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_BIO-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Brain Derived Neurotrophic Factor",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Brain Derived Neurotrophic Factor",
+          "to": "Cognitive Impairment",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_050": {
+    "condition": "RAG",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "source_file": "RAG_CLIM-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Nutrient runoff",
+          "to": "Harmful algal blooms",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Harmful algal blooms",
+          "to": "Coral reef degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_051": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_CLIM-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sedimentation",
+          "to": "Light Penetration",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Light Penetration",
+          "to": "Coral Mortality",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_052": {
+    "condition": "GRAPH",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ML-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Adaptive Optimization Methods",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2963208657"
+          ]
+        },
+        {
+          "from": "Adaptive Optimization Methods",
+          "to": "Test Error",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2619516334"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_053": {
+    "condition": "RAG",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "source_file": "RAG_CLIM-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Increased nutrient loading",
+          "to": "Shifts in competitive dynamics",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Shifts in competitive dynamics",
+          "to": "Coral reef degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_054": {
+    "condition": "GRAPH",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "source_file": "GRAPH_ML-2_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochasticity",
+          "to": "Ecological Drift",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2047152814"
+          ]
+        },
+        {
+          "from": "Ecological Drift",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_055": {
+    "condition": "GRAPH",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "source_file": "GRAPH_ML-2_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Loss Landscape",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Loss Landscape",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_056": {
+    "condition": "RAG",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "source_file": "RAG_ML-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochastic gradient descent (SGD)",
+          "to": "Implicit bias towards simpler functions",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2970290137"
+          ]
+        },
+        {
+          "from": "Implicit bias towards simpler functions",
+          "to": "Lower generalization error",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_057": {
+    "condition": "GRAPH",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "source_file": "GRAPH_ML-2_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochasticity",
+          "to": "Genome Organization",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2972175853"
+          ]
+        },
+        {
+          "from": "Genome Organization",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_058": {
+    "condition": "RAG",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "source_file": "RAG_BIO-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Chronic Caffeine Treatment",
+          "to": "Preserved P-CaMKII Levels",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Preserved P-CaMKII Levels",
+          "to": "Mitigated Synaptic Plasticity Impairment",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_059": {
+    "condition": "RAG",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "source_file": "RAG_BIO-3_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut microbiome dysbiosis",
+          "to": "Altered neurotransmitter production",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Altered neurotransmitter production",
+          "to": "Mood regulation and cognitive performance",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_060": {
+    "condition": "GRAPH",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "source_file": "GRAPH_BIO-3_rep3.json",
+    "automated_metrics": {
+      "hop_count": 3,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.333,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Inflammation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4225103233"
+          ]
+        },
+        {
+          "from": "Inflammation",
+          "to": "Body Composition",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Body Composition",
+          "to": "Cognition",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_061": {
+    "condition": "GRAPH",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "source_file": "GRAPH_ML-2_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Stochasticity",
+          "to": "Demographic Stochasticity",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2047152814"
+          ]
+        },
+        {
+          "from": "Demographic Stochasticity",
+          "to": "Population Dynamics",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2047152814"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_062": {
+    "condition": "RAG",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "source_file": "RAG_BIO-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Adenosine Signaling in Astrocytes",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Adenosine Signaling in Astrocytes",
+          "to": "Altered NMDA Receptor Function",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_063": {
+    "condition": "RAG",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "source_file": "RAG_ML-2_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit bias in SGD",
+          "to": "Variance of gradient estimates",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Variance of gradient estimates",
+          "to": "Emergence of flat minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_064": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_BIO-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Recovery Sleep",
+          "to": "NMDA Receptors",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        },
+        {
+          "from": "NMDA Receptors",
+          "to": "Long-term Potentiation (LTP)",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_065": {
+    "condition": "RAG",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "source_file": "RAG_BIO-3_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut microbiome dysbiosis (Alistipes increase)",
+          "to": "Increased neurotoxic metabolites (D-lactic acid)",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Increased neurotoxic metabolites (D-lactic acid)",
+          "to": "Neuroinflammation and cognitive decline",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_066": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_ML-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Overparameterized Neural Networks",
+          "to": "Generalization Error",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W3162003518"
+          ]
+        },
+        {
+          "from": "Generalization Error",
+          "to": "Worst-Case Generalization",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_067": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_ML-2_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochasticity in SGD",
+          "to": "Exploration of Loss Landscape",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Exploration of Loss Landscape",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_068": {
+    "condition": "RAG",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "source_file": "RAG_BIO-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Increased Adenosine Signaling",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Increased Adenosine Signaling",
+          "to": "Impaired Late-Phase Long-Term Potentiation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_069": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_ML-2_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochasticity",
+          "to": "Exploration of Loss Landscape",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Exploration of Loss Landscape",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_070": {
+    "condition": "RAG",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "source_file": "RAG_CLIM-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Increased sedimentation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Increased sedimentation",
+          "to": "Coral reef degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_071": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_ML-2_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochasticity",
+          "to": "Hybrid Mechanistic-Stochastic Model",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Hybrid Mechanistic-Stochastic Model",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_072": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_ML-2_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochasticity",
+          "to": "Implicit Bias in SGD",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Implicit Bias in SGD",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_073": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_ML-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Non-monotonic Learning Curves",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Non-monotonic Learning Curves",
+          "to": "Generalization Capability",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_074": {
+    "condition": "RAG",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "source_file": "RAG_ML-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stronger regularization techniques",
+          "to": "Alters loss landscape geometry",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Alters loss landscape geometry",
+          "to": "Improved worst-case generalization",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_075": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_ML-2_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit Bias in SGD",
+          "to": "Structural Characteristics of Loss Landscape",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Structural Characteristics of Loss Landscape",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_076": {
+    "condition": "GRAPH",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "source_file": "GRAPH_BIO-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Long-term Potentiation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W75676917"
+          ]
+        },
+        {
+          "from": "Long-term Potentiation",
+          "to": "Cognitive Function",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2000269220"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_077": {
+    "condition": "GRAPH",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "source_file": "GRAPH_CLIM-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 4,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.75,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 3,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Sedimentation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Sedimentation",
+          "to": "Nutrient Loading",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2017008898"
+          ]
+        },
+        {
+          "from": "Nutrient Loading",
+          "to": "Eutrophication",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2522525957"
+          ]
+        },
+        {
+          "from": "Eutrophication",
+          "to": "Coral Reefs",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2138436021"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_078": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_ML-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Implicit Bias",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2970290137"
+          ]
+        },
+        {
+          "from": "Implicit Bias",
+          "to": "Generalization Capability",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_079": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_BIO-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "A1 Receptor",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "A1 Receptor",
+          "to": "Long-term Potentiation (LTP)",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_080": {
+    "condition": "GRAPH",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "source_file": "GRAPH_ML-2_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Implicit Bias",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Implicit Bias",
+          "to": "Generalization",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_081": {
+    "condition": "RAG",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "source_file": "RAG_ML-2_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit bias in SGD",
+          "to": "Non-uniform sampling of parameter space",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Non-uniform sampling of parameter space",
+          "to": "Flatter minima in loss landscape",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_082": {
+    "condition": "GRAPH",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "source_file": "GRAPH_BIO-3_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Dysbiosis",
+          "to": "Cerebral Inflammation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W3026296114"
+          ]
+        },
+        {
+          "from": "Cerebral Inflammation",
+          "to": "Depression",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4225103233"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_083": {
+    "condition": "RAG",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "source_file": "RAG_BIO-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Chronic Caffeine Treatment",
+          "to": "Maintained P-CaMKII Levels",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Maintained P-CaMKII Levels",
+          "to": "Mitigated Impairment of LTP",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_084": {
+    "condition": "GRAPH",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "source_file": "GRAPH_BIO-3_rep3.json",
+    "automated_metrics": {
+      "hop_count": 3,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.667,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Microbiota-Gut-Brain Axis",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Microbiota-Gut-Brain Axis",
+          "to": "Cerebral Inflammation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4225103233"
+          ]
+        },
+        {
+          "from": "Cerebral Inflammation",
+          "to": "Depression",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4225103233"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_085": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_CLIM-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sedimentation",
+          "to": "Light Penetration",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Light Penetration",
+          "to": "Physiological Stress",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_086": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_BIO-3_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Bile Acid Profiles",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Bile Acid Profiles",
+          "to": "Cognitive Impairment",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_087": {
+    "condition": "GRAPH",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "source_file": "GRAPH_BIO-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Synaptic Plasticity",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W1999028759"
+          ]
+        },
+        {
+          "from": "Synaptic Plasticity",
+          "to": "Memory",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2069678434"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_088": {
+    "condition": "GRAPH",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ML-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": true,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Overparameterization",
+          "to": "Stochastic Gradient Descent",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2949804919"
+          ]
+        },
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Generalization Capability",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2619516334"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_089": {
+    "condition": "RAG",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "source_file": "RAG_ML-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochastic gradient descent (SGD)",
+          "to": "Implicit bias towards simpler solutions",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2970290137"
+          ]
+        },
+        {
+          "from": "Implicit bias towards simpler solutions",
+          "to": "Lower generalization error",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_090": {
+    "condition": "GRAPH",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "source_file": "GRAPH_ML-2_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochasticity",
+          "to": "Genome Organization",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2972175853"
+          ]
+        },
+        {
+          "from": "Genome Organization",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_091": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_BIO-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "NMDA Receptors",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        },
+        {
+          "from": "NMDA Receptors",
+          "to": "Long-term Potentiation (LTP)",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_092": {
+    "condition": "GRAPH",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "source_file": "GRAPH_BIO-3_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Depression",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4293162929"
+          ]
+        },
+        {
+          "from": "Depression",
+          "to": "Cognition",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_093": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_BIO-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Alters composition of NMDA Receptors",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        },
+        {
+          "from": "Alters composition of NMDA Receptors",
+          "to": "Impairs Long-term Potentiation (LTP)",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_094": {
+    "condition": "RAG",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "source_file": "RAG_ML-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Geometry of the loss landscape",
+          "to": "Characterized by spectral bias",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Characterized by spectral bias",
+          "to": "Influences inductive bias towards simpler functions",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_095": {
+    "condition": "GRAPH",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "source_file": "GRAPH_BIO-3_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Cerebral Inflammation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4225103233"
+          ]
+        },
+        {
+          "from": "Cerebral Inflammation",
+          "to": "Depression",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4225103233"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_096": {
+    "condition": "RAG",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "source_file": "RAG_BIO-3_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut microbiome dysbiosis (increase in Alistipes spp.)",
+          "to": "Elevated neurotoxic metabolites",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Elevated neurotoxic metabolites",
+          "to": "Neuroinflammation and cognitive decline",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_097": {
+    "condition": "RAG",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "source_file": "RAG_ML-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochastic gradient descent",
+          "to": "Favors lower generalization error solutions",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2949804919"
+          ]
+        },
+        {
+          "from": "Favors lower generalization error solutions",
+          "to": "Influences loss landscape geometry",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_098": {
+    "condition": "GRAPH",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "source_file": "GRAPH_CLIM-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Sedimentation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Sedimentation",
+          "to": "Coral Reef Degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_099": {
+    "condition": "RAG",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "source_file": "RAG_BIO-3_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Increased abundance of Alistipes species",
+          "to": "Elevated neuroinflammatory markers",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Elevated neuroinflammatory markers",
+          "to": "Mood regulation abnormalities",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_100": {
+    "condition": "GRAPH",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "source_file": "GRAPH_ML-2_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Stochasticity",
+          "to": "Ecological Drift",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2047152814"
+          ]
+        },
+        {
+          "from": "Ecological Drift",
+          "to": "Population Dynamics",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2047152814"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_101": {
+    "condition": "RAG",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "source_file": "RAG_ML-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Geometry of the loss landscape",
+          "to": "Stability of solutions during training",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Stability of solutions during training",
+          "to": "Better generalization performance",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_102": {
+    "condition": "RAG",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "source_file": "RAG_CLIM-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Increased sedimentation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Increased sedimentation",
+          "to": "Coral reef degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_103": {
+    "condition": "GRAPH",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "source_file": "GRAPH_CLIM-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Nutrient Enrichment",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Nutrient Enrichment",
+          "to": "Coral Reef Degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_104": {
+    "condition": "RAG",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "source_file": "RAG_BIO-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Altered NMDA Receptor Composition",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Altered NMDA Receptor Composition",
+          "to": "Impaired Long-Term Potentiation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_105": {
+    "condition": "GRAPH",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "source_file": "GRAPH_BIO-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Long-term Potentiation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W75676917"
+          ]
+        },
+        {
+          "from": "Long-term Potentiation",
+          "to": "Memory",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2000269220"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_106": {
+    "condition": "RAG",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "source_file": "RAG_BIO-3_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut microbiome dysbiosis (altered bile acids)",
+          "to": "Disruption of gut-liver-brain axis",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Disruption of gut-liver-brain axis",
+          "to": "Impaired cognitive function",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_107": {
+    "condition": "RAG",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "source_file": "RAG_ML-2_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit bias in SGD",
+          "to": "Flatter minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Flatter minima",
+          "to": "Improved generalization performance",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_108": {
+    "condition": "RAG",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "source_file": "RAG_ML-2_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit bias in SGD",
+          "to": "Stochasticity of gradient updates",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Stochasticity of gradient updates",
+          "to": "Convergence towards flat minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_109": {
+    "condition": "RAG",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "source_file": "RAG_ML-2_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stochastic nature of SGD",
+          "to": "Diverse flat minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Diverse flat minima",
+          "to": "Robustness against overfitting",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_110": {
+    "condition": "RAG",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "source_file": "RAG_ML-2_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit bias in SGD",
+          "to": "Altered optimization landscape",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Altered optimization landscape",
+          "to": "Preference for flatter minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_111": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_BIO-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Neuron-Glia Coupling",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Neuron-Glia Coupling",
+          "to": "Metabolic Plasticity",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W783873688"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_112": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_CLIM-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Deforestation",
+          "to": "Sedimentation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Sedimentation",
+          "to": "Coral Reef Degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_113": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_ML-2_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit Bias in SGD",
+          "to": "Stochastic Differential Equations",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Stochastic Differential Equations",
+          "to": "Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_114": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_ML-2_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Implicit Bias in SGD",
+          "to": "Stochasticity",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Stochasticity",
+          "to": "Feedback Loop to Flat Minima",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_115": {
+    "condition": "RAG",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "source_file": "RAG_BIO-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Increased Adenosine Levels",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Increased Adenosine Levels",
+          "to": "Impaired Long-Term Potentiation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_116": {
+    "condition": "GRAPH",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "source_file": "GRAPH_CLIM-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 3,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.667,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Nutrient Loading",
+          "to": "Physiological Stress",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2017008898"
+          ]
+        },
+        {
+          "from": "Physiological Stress",
+          "to": "Reproductive Failure",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Reproductive Failure",
+          "to": "Coral Reefs",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2017008898"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_117": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_CLIM-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sedimentation",
+          "to": "Anoxia",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Anoxia",
+          "to": "Coral Mortality",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_118": {
+    "condition": "RAG",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "source_file": "RAG_ML-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Stronger regularization techniques",
+          "to": "Reduced overfitting to spurious correlations",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Reduced overfitting to spurious correlations",
+          "to": "Improved worst-case generalization performance",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_119": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_ML-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Overparameterized Neural Networks",
+          "to": "Adaptive Optimization Methods",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Adaptive Optimization Methods",
+          "to": "Generalization Error",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_120": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_CLIM-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Nutrient Runoff",
+          "to": "Harmful Algal Blooms",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Harmful Algal Blooms",
+          "to": "Coral Reef Degradation",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_121": {
+    "condition": "GRAPH",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ML-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Model Complexity Control",
+          "to": "Loss Landscape Geometry",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Loss Landscape Geometry",
+          "to": "Generalization Capability",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_122": {
+    "condition": "GRAPH",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ML-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Model Complexity Control",
+          "to": "Overparameterization",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2150013545"
+          ]
+        },
+        {
+          "from": "Overparameterization",
+          "to": "Generalization Capability",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_123": {
+    "condition": "GRAPH",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "source_file": "GRAPH_BIO-3_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Dysbiosis",
+          "to": "Gut Microbiota",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4293162929"
+          ]
+        },
+        {
+          "from": "Gut Microbiota",
+          "to": "Neuroinflammation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W3010636850"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_124": {
+    "condition": "GRAPH",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "source_file": "GRAPH_BIO-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Long-term Potentiation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W75676917"
+          ]
+        },
+        {
+          "from": "Long-term Potentiation",
+          "to": "Memory",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2000269220"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_125": {
+    "condition": "GRAPH",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "source_file": "GRAPH_BIO-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Long-term Depression",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        },
+        {
+          "from": "Long-term Depression",
+          "to": "Memory",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2003856118"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_126": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "source_file": "GRAPH_ONLY_BIO-3_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Neurotoxic Metabolites",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Neurotoxic Metabolites",
+          "to": "Cognitive Decline",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_127": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_ML-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Overparameterized Neural Networks",
+          "to": "Regularization",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Regularization",
+          "to": "Worst-Case Generalization",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2991497298"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_128": {
+    "condition": "GRAPH",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "source_file": "GRAPH_CLIM-1_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Nutrient Loading",
+          "to": "Physiological Stress",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2017008898"
+          ]
+        },
+        {
+          "from": "Physiological Stress",
+          "to": "Coral Reefs",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2017008898"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_129": {
+    "condition": "GRAPH",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "source_file": "GRAPH_CLIM-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 4,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.75,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 3,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sedimentation",
+          "to": "Nutrient Loading",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2017008898"
+          ]
+        },
+        {
+          "from": "Nutrient Loading",
+          "to": "Eutrophication",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2522525957"
+          ]
+        },
+        {
+          "from": "Eutrophication",
+          "to": "Zooxanthellae",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Zooxanthellae",
+          "to": "Coral Reefs",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2147346498"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_130": {
+    "condition": "GRAPH",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ML-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": true,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Overparameterization",
+          "to": "Stochastic Gradient Descent",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2949804919"
+          ]
+        },
+        {
+          "from": "Stochastic Gradient Descent",
+          "to": "Generalization Capability",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2619516334"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_131": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "source_file": "GRAPH_ONLY_BIO-3_rep2.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Neurotoxic Metabolites",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Neurotoxic Metabolites",
+          "to": "Cognitive Decline",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_132": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_BIO-3_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Gut Microbiome Dysbiosis",
+          "to": "Systemic Inflammation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W4225103233"
+          ]
+        },
+        {
+          "from": "Systemic Inflammation",
+          "to": "Mood Regulation Abnormalities",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_133": {
+    "condition": "GRAPH_ONLY",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "source_file": "GRAPH_ONLY_CLIM-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Nutrient Runoff",
+          "to": "Phytoplankton Growth",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Phytoplankton Growth",
+          "to": "Coral Reef Health",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        }
+      ]
+    }
+  },
+  "TASK_134": {
+    "condition": "GRAPH",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "source_file": "GRAPH_BIO-1_rep3.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true,
+      "transition_details": [
+        {
+          "from": "Sleep Deprivation",
+          "to": "Long-term Potentiation",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W75676917"
+          ]
+        },
+        {
+          "from": "Long-term Potentiation",
+          "to": "Memory",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2000269220"
+          ]
+        }
+      ]
+    }
+  },
+  "TASK_135": {
+    "condition": "GRAPH",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "source_file": "GRAPH_ML-1_rep1.json",
+    "automated_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false,
+      "transition_details": [
+        {
+          "from": "Overparameterization",
+          "to": "Adaptive Optimization Methods",
+          "has_graph_edge": false,
+          "provenance_papers": []
+        },
+        {
+          "from": "Adaptive Optimization Methods",
+          "to": "Test Error",
+          "has_graph_edge": true,
+          "provenance_papers": [
+            "https://openalex.org/W2619516334"
+          ]
+        }
+      ]
+    }
+  }
+}

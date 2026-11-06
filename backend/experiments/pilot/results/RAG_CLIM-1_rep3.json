@@ -1,0 +1,155 @@
+{
+  "condition": "RAG",
+  "query_id": "CLIM-1",
+  "query": "What causal pathways connect deforestation, nutrient runoff, and coral reef degradation?",
+  "domain": "climate",
+  "repetition": 3,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 10.12,
+    "prompt_tokens": 6309,
+    "completion_tokens": 1025,
+    "total_tokens": 7334,
+    "estimated_cost_usd": 0.0016,
+    "llm_calls": 1,
+    "tool_calls": 0
+  },
+  "hypotheses": [
+    {
+      "text": "Deforestation leads to increased sedimentation in coastal waters, which reduces light penetration and disrupts the symbiotic relationship between corals and zooxanthellae, ultimately causing coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 1.0,
+      "feasibility_score": 1.0,
+      "testability_score": 1.0,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Increased sedimentation",
+          "Coral reef degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": "deforestation sedimentation coral reef degradation",
+      "mechanism_class": "Sedimentation",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation and sedimentation studies",
+          "Coral reef health assessments",
+          "Nutrient runoff impacts"
+        ],
+        "missing_link": "The direct impact of deforestation on sedimentation levels affecting coral reefs has not been clearly established in the literature.",
+        "field_assumption": "It is assumed that sedimentation effects on coral reefs are primarily due to nutrient runoff rather than direct sedimentation from deforestation.",
+        "structural_reason": "Research communities studying terrestrial deforestation and marine ecosystems often operate in silos, leading to gaps in understanding the interconnected impacts.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation is known to increase sedimentation, yet the specific mechanisms by which this sedimentation impacts coral health remain unclear.",
+        "belief_a": "Deforestation increases sedimentation in coastal waters.",
+        "belief_b": "Increased sedimentation does not significantly impact coral reef health.",
+        "consistency_constraint": "Any valid explanation must demonstrate a clear causal pathway from deforestation through sedimentation to coral degradation."
+      },
+      "constraints": [],
+      "key_terms": [
+        "deforestation",
+        "sedimentation",
+        "coral reefs"
+      ]
+    },
+    {
+      "text": "Nutrient runoff from deforested areas leads to eutrophication in coastal waters, which promotes algal blooms that outcompete corals for space and resources, resulting in coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 1.0,
+      "feasibility_score": 1.0,
+      "testability_score": 1.0,
+      "causal_chain": {
+        "nodes": [
+          "Nutrient runoff",
+          "Eutrophication",
+          "Coral reef degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": "nutrient runoff eutrophication coral reef degradation",
+      "mechanism_class": "Nutrient enrichment",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Nutrient runoff studies",
+          "Coral reef health assessments",
+          "Eutrophication impacts"
+        ],
+        "missing_link": "The specific role of nutrient runoff from deforested areas in driving eutrophication and its subsequent effects on coral reefs is underexplored.",
+        "field_assumption": "It is assumed that nutrient runoff primarily affects freshwater systems rather than coastal marine ecosystems.",
+        "structural_reason": "Research on nutrient runoff often focuses on freshwater impacts, neglecting its implications for coastal marine environments.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Nutrient runoff is known to cause eutrophication, yet its specific effects on coral reefs are not well documented.",
+        "belief_a": "Nutrient runoff contributes to eutrophication in coastal waters.",
+        "belief_b": "Eutrophication does not significantly affect coral reef health.",
+        "consistency_constraint": "Any valid explanation must show how nutrient runoff leads to eutrophication and subsequently impacts coral health."
+      },
+      "constraints": [],
+      "key_terms": [
+        "nutrient runoff",
+        "eutrophication",
+        "coral reefs"
+      ]
+    },
+    {
+      "text": "Increased nutrient loading from deforestation-related runoff leads to shifts in competitive dynamics on coral reefs, favoring fast-growing algae over corals, which ultimately results in coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 1.0,
+      "feasibility_score": 1.0,
+      "testability_score": 1.0,
+      "causal_chain": {
+        "nodes": [
+          "Increased nutrient loading",
+          "Shifts in competitive dynamics",
+          "Coral reef degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": "nutrient loading competitive dynamics coral reef degradation",
+      "mechanism_class": "Competitive dynamics",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Nutrient loading studies",
+          "Coral reef competition dynamics",
+          "Ecosystem degradation assessments"
+        ],
+        "missing_link": "The impact of nutrient loading on competitive dynamics between algae and corals in reef ecosystems is not well understood.",
+        "field_assumption": "It is assumed that coral reefs are resilient to changes in nutrient levels without significant shifts in competitive interactions.",
+        "structural_reason": "Different research focuses on nutrient loading and coral health separately, missing the interaction effects on competitive dynamics.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Increased nutrient loading is known to favor algae, yet the specific consequences for coral health and competitive dynamics remain unclear.",
+        "belief_a": "Increased nutrient loading promotes algal growth on coral reefs.",
+        "belief_b": "Coral reefs are resilient to shifts in competitive dynamics caused by nutrient loading.",
+        "consistency_constraint": "Any valid explanation must illustrate how increased nutrient loading alters competitive dynamics and affects coral health."
+      },
+      "constraints": [],
+      "key_terms": [
+        "nutrient loading",
+        "competitive dynamics",
+        "coral reefs"
+      ]
+    }
+  ]
+}

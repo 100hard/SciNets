@@ -1,0 +1,188 @@
+{
+  "condition": "RAG",
+  "query_id": "CLIM-1",
+  "query": "What causal pathways connect deforestation, nutrient runoff, and coral reef degradation?",
+  "domain": "climate",
+  "repetition": 2,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 10.68,
+    "prompt_tokens": 6309,
+    "completion_tokens": 1081,
+    "total_tokens": 7390,
+    "estimated_cost_usd": 0.0016,
+    "llm_calls": 1,
+    "tool_calls": 0
+  },
+  "hypotheses": [
+    {
+      "text": "Deforestation leads to increased nutrient runoff from agricultural and urban areas, which in turn causes eutrophication in coastal waters, ultimately resulting in coral reef degradation.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 1.0,
+      "feasibility_score": 1.0,
+      "testability_score": 1.0,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Nutrient runoff",
+          "Coral reef degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": "deforestation AND nutrient runoff AND coral reef degradation",
+      "mechanism_class": "Nutrient-mediated",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation impacts",
+          "Nutrient cycling",
+          "Coral reef health"
+        ],
+        "missing_link": "The direct relationship between deforestation-induced nutrient runoff and its impact on coral reefs is underexplored.",
+        "field_assumption": "It is assumed that nutrient runoff primarily affects freshwater systems rather than coastal marine ecosystems.",
+        "structural_reason": "Different research communities focus on terrestrial versus marine impacts, leading to a disconnect.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation is known to increase nutrient runoff, yet the specific pathways to coral reef degradation remain poorly defined.",
+        "belief_a": "Deforestation contributes to nutrient runoff.",
+        "belief_b": "Nutrient runoff primarily affects freshwater ecosystems, not marine environments.",
+        "consistency_constraint": "Any valid explanation must demonstrate how terrestrial nutrient runoff directly impacts marine ecosystems."
+      },
+      "constraints": [
+        {
+          "text": "Must account for the variability in nutrient runoff due to seasonal changes",
+          "type": "hard",
+          "importance": 8
+        },
+        {
+          "text": "Must consider the role of sedimentation in coral reef health",
+          "type": "soft",
+          "importance": 6
+        }
+      ],
+      "key_terms": [
+        "eutrophication",
+        "nutrient runoff",
+        "coral reef degradation"
+      ]
+    },
+    {
+      "text": "Increased sedimentation from deforestation leads to reduced light penetration in coastal waters, which negatively impacts coral growth and health, contributing to coral reef degradation.",
+      "domain_tags": [
+        "marine biology",
+        "environmental science"
+      ],
+      "novelty_score": 1.0,
+      "feasibility_score": 1.0,
+      "testability_score": 1.0,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Increased sedimentation",
+          "Coral reef degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": "deforestation AND sedimentation AND coral reef degradation",
+      "mechanism_class": "Sediment-mediated",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation effects",
+          "Sedimentation impacts",
+          "Coral reef health"
+        ],
+        "missing_link": "The specific mechanisms by which sedimentation from deforestation affects coral reefs are not well understood.",
+        "field_assumption": "Sedimentation is primarily viewed as a freshwater issue rather than a coastal marine problem.",
+        "structural_reason": "Research often separates terrestrial and marine impacts, leading to a lack of integrated studies.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation increases sedimentation, yet the direct consequences on coral reefs remain inadequately addressed.",
+        "belief_a": "Sedimentation negatively affects aquatic ecosystems.",
+        "belief_b": "Coral reefs are resilient to sedimentation due to their adaptive mechanisms.",
+        "consistency_constraint": "Any valid explanation must link sedimentation directly to coral health outcomes."
+      },
+      "constraints": [
+        {
+          "text": "Must include the role of light availability in coral health",
+          "type": "hard",
+          "importance": 9
+        },
+        {
+          "text": "Must consider the effects of sedimentation on other marine organisms",
+          "type": "soft",
+          "importance": 5
+        }
+      ],
+      "key_terms": [
+        "sedimentation",
+        "light penetration",
+        "coral growth"
+      ]
+    },
+    {
+      "text": "Nutrient runoff from deforested areas leads to harmful algal blooms in coastal waters, which outcompete corals for space and resources, resulting in coral reef degradation.",
+      "domain_tags": [
+        "marine biology",
+        "ecology"
+      ],
+      "novelty_score": 1.0,
+      "feasibility_score": 1.0,
+      "testability_score": 1.0,
+      "causal_chain": {
+        "nodes": [
+          "Nutrient runoff",
+          "Harmful algal blooms",
+          "Coral reef degradation"
+        ],
+        "relations": [
+          "causes",
+          "leads to"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": "nutrient runoff AND harmful algal blooms AND coral reef degradation",
+      "mechanism_class": "Algal competition",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Nutrient cycling",
+          "Algal bloom dynamics",
+          "Coral reef health"
+        ],
+        "missing_link": "The relationship between nutrient runoff and the promotion of harmful algal blooms affecting coral reefs is not fully established.",
+        "field_assumption": "Nutrient enrichment is primarily seen as beneficial for primary producers rather than harmful to coral ecosystems.",
+        "structural_reason": "Research often focuses on nutrient enrichment benefits without considering negative impacts on coral reefs.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Nutrient enrichment is known to promote algal growth, yet its detrimental effects on coral reefs are not adequately recognized.",
+        "belief_a": "Nutrient runoff supports algal growth.",
+        "belief_b": "Algal blooms do not significantly impact coral reef health.",
+        "consistency_constraint": "Any valid explanation must clarify how algal blooms directly interfere with coral health."
+      },
+      "constraints": [
+        {
+          "text": "Must account for the variability in algal bloom responses to nutrient levels",
+          "type": "hard",
+          "importance": 8
+        },
+        {
+          "text": "Must consider the role of herbivorous fish in controlling algal populations",
+          "type": "soft",
+          "importance": 6
+        }
+      ],
+      "key_terms": [
+        "harmful algal blooms",
+        "nutrient enrichment",
+        "coral competition"
+      ]
+    }
+  ]
+}

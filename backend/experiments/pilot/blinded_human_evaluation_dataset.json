@@ -1,0 +1,3250 @@
+[
+  {
+    "hypothesis_id": "HYP_001",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "hypothesis_text": "Sleep deprivation impairs long-term potentiation (LTP) in the hippocampus, leading to deficits in me",
+    "causal_chain": [
+      "Sleep Deprivation -> Long-term Potentiation",
+      "Long-term Potentiation -> Memory"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_112",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "hypothesis_text": "Deforestation leads to increased nutrient runoff from agricultural and urban areas, which in turn ca",
+    "causal_chain": [
+      "Deforestation -> Nutrient runoff",
+      "Nutrient runoff -> Coral reef degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_CLIM-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_092",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "hypothesis_text": "Astrocyte-derived adenosine signaling is a critical mediator of the effects of sleep deprivation on ",
+    "causal_chain": [
+      "Sleep Deprivation -> Increased Adenosine Levels",
+      "Increased Adenosine Levels -> Impaired Long-Term Potentiation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_064",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "hypothesis_text": "Deforestation increases sedimentation in coastal waters, which leads to nutrient loading and ultimat",
+    "causal_chain": [
+      "Deforestation -> Sedimentation",
+      "Sedimentation -> Coral Reef Degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_CLIM-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_008",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "hypothesis_text": "Sleep deprivation increases long-term depression in the hippocampus, which subsequently disrupts mem",
+    "causal_chain": [
+      "Sleep Deprivation -> Long-term Depression",
+      "Long-term Depression -> Memory"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_127",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "hypothesis_text": "Implicit bias in stochastic gradient descent (SGD) influences the convergence of deep learning model",
+    "causal_chain": [
+      "Implicit bias in SGD -> Stochasticity of gradient updates",
+      "Stochasticity of gradient updates -> Convergence towards flat minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-2_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_110",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "hypothesis_text": "Nutrient runoff from deforested areas increases the availability of nitrogen and phosphorus in coast",
+    "causal_chain": [
+      "Nutrient runoff -> Algal blooms",
+      "Algal blooms -> Coral reef degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_CLIM-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_113",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "hypothesis_text": "Increased sedimentation from deforestation leads to reduced light penetration in coastal waters, whi",
+    "causal_chain": [
+      "Deforestation -> Increased sedimentation",
+      "Increased sedimentation -> Coral reef degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_CLIM-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_073",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "hypothesis_text": "In overparameterized neural networks, increased regularization improves worst-case generalization by",
+    "causal_chain": [
+      "Overparameterized Neural Networks -> Regularization",
+      "Regularization -> Worst-Case Generalization"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_019",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "hypothesis_text": "Deforestation leads to increased nutrient runoff, which causes eutrophication, subsequently disrupti",
+    "causal_chain": [
+      "Deforestation -> Nutrient Runoff",
+      "Nutrient Runoff -> Coral Reef Degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_CLIM-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_129",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "hypothesis_text": "The implicit bias of stochastic gradient descent (SGD) modifies the exploration dynamics of the opti",
+    "causal_chain": [
+      "Implicit bias in SGD -> Modification of exploration dynamics",
+      "Modification of exploration dynamics -> Preference for flat minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-2_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_044",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "hypothesis_text": "The stochasticity inherent in SGD may lead to ecological drift among model parameters, resulting in ",
+    "causal_chain": [
+      "Stochasticity -> Ecological Drift",
+      "Ecological Drift -> Population Dynamics"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-2_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_039",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "hypothesis_text": "The interaction between the implicit bias of Stochastic Gradient Descent (SGD) and the emergence of ",
+    "causal_chain": [
+      "Stochastic Gradient Descent -> Loss Landscape",
+      "Loss Landscape -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-2_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_130",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "hypothesis_text": "Implicit bias in stochastic gradient descent (SGD) influences the convergence behavior of deep learn",
+    "causal_chain": [
+      "Implicit bias in SGD -> Flatter minima",
+      "Flatter minima -> Improved generalization performance"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-2_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_033",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "hypothesis_text": "The geometry of the loss landscape, as navigated by Stochastic Gradient Descent, directly impacts th",
+    "causal_chain": [
+      "Stochastic Gradient Descent -> Generalization Capability",
+      "Generalization Capability -> Test Error"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_031",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "hypothesis_text": "Adaptive optimization methods enhance training performance in overparameterized neural networks, lea",
+    "causal_chain": [
+      "Adaptive Optimization Methods -> Training Performance",
+      "Training Performance -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_123",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "hypothesis_text": "The geometry of the loss landscape in overparameterized neural networks can be characterized by spec",
+    "causal_chain": [
+      "Geometry of the loss landscape -> Characterized by spectral bias",
+      "Characterized by spectral bias -> Influences inductive bias towards simpler functions"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_025",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "hypothesis_text": "Deforestation leads to increased sedimentation in coastal waters, which subsequently causes nutrient",
+    "causal_chain": [
+      "Deforestation -> Sedimentation",
+      "Sedimentation -> Nutrient Loading",
+      "Nutrient Loading -> Eutrophication",
+      "Eutrophication -> Coral Reefs"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 4,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.75,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 3,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_CLIM-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_096",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "hypothesis_text": "Chronic caffeine treatment mitigates the negative effects of sleep deprivation on hippocampal synapt",
+    "causal_chain": [
+      "Chronic Caffeine Treatment -> Preserved P-CaMKII Levels",
+      "Preserved P-CaMKII Levels -> Mitigated Synaptic Plasticity Impairment"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_024",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "hypothesis_text": "Nutrient enrichment from deforestation-related runoff promotes the growth of harmful algal blooms (e",
+    "causal_chain": [
+      "Nutrient Enrichment -> Zooxanthellae",
+      "Zooxanthellae -> Coral Reefs"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_CLIM-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_029",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "hypothesis_text": "Adaptive optimization methods in overparameterized neural networks significantly improve generalizat",
+    "causal_chain": [
+      "Overparameterization -> Adaptive Optimization Methods",
+      "Adaptive Optimization Methods -> Test Error"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_020",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "hypothesis_text": "Increased sedimentation from deforestation leads to nutrient loading, which causes physiological str",
+    "causal_chain": [
+      "Deforestation -> Sedimentation",
+      "Sedimentation -> Coral Reef Degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_CLIM-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_072",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "hypothesis_text": "Increased sedimentation from deforestation leads to anoxic conditions in coastal waters, which cause",
+    "causal_chain": [
+      "Sedimentation -> Anoxia",
+      "Anoxia -> Coral Mortality"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_CLIM-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_075",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "hypothesis_text": "The geometry of the loss landscape in overparameterized neural networks influences generalization er",
+    "causal_chain": [
+      "Loss Landscape Geometry -> Generalization Error",
+      "Generalization Error -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_057",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "hypothesis_text": "Microbial metabolites produced during gut dysbiosis modulate neurotransmitter levels, which in turn ",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Microbial Metabolites",
+      "Microbial Metabolites -> Mood Regulation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-3_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_049",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "hypothesis_text": "Sleep deprivation impairs synaptic plasticity in the hippocampus by altering the composition of NMDA",
+    "causal_chain": [
+      "Sleep Deprivation -> Alters composition of NMDA Receptors",
+      "Alters composition of NMDA Receptors -> Impairs Long-term Potentiation (LTP)"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_051",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "hypothesis_text": "Astrocyte-derived adenosine signaling via A1 receptors mediates the negative effects of sleep depriv",
+    "causal_chain": [
+      "Sleep Deprivation -> Increases Astrocyte-derived Adenosine",
+      "Increases Astrocyte-derived Adenosine -> Mediates Impairment of Synaptic Plasticity"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_108",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to the production of neurotoxic metabolites, which subsequently impai",
+    "causal_chain": [
+      "Gut microbiome dysbiosis -> Production of neurotoxic metabolites",
+      "Production of neurotoxic metabolites -> Impairment of neurotransmitter function"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-3_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_027",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "hypothesis_text": "Sedimentation from deforestation increases nutrient loading, which promotes algal blooms that outcom",
+    "causal_chain": [
+      "Sedimentation -> Nutrient Loading",
+      "Nutrient Loading -> Eutrophication",
+      "Eutrophication -> Zooxanthellae",
+      "Zooxanthellae -> Coral Reefs"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 4,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.75,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 3,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_CLIM-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_018",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to increased inflammation, which negatively impacts body composition ",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Inflammation",
+      "Inflammation -> Body Composition",
+      "Body Composition -> Cognition"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 3,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.333,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-3_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_015",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "hypothesis_text": "Dysbiosis leads to anorexia nervosa, which alters specific gut microbiota populations, ultimately im",
+    "causal_chain": [
+      "Dysbiosis -> Anorexia Nervosa",
+      "Anorexia Nervosa -> Cognition"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-3_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_013",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to depression, which subsequently alters body composition and gut mic",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Depression",
+      "Depression -> Cognition"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-3_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_066",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "hypothesis_text": "Increased sedimentation from deforestation leads to reduced light penetration in coastal waters, whi",
+    "causal_chain": [
+      "Sedimentation -> Light Penetration",
+      "Light Penetration -> Coral Mortality"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_CLIM-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_021",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "hypothesis_text": "Nutrient enrichment from deforestation-induced runoff leads to algal blooms, which outcompete corals",
+    "causal_chain": [
+      "Deforestation -> Nutrient Enrichment",
+      "Nutrient Enrichment -> Coral Reef Degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_CLIM-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_011",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "hypothesis_text": "Systemic inflammation resulting from gut microbiome dysbiosis leads to cerebral inflammation, which ",
+    "causal_chain": [
+      "Dysbiosis -> Cerebral Inflammation",
+      "Cerebral Inflammation -> Depression"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-3_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_121",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "hypothesis_text": "In overparameterized neural networks, the incorporation of stronger regularization techniques (e.g.,",
+    "causal_chain": [
+      "Stronger regularization techniques -> Alters loss landscape geometry",
+      "Alters loss landscape geometry -> Improved worst-case generalization"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_088",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "hypothesis_text": "Implicit bias in stochastic gradient descent (SGD) influences the convergence of deep learning model",
+    "causal_chain": [
+      "Implicit Bias in SGD -> Stochasticity",
+      "Stochasticity -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-2_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_005",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "hypothesis_text": "Sleep deprivation induces long-term depression (LTD) in the hippocampus, which subsequently disrupts",
+    "causal_chain": [
+      "Sleep Deprivation -> Long-term Depression",
+      "Long-term Depression -> Memory"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_063",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "hypothesis_text": "Dysbiosis of gut microbiota leads to systemic inflammation, which in turn exacerbates neuroinflammat",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Systemic Inflammation",
+      "Systemic Inflammation -> Mood Regulation Abnormalities"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-3_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_017",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "hypothesis_text": "Dysbiosis of gut microbiota, particularly through the influence of specific bacterial strains like M",
+    "causal_chain": [
+      "Dysbiosis -> Methanobrevibacter smithii",
+      "Methanobrevibacter smithii -> Gut Microbiota",
+      "Gut Microbiota -> Cognition"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 3,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.667,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-3_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_084",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "hypothesis_text": "The interaction between implicit bias in SGD and the stochasticity of the optimization process can c",
+    "causal_chain": [
+      "Implicit Bias in SGD -> Stochasticity",
+      "Stochasticity -> Feedback Loop to Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-2_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_036",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "hypothesis_text": "The geometry of the loss landscape in overparameterized neural networks, influenced by the choice of",
+    "causal_chain": [
+      "Overparameterization -> Stochastic Gradient Descent",
+      "Stochastic Gradient Descent -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": true,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_023",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "hypothesis_text": "Increased nutrient loading from deforestation-induced runoff leads to eutrophication, which causes p",
+    "causal_chain": [
+      "Nutrient Loading -> Physiological Stress",
+      "Physiological Stress -> Coral Reefs"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_CLIM-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_042",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "hypothesis_text": "The stochastic processes inherent in stochastic gradient descent affect genome organization of model",
+    "causal_chain": [
+      "Stochasticity -> Genome Organization",
+      "Genome Organization -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-2_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_035",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "hypothesis_text": "Adaptive optimization methods applied during Stochastic Gradient Descent in overparameterized neural",
+    "causal_chain": [
+      "Stochastic Gradient Descent -> Adaptive Optimization Methods",
+      "Adaptive Optimization Methods -> Test Error"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_081",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "hypothesis_text": "The use of adaptive optimization methods in training overparameterized neural networks can lead to w",
+    "causal_chain": [
+      "Adaptive Optimization Methods -> Implicit Bias",
+      "Implicit Bias -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_131",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "hypothesis_text": "The stochastic nature of SGD introduces variability in parameter updates (Concept A), which can lead",
+    "causal_chain": [
+      "Stochastic nature of SGD -> Diverse flat minima",
+      "Diverse flat minima -> Robustness against overfitting"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-2_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_070",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "hypothesis_text": "Deforestation increases sedimentation in coastal waters, which leads to nutrient loading and ultimat",
+    "causal_chain": [
+      "Deforestation -> Sedimentation",
+      "Sedimentation -> Coral Reef Degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_CLIM-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_067",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "hypothesis_text": "Deforestation leads to increased topsoil erosion, which causes sedimentation in coastal ecosystems, ",
+    "causal_chain": [
+      "Deforestation -> Topsoil Erosion",
+      "Topsoil Erosion -> Sedimentation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_CLIM-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_038",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "hypothesis_text": "The implicit bias of Stochastic Gradient Descent (SGD) towards flat minima can be attributed to the ",
+    "causal_chain": [
+      "Stochastic Gradient Descent -> Implicit Bias",
+      "Implicit Bias -> Generalization"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-2_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_054",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "hypothesis_text": "Sleep deprivation induces a stress response that impairs neuron-glia coupling and subsequently disru",
+    "causal_chain": [
+      "Sleep Deprivation -> Neuron-Glia Coupling",
+      "Neuron-Glia Coupling -> Metabolic Plasticity"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_107",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "hypothesis_text": "Increased abundance of Alistipes species in gut dysbiosis leads to elevated neuroinflammatory marker",
+    "causal_chain": [
+      "Increased abundance of Alistipes species -> Elevated neuroinflammatory markers",
+      "Elevated neuroinflammatory markers -> Mood regulation abnormalities"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-3_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_132",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "hypothesis_text": "The implicit bias of SGD towards certain parameter configurations (Concept A) can create a tendency ",
+    "causal_chain": [
+      "Implicit bias of SGD -> Tendency to converge to flatter minima",
+      "Tendency to converge to flatter minima -> Enhanced model performance"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-2_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_048",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "hypothesis_text": "Recovery sleep following sleep deprivation restores long-term potentiation (LTP) and synaptic plasti",
+    "causal_chain": [
+      "Recovery Sleep -> NMDA Receptors",
+      "NMDA Receptors -> Long-term Potentiation (LTP)"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_004",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "hypothesis_text": "Sleep deprivation impairs long-term potentiation (LTP) in the hippocampus, leading to deficits in me",
+    "causal_chain": [
+      "Sleep Deprivation -> Long-term Potentiation",
+      "Long-term Potentiation -> Memory"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_069",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "hypothesis_text": "Increased sedimentation from deforestation leads to reduced light penetration in coastal waters, whi",
+    "causal_chain": [
+      "Sedimentation -> Light Penetration",
+      "Light Penetration -> Physiological Stress"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_CLIM-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_050",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "hypothesis_text": "Increased levels of brain-derived neurotrophic factor (BDNF) following sleep deprivation may initial",
+    "causal_chain": [
+      "Sleep Deprivation -> Increases BDNF levels",
+      "Increases BDNF levels -> Leads to Cognitive Impairment"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_062",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "hypothesis_text": "Altered bile acid profiles due to gut microbiome dysbiosis contribute to cognitive impairment throug",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Altered Bile Acid Profiles",
+      "Altered Bile Acid Profiles -> Cognitive Impairment"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-3_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_060",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "hypothesis_text": "Gut microbiome dysbiosis induces systemic inflammation, which subsequently affects neurotransmitter ",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Systemic Inflammation",
+      "Systemic Inflammation -> Mood Disorders"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-3_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_061",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to increased levels of neurotoxic metabolites, which in turn trigger ",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Neurotoxic Metabolites",
+      "Neurotoxic Metabolites -> Cognitive Decline"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-3_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_091",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "hypothesis_text": "Sleep deprivation leads to impaired synaptic plasticity in the hippocampus by altering the expressio",
+    "causal_chain": [
+      "Sleep Deprivation -> Altered Expression of Arc and MMP-9",
+      "Altered Expression of Arc and MMP-9 -> Impaired Memory Consolidation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_012",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "hypothesis_text": "Specific gut microbiota alterations, such as reduced levels of Roseburia and increased Enterobacteri",
+    "causal_chain": [
+      "Dysbiosis -> Gut Microbiota",
+      "Gut Microbiota -> Neuroinflammation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-3_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_115",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "hypothesis_text": "Deforestation leads to increased sedimentation in coastal waters, which reduces light penetration an",
+    "causal_chain": [
+      "Deforestation -> Increased sedimentation",
+      "Increased sedimentation -> Coral reef degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_CLIM-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_028",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "hypothesis_text": "In overparameterized neural networks, effective model complexity control through regularization tech",
+    "causal_chain": [
+      "Model Complexity Control -> Overparameterization",
+      "Overparameterization -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_120",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "hypothesis_text": "The geometry of the loss landscape in overparameterized neural networks influences generalization by",
+    "causal_chain": [
+      "Geometry of the loss landscape -> Convergence behavior of optimization algorithms",
+      "Convergence behavior of optimization algorithms -> Better generalization performance"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_083",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "hypothesis_text": "The stochastic nature of SGD can lead to the exploration of diverse regions in the loss landscape, w",
+    "causal_chain": [
+      "Stochasticity -> Exploration of Loss Landscape",
+      "Exploration of Loss Landscape -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-2_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_030",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "hypothesis_text": "The geometry of the loss landscape in overparameterized neural networks, influenced by model complex",
+    "causal_chain": [
+      "Model Complexity Control -> Loss Landscape Geometry",
+      "Loss Landscape Geometry -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_056",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "hypothesis_text": "Altered bile acid profiles due to gut microbiome dysbiosis contribute to cognitive impairment throug",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Altered Bile Acid Profiles",
+      "Altered Bile Acid Profiles -> Cognitive Impairment"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-3_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_134",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "hypothesis_text": "The stochastic nature of parameter updates in stochastic gradient descent (SGD) can lead to implicit",
+    "causal_chain": [
+      "Stochastic updates in SGD -> Implicit bias favoring certain loss landscape regions",
+      "Implicit bias favoring certain loss landscape regions -> Convergence to flatter minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-2_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_002",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "hypothesis_text": "Sleep deprivation induces long-term depression (LTD) in the hippocampus, which contributes to impair",
+    "causal_chain": [
+      "Sleep Deprivation -> Long-term Depression",
+      "Long-term Depression -> Memory"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_097",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "hypothesis_text": "Sleep deprivation leads to increased expression of Arc mRNA in the hippocampus, which subsequently e",
+    "causal_chain": [
+      "Sleep Deprivation -> Increased Arc mRNA Expression",
+      "Increased Arc mRNA Expression -> Impaired Memory Consolidation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_058",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to increased production of neurotoxic metabolites, which in turn trig",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Neurotoxic Metabolites",
+      "Neurotoxic Metabolites -> Cognitive Decline"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-3_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_076",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "hypothesis_text": "In overparameterized neural networks, the application of regularization techniques significantly enh",
+    "causal_chain": [
+      "Overparameterized Neural Networks -> Regularization",
+      "Regularization -> Worst-Case Generalization"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_037",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "hypothesis_text": "Stochastic Gradient Descent (SGD) introduces an implicit bias towards flat minima in deep learning m",
+    "causal_chain": [
+      "Stochastic Gradient Descent -> Implicit Bias",
+      "Implicit Bias -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-2_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_122",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "hypothesis_text": "The use of stochastic gradient descent (SGD) in training overparameterized neural networks results i",
+    "causal_chain": [
+      "Stochastic gradient descent -> Favors lower generalization error solutions",
+      "Favors lower generalization error solutions -> Influences loss landscape geometry"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_102",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to alterations in neurotransmitter production, which subsequently aff",
+    "causal_chain": [
+      "Gut microbiome dysbiosis -> Altered neurotransmitter production",
+      "Altered neurotransmitter production -> Mood regulation and cognitive performance"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-3_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_114",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "hypothesis_text": "Nutrient runoff from deforested areas leads to harmful algal blooms in coastal waters, which outcomp",
+    "causal_chain": [
+      "Nutrient runoff -> Harmful algal blooms",
+      "Harmful algal blooms -> Coral reef degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_CLIM-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_104",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "hypothesis_text": "Altered bile acid profiles due to gut microbiome dysbiosis lead to impaired cognitive function by di",
+    "causal_chain": [
+      "Gut microbiome dysbiosis (altered bile acids) -> Disruption of gut-liver-brain axis",
+      "Disruption of gut-liver-brain axis -> Impaired cognitive function"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-3_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_007",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "hypothesis_text": "Sleep deprivation impairs long-term potentiation in the hippocampus, leading to deficits in memory c",
+    "causal_chain": [
+      "Sleep Deprivation -> Long-term Potentiation",
+      "Long-term Potentiation -> Memory"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_105",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to increased production of inflammatory cytokines, which subsequently",
+    "causal_chain": [
+      "Gut microbiome dysbiosis (increased inflammatory cytokines) -> Disruption of neurotransmitter balance",
+      "Disruption of neurotransmitter balance -> Mood regulation abnormalities"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-3_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_128",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "hypothesis_text": "The implicit bias introduced by stochastic gradient descent (SGD) can lead to the emergence of flat ",
+    "causal_chain": [
+      "Implicit bias in SGD -> Variance of gradient estimates",
+      "Variance of gradient estimates -> Emergence of flat minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-2_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_010",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to anorexia nervosa, which alters gut microbiota composition and subs",
+    "causal_chain": [
+      "Dysbiosis -> Anorexia Nervosa",
+      "Anorexia Nervosa -> Neuroinflammation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-3_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_006",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "hypothesis_text": "Sleep deprivation affects cognitive function through alterations in synaptic plasticity in the hippo",
+    "causal_chain": [
+      "Sleep Deprivation -> Synaptic Plasticity",
+      "Synaptic Plasticity -> Memory"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_074",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "hypothesis_text": "The use of stochastic gradient descent (SGD) in training overparameterized neural networks leads to ",
+    "causal_chain": [
+      "Stochastic Gradient Descent -> Implicit Bias",
+      "Implicit Bias -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_080",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "hypothesis_text": "The geometry of the loss landscape in overparameterized neural networks influences generalization ca",
+    "causal_chain": [
+      "Stochastic Gradient Descent -> Non-monotonic Learning Curves",
+      "Non-monotonic Learning Curves -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_068",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "hypothesis_text": "Nutrient runoff from deforested areas increases nutrient loading in coastal waters, leading to eutro",
+    "causal_chain": [
+      "Nutrient Runoff -> Nutrient Loading",
+      "Nutrient Loading -> Eutrophication"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_CLIM-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_119",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "hypothesis_text": "The use of stochastic gradient descent (SGD) in training overparameterized neural networks results i",
+    "causal_chain": [
+      "Stochastic gradient descent (SGD) -> Implicit bias towards simpler solutions",
+      "Implicit bias towards simpler solutions -> Lower generalization error"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_124",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "hypothesis_text": "In overparameterized neural networks, the incorporation of stronger regularization techniques (e.g.,",
+    "causal_chain": [
+      "Stronger regularization techniques -> Reduced overfitting to spurious correlations",
+      "Reduced overfitting to spurious correlations -> Improved worst-case generalization performance"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_071",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "hypothesis_text": "Nutrient runoff from deforested areas enhances phytoplankton growth, which leads to harmful algal bl",
+    "causal_chain": [
+      "Nutrient Runoff -> Phytoplankton Growth",
+      "Phytoplankton Growth -> Coral Reef Health"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_CLIM-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_026",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "hypothesis_text": "Increased nutrient loading from deforestation-induced runoff leads to physiological stress in coral ",
+    "causal_chain": [
+      "Nutrient Loading -> Physiological Stress",
+      "Physiological Stress -> Reproductive Failure",
+      "Reproductive Failure -> Coral Reefs"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 3,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.667,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_CLIM-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_034",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "hypothesis_text": "In overparameterized neural networks, the geometry of the loss landscape, shaped by Stochastic Gradi",
+    "causal_chain": [
+      "Overparameterization -> Stochastic Gradient Descent",
+      "Stochastic Gradient Descent -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": true,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_135",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "hypothesis_text": "The implicit bias introduced by stochastic gradient descent (SGD) can alter the landscape of the opt",
+    "causal_chain": [
+      "Implicit bias in SGD -> Altered optimization landscape",
+      "Altered optimization landscape -> Preference for flatter minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-2_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_100",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "hypothesis_text": "Dysbiosis of the gut microbiome, characterized by an increase in Alistipes spp., leads to elevated l",
+    "causal_chain": [
+      "Gut microbiome dysbiosis (increase in Alistipes spp.) -> Elevated neurotoxic metabolites",
+      "Elevated neurotoxic metabolites -> Neuroinflammation and cognitive decline"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-3_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_078",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "hypothesis_text": "In overparameterized neural networks, the use of adaptive optimization methods leads to poorer gener",
+    "causal_chain": [
+      "Overparameterized Neural Networks -> Adaptive Optimization Methods",
+      "Adaptive Optimization Methods -> Generalization Error"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_089",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "hypothesis_text": "The presence of flat minima in deep learning models is influenced by the stochasticity inherent in t",
+    "causal_chain": [
+      "Stochasticity -> Hybrid Mechanistic-Stochastic Model",
+      "Hybrid Mechanistic-Stochastic Model -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-2_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_087",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "hypothesis_text": "The interaction between implicit bias in SGD and the structural characteristics of the loss landscap",
+    "causal_chain": [
+      "Implicit Bias in SGD -> Structural Characteristics of Loss Landscape",
+      "Structural Characteristics of Loss Landscape -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-2_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_041",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "hypothesis_text": "Ecological drift induced by stochastic gradient descent influences the training landscape, resulting",
+    "causal_chain": [
+      "Stochasticity -> Ecological Drift",
+      "Ecological Drift -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-2_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_022",
+    "query_id": "CLIM-1",
+    "repetition": 2,
+    "hypothesis_text": "Deforestation leads to increased sedimentation in nearby water bodies, which subsequently causes nut",
+    "causal_chain": [
+      "Deforestation -> Sedimentation",
+      "Sedimentation -> Coral Reefs"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_CLIM-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_032",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "hypothesis_text": "The dynamics of Stochastic Gradient Descent (SGD) in the loss landscape significantly influence the ",
+    "causal_chain": [
+      "Stochastic Gradient Descent -> Generalization Capability",
+      "Generalization Capability -> Adaptive Optimization Methods"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_059",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "hypothesis_text": "Alterations in bile acid profiles due to gut microbiome dysbiosis contribute to cognitive impairment",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Bile Acid Profiles",
+      "Bile Acid Profiles -> Cognitive Impairment"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-3_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_016",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to increased cerebral inflammation through the microbiota-gut-brain a",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Microbiota-Gut-Brain Axis",
+      "Microbiota-Gut-Brain Axis -> Cerebral Inflammation",
+      "Cerebral Inflammation -> Depression"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 3,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.667,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-3_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_077",
+    "query_id": "ML-1",
+    "repetition": 2,
+    "hypothesis_text": "The geometry of the loss landscape in overparameterized neural networks influences generalization ca",
+    "causal_chain": [
+      "Overparameterized Neural Networks -> Loss Landscape Geometry",
+      "Loss Landscape Geometry -> Generalization Capability"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_046",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "hypothesis_text": "Sleep deprivation impairs synaptic plasticity in the hippocampus by altering the composition of NMDA",
+    "causal_chain": [
+      "Sleep Deprivation -> NMDA Receptors",
+      "NMDA Receptors -> Long-term Potentiation (LTP)"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_003",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "hypothesis_text": "Sleep deprivation negatively affects cognitive function by disrupting long-term potentiation in the ",
+    "causal_chain": [
+      "Sleep Deprivation -> Long-term Potentiation",
+      "Long-term Potentiation -> Cognitive Function"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_126",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "hypothesis_text": "The geometry of the loss landscape in overparameterized neural networks influences generalization by",
+    "causal_chain": [
+      "Geometry of the loss landscape -> Stability of solutions during training",
+      "Stability of solutions during training -> Better generalization performance"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_040",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "hypothesis_text": "The stochastic nature of stochastic gradient descent introduces demographic stochasticity, which alt",
+    "causal_chain": [
+      "Stochasticity -> Demographic Stochasticity",
+      "Demographic Stochasticity -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-2_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_109",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "hypothesis_text": "Deforestation leads to increased sedimentation in coastal waters, which reduces light penetration an",
+    "causal_chain": [
+      "Deforestation -> Increased sedimentation",
+      "Increased sedimentation -> Coral reef degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_CLIM-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_095",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "hypothesis_text": "Astrocyte-derived adenosine signaling mediates the effects of sleep deprivation on hippocampal synap",
+    "causal_chain": [
+      "Sleep Deprivation -> Adenosine Signaling in Astrocytes",
+      "Adenosine Signaling in Astrocytes -> Altered NMDA Receptor Function"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-1_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_103",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "hypothesis_text": "Dysbiosis of the gut microbiome, particularly characterized by an increase in Alistipes spp., leads ",
+    "causal_chain": [
+      "Gut microbiome dysbiosis (Alistipes increase) -> Increased neurotoxic metabolites (D-lactic acid)",
+      "Increased neurotoxic metabolites (D-lactic acid) -> Neuroinflammation and cognitive decline"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-3_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_125",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "hypothesis_text": "The use of stochastic gradient descent (SGD) in training overparameterized neural networks results i",
+    "causal_chain": [
+      "Stochastic gradient descent (SGD) -> Implicit bias towards simpler functions",
+      "Implicit bias towards simpler functions -> Lower generalization error"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_118",
+    "query_id": "ML-1",
+    "repetition": 1,
+    "hypothesis_text": "In overparameterized neural networks, the introduction of stronger regularization techniques, such a",
+    "causal_chain": [
+      "Stronger regularization techniques -> Mitigation of spurious correlations",
+      "Mitigation of spurious correlations -> Improved worst-case generalization performance"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_045",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "hypothesis_text": "Stochastic processes in SGD may influence genome organization analogously to how they affect paramet",
+    "causal_chain": [
+      "Stochasticity -> Genome Organization",
+      "Genome Organization -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-2_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_133",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "hypothesis_text": "Implicit bias in stochastic gradient descent (SGD) influences the convergence behavior of deep learn",
+    "causal_chain": [
+      "Implicit bias in SGD -> Non-uniform sampling of parameter space",
+      "Non-uniform sampling of parameter space -> Flatter minima in loss landscape"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_ML-2_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_090",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "hypothesis_text": "The interaction between implicit bias in stochastic gradient descent and the landscape of flat minim",
+    "causal_chain": [
+      "Implicit Bias in SGD -> Stochastic Differential Equations",
+      "Stochastic Differential Equations -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-2_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_065",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "hypothesis_text": "Nutrient runoff from deforested areas contributes to harmful algal blooms, which leads to anoxic con",
+    "causal_chain": [
+      "Nutrient Runoff -> Harmful Algal Blooms",
+      "Harmful Algal Blooms -> Coral Reef Degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_CLIM-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_009",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "hypothesis_text": "Sleep deprivation disrupts cognitive function by impairing long-term potentiation in the hippocampus",
+    "causal_chain": [
+      "Sleep Deprivation -> Long-term Potentiation",
+      "Long-term Potentiation -> Cognitive Function"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 2,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_116",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "hypothesis_text": "Nutrient runoff from deforested areas leads to eutrophication in coastal waters, which promotes alga",
+    "causal_chain": [
+      "Nutrient runoff -> Eutrophication",
+      "Eutrophication -> Coral reef degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.667,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_CLIM-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_052",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "hypothesis_text": "Sleep deprivation impairs synaptic plasticity in the hippocampus by altering the composition of NMDA",
+    "causal_chain": [
+      "Sleep Deprivation -> NMDA Receptors",
+      "NMDA Receptors -> Long-term Potentiation (LTP)"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_082",
+    "query_id": "ML-2",
+    "repetition": 1,
+    "hypothesis_text": "Implicit bias in stochastic gradient descent (SGD) influences the convergence behavior of deep learn",
+    "causal_chain": [
+      "Stochasticity -> Implicit Bias in SGD",
+      "Implicit Bias in SGD -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-2_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_106",
+    "query_id": "BIO-3",
+    "repetition": 3,
+    "hypothesis_text": "Dysbiosis of the gut microbiome leads to altered bile acid profiles, which in turn contribute to cog",
+    "causal_chain": [
+      "Gut microbiome dysbiosis -> Altered bile acid profiles",
+      "Altered bile acid profiles -> Cognitive decline in Alzheimer's disease"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-3_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_055",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "hypothesis_text": "Gut microbiome dysbiosis leads to increased production of neurotoxic metabolites, which triggers neu",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Neurotoxic Metabolites",
+      "Neurotoxic Metabolites -> Cognitive Decline"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-3_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_014",
+    "query_id": "BIO-3",
+    "repetition": 2,
+    "hypothesis_text": "Gut microbiome dysbiosis affects the microbiota-gut-brain axis, leading to increased cerebral inflam",
+    "causal_chain": [
+      "Gut Microbiome Dysbiosis -> Cerebral Inflammation",
+      "Cerebral Inflammation -> Depression"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_BIO-3_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_047",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "hypothesis_text": "Astrocyte-derived adenosine mediates the negative effects of sleep deprivation on hippocampal synapt",
+    "causal_chain": [
+      "Sleep Deprivation -> A1 Receptor",
+      "A1 Receptor -> Long-term Potentiation (LTP)"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_117",
+    "query_id": "CLIM-1",
+    "repetition": 3,
+    "hypothesis_text": "Increased nutrient loading from deforestation-related runoff leads to shifts in competitive dynamics",
+    "causal_chain": [
+      "Increased nutrient loading -> Shifts in competitive dynamics",
+      "Shifts in competitive dynamics -> Coral reef degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_CLIM-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_111",
+    "query_id": "CLIM-1",
+    "repetition": 1,
+    "hypothesis_text": "Increased deforestation leads to higher rates of soil erosion, which results in sedimentation and nu",
+    "causal_chain": [
+      "Increased deforestation -> Soil erosion",
+      "Soil erosion -> Coral reef community degradation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_CLIM-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_085",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "hypothesis_text": "Implicit bias in stochastic gradient descent (SGD) influences the convergence behavior of deep learn",
+    "causal_chain": [
+      "Implicit Bias in SGD -> Convergence Behavior",
+      "Convergence Behavior -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-2_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_098",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "hypothesis_text": "Sleep deprivation alters the NMDA receptor composition in the hippocampus, leading to a shift in the",
+    "causal_chain": [
+      "Sleep Deprivation -> Altered NMDA Receptor Composition",
+      "Altered NMDA Receptor Composition -> Impaired Long-Term Potentiation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_053",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "hypothesis_text": "Increased levels of brain-derived neurotrophic factor (BDNF) following sleep deprivation may initial",
+    "causal_chain": [
+      "Sleep Deprivation -> Brain Derived Neurotrophic Factor",
+      "Brain Derived Neurotrophic Factor -> Cognitive Impairment"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_BIO-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_101",
+    "query_id": "BIO-3",
+    "repetition": 1,
+    "hypothesis_text": "Altered bile acid profiles due to gut microbiome dysbiosis lead to impaired cognitive function throu",
+    "causal_chain": [
+      "Altered bile acid profiles -> Impaired gut-brain axis signaling",
+      "Impaired gut-brain axis signaling -> Neuroinflammation and cognitive decline"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-3_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_079",
+    "query_id": "ML-1",
+    "repetition": 3,
+    "hypothesis_text": "In overparameterized neural networks, the incorporation of regularization techniques significantly e",
+    "causal_chain": [
+      "Overparameterized Neural Networks -> Generalization Error",
+      "Generalization Error -> Worst-Case Generalization"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_093",
+    "query_id": "BIO-1",
+    "repetition": 1,
+    "hypothesis_text": "Chronic caffeine treatment mitigates the negative effects of sleep deprivation on hippocampal synapt",
+    "causal_chain": [
+      "Chronic Caffeine Treatment -> Maintained P-CaMKII Levels",
+      "Maintained P-CaMKII Levels -> Mitigated Impairment of LTP"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-1_rep1.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_099",
+    "query_id": "BIO-1",
+    "repetition": 3,
+    "hypothesis_text": "Astrocyte-derived adenosine signaling is upregulated during sleep deprivation, which leads to impair",
+    "causal_chain": [
+      "Sleep Deprivation -> Increased Adenosine Signaling",
+      "Increased Adenosine Signaling -> Impaired Late-Phase Long-Term Potentiation"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-1_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_086",
+    "query_id": "ML-2",
+    "repetition": 2,
+    "hypothesis_text": "The stochasticity inherent in SGD contributes to the emergence of flat minima in deep learning model",
+    "causal_chain": [
+      "Stochasticity in SGD -> Exploration of Loss Landscape",
+      "Exploration of Loss Landscape -> Flat Minima"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.0,
+      "edge_alignment_ratio": 0.0,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 0,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "GRAPH_ONLY",
+      "source_file": "GRAPH_ONLY_ML-2_rep2.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_043",
+    "query_id": "ML-2",
+    "repetition": 3,
+    "hypothesis_text": "The stochastic nature of stochastic gradient descent (SGD) introduces demographic stochasticity, whi",
+    "causal_chain": [
+      "Stochasticity -> Demographic Stochasticity",
+      "Demographic Stochasticity -> Population Dynamics"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 1.0,
+      "edge_alignment_ratio": 1.0,
+      "is_valid_graph_path": true,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": true,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": true
+    },
+    "_audit_truth": {
+      "condition": "GRAPH",
+      "source_file": "GRAPH_ML-2_rep3.json"
+    }
+  },
+  {
+    "hypothesis_id": "HYP_094",
+    "query_id": "BIO-1",
+    "repetition": 2,
+    "hypothesis_text": "Sleep deprivation leads to impaired synaptic plasticity in the hippocampus by altering the expressio",
+    "causal_chain": [
+      "Sleep Deprivation -> Altered Expression of Arc and MMP-9",
+      "Altered Expression of Arc and MMP-9 -> Impaired Synaptic Plasticity"
+    ],
+    "evaluation_metrics": {
+      "hop_count": 2,
+      "concept_grounding_ratio": 0.333,
+      "edge_alignment_ratio": 0.5,
+      "is_valid_graph_path": false,
+      "is_strict_bridge": false,
+      "is_single_paper_dominated": false,
+      "cumulative_papers_count": 1,
+      "terminal_co_occurs": false
+    },
+    "_audit_truth": {
+      "condition": "RAG",
+      "source_file": "RAG_BIO-1_rep2.json"
+    }
+  }
+]

@@ -1,0 +1,155 @@
+{
+  "condition": "GRAPH_ONLY",
+  "query_id": "CLIM-1",
+  "query": "What causal pathways connect deforestation, nutrient runoff, and coral reef degradation?",
+  "domain": "climate",
+  "repetition": 1,
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "metrics": {
+    "duration_seconds": 10.64,
+    "prompt_tokens": 8765,
+    "completion_tokens": 1004,
+    "total_tokens": 9769,
+    "estimated_cost_usd": 0.0019,
+    "llm_calls": 1,
+    "tool_calls": 0
+  },
+  "hypotheses": [
+    {
+      "text": "Deforestation increases sedimentation in coastal waters, which leads to nutrient loading and ultimately causes coral reef degradation through reduced light penetration and increased competition from algae.",
+      "domain_tags": [
+        "ecology",
+        "marine biology"
+      ],
+      "novelty_score": 0.8,
+      "feasibility_score": 0.9,
+      "testability_score": 0.85,
+      "causal_chain": {
+        "nodes": [
+          "Deforestation",
+          "Sedimentation",
+          "Coral Reef Degradation"
+        ],
+        "relations": [
+          "increases",
+          "leads to"
+        ],
+        "confidence": 0.85
+      },
+      "search_query": null,
+      "mechanism_class": "Anthropogenic Disturbance",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Deforestation Impact Studies",
+          "Coral Reef Health Studies",
+          "Nutrient Runoff Research"
+        ],
+        "missing_link": "The direct relationship between deforestation-induced sedimentation and its impact on coral reefs has not been thoroughly established.",
+        "field_assumption": "It is often assumed that sedimentation impacts are secondary to nutrient loading effects on coral reefs.",
+        "structural_reason": "Research communities focusing on terrestrial deforestation effects and marine ecology often operate in silos, leading to gaps in integrated studies.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Deforestation is known to affect sedimentation, yet the specific pathways to coral reef degradation remain unclear.",
+        "belief_a": "Deforestation leads to increased sedimentation in aquatic ecosystems.",
+        "belief_b": "Coral reefs are primarily affected by nutrient loading rather than sedimentation.",
+        "consistency_constraint": "Any valid explanation must demonstrate how sedimentation from deforestation directly impacts coral health."
+      },
+      "constraints": [],
+      "key_terms": [
+        "deforestation",
+        "sedimentation",
+        "coral reef degradation"
+      ]
+    },
+    {
+      "text": "Nutrient runoff from deforested areas contributes to harmful algal blooms, which leads to anoxic conditions that degrade coral reef ecosystems.",
+      "domain_tags": [
+        "marine biology",
+        "environmental science"
+      ],
+      "novelty_score": 0.7,
+      "feasibility_score": 0.85,
+      "testability_score": 0.8,
+      "causal_chain": {
+        "nodes": [
+          "Nutrient Runoff",
+          "Harmful Algal Blooms",
+          "Coral Reef Degradation"
+        ],
+        "relations": [
+          "contributes to",
+          "leads to"
+        ],
+        "confidence": 0.8
+      },
+      "search_query": null,
+      "mechanism_class": "Eutrophication",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Nutrient Pollution Studies",
+          "Coral Reef Health Studies",
+          "Algal Bloom Research"
+        ],
+        "missing_link": "The specific role of nutrient runoff from deforested areas in promoting harmful algal blooms affecting coral reefs is underexplored.",
+        "field_assumption": "It is often assumed that algal blooms are primarily driven by urban runoff rather than agricultural runoff from deforested areas.",
+        "structural_reason": "Research on nutrient runoff often focuses on urban sources, neglecting the implications of agricultural practices post-deforestation.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Nutrient runoff is known to cause algal blooms, yet the connection to coral reef degradation through anoxia is not well established.",
+        "belief_a": "Nutrient runoff leads to harmful algal blooms in coastal waters.",
+        "belief_b": "Coral reefs are primarily threatened by direct physical damage rather than by algal blooms.",
+        "consistency_constraint": "Any valid explanation must clarify how nutrient runoff from deforestation specifically contributes to algal blooms that harm coral reefs."
+      },
+      "constraints": [],
+      "key_terms": [
+        "nutrient runoff",
+        "harmful algal blooms",
+        "anoxic conditions"
+      ]
+    },
+    {
+      "text": "Increased sedimentation from deforestation leads to reduced light penetration in coastal waters, which causes physiological stress in coral reefs and ultimately results in coral mortality.",
+      "domain_tags": [
+        "marine biology",
+        "ecology"
+      ],
+      "novelty_score": 0.75,
+      "feasibility_score": 0.9,
+      "testability_score": 0.85,
+      "causal_chain": {
+        "nodes": [
+          "Sedimentation",
+          "Light Penetration",
+          "Coral Mortality"
+        ],
+        "relations": [
+          "leads to",
+          "causes"
+        ],
+        "confidence": 0.9
+      },
+      "search_query": null,
+      "mechanism_class": "Light Availability",
+      "rationale_gap": {
+        "disconnected_clusters": [
+          "Sedimentation Impact Studies",
+          "Coral Physiology Studies",
+          "Deforestation Research"
+        ],
+        "missing_link": "The direct pathway from sedimentation to light reduction and its effects on coral physiology is not fully elucidated.",
+        "field_assumption": "It is often assumed that coral mortality is primarily due to temperature stress rather than light availability.",
+        "structural_reason": "Research often separates studies of sedimentation effects from those examining coral physiological responses, leading to a lack of integrated understanding.",
+        "rationale_type": "gap",
+        "epistemic_tension": "Sedimentation is known to reduce light availability, yet the specific consequences for coral physiology and mortality are not well documented.",
+        "belief_a": "Increased sedimentation reduces light penetration in aquatic ecosystems.",
+        "belief_b": "Coral mortality is mainly attributed to temperature stress rather than light reduction.",
+        "consistency_constraint": "Any valid explanation must demonstrate how reduced light availability from sedimentation directly impacts coral health."
+      },
+      "constraints": [],
+      "key_terms": [
+        "sedimentation",
+        "light penetration",
+        "coral mortality"
+      ]
+    }
+  ]
+}
