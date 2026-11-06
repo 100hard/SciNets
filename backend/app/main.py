@@ -43,12 +43,14 @@ app = FastAPI(title="SciNets V2 API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://scinets-frontend.vercel.app",
         "http://localhost:8080",
         "http://127.0.0.1:8080",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000"
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

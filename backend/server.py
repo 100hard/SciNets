@@ -115,6 +115,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         app_config.FRONTEND_URL,
+        "https://scinets-frontend.vercel.app",
         "https://scinets.in",
         "https://www.scinets.in",
         "https://scinets-backend.onrender.com", # Added Backend URL itself just in case
@@ -122,6 +123,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True, # REQUIRED for cookies
     allow_methods=["*"],
     allow_headers=["*"],
